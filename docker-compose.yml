@@ -1,0 +1,207 @@
+version: '3.8'
+
+services:
+
+  ### REDIS CACHE ###
+  redis:
+    image: redis:7-alpine
+    container_name: emmanuel-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - app-network
+
+  ### KEYCLOAK ###
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: keycloak-server
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
+      KC_HOSTNAME: http://localhost:8001
+    command: start-dev --db=dev-file
+    ports:
+      - "8001:8080"
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+    healthcheck:
+      test: [ "CMD-SHELL", "timeout 1 bash -c '</dev/tcp/127.0.0.1/8080' || exit 1" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    networks:
+      - app-network
+
+  ### KAFKA ###
+  kafka:
+    image: apache/kafka:latest
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_LOG4J_LOGGERS: "org.apache.kafka.common.config.AbstractConfig=WARN,kafka.server=WARN,org.apache.kafka=WARN"
+      KAFKA_LOG4J_ROOT_LOGLEVEL: "WARN"
+    healthcheck:
+      test: [ "CMD-SHELL", "nc -z localhost 9092 || exit 1" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - app-network
+
+  ### AUTH SERVICE ###
+  db-auth:
+    image: postgres:17
+    container_name: db-auth
+    environment:
+      POSTGRES_DB: ${DB_AUTH_NAME}
+      POSTGRES_USER: ${DB_AUTH_USERNAME}
+      POSTGRES_PASSWORD: ${DB_AUTH_PASSWORD}
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_AUTH_USERNAME} -d ${DB_AUTH_NAME}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "${DB_AUTH_PORT:-5432}:5432"
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  auth-server:
+    build:
+      context: .
+      dockerfile: ./auth/Dockerfile
+    container_name: auth-server
+    environment:
+      DB_AUTH_URL: jdbc:postgresql://db-auth:5432/${DB_AUTH_NAME}
+      DB_USERNAME: ${DB_AUTH_USERNAME}
+      DB_PASSWORD: ${DB_AUTH_PASSWORD}
+      KC_AUTH_SERVER_URL: ${KC_AUTH_SERVER_URL}
+      KC_EXTERNAL_AUTH_SERVER_URL: ${KC_EXTERNAL_AUTH_SERVER_URL}
+      KC_REALM: ${KC_REALM}
+      KC_CLIENT_ID: ${KC_CLIENT_ID}
+      KC_CLIENT_SECRET: ${KC_CLIENT_SECRET}
+    ports:
+      - "8000:8080"
+    depends_on:
+      db-auth:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  account-server:
+    build:
+      context: .
+      dockerfile: ./account/Dockerfile
+    container_name: account-server
+    environment:
+      DB_ACCOUNT_URL: ${DB_ACCOUNT_URL}
+      DB_USERNAME: ${DB_ACCOUNT_USERNAME}
+      DB_PASSWORD: ${DB_ACCOUNT_PASSWORD}
+      KC_AUTH_SERVER_URL: ${KC_AUTH_SERVER_URL}
+      KC_EXTERNAL_AUTH_SERVER_URL: ${KC_EXTERNAL_AUTH_SERVER_URL}
+      KC_REALM: ${KC_REALM}
+      USER_SERVICE_URL: ${USER_SERVICE_URL}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    ports:
+      - "8002:8080"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  ### DASHBOARD SERVER ###
+  dashboard-server:
+    build:
+      context: .
+      dockerfile: ./dashboard/Dockerfile
+    container_name: dashboard-server
+    environment:
+      KC_AUTH_SERVER_URL: ${KC_AUTH_SERVER_URL}
+      KC_EXTERNAL_AUTH_SERVER_URL: ${KC_EXTERNAL_AUTH_SERVER_URL}
+      KC_REALM: ${KC_REALM}
+      USER_SERVICE_URL: ${USER_SERVICE_URL}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    ports:
+      - "8003:8080"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  ### CATEGORY SERVER ###
+  category-server:
+    build:
+      context: .
+      dockerfile: ./category/Dockerfile
+    container_name: category-server
+    environment:
+      DB_CATEGORY_URL: ${DB_CATEGORY_URL}
+      DB_USERNAME: ${DB_CATEGORY_USERNAME}
+      DB_PASSWORD: ${DB_CATEGORY_PASSWORD}
+      KC_AUTH_SERVER_URL: ${KC_AUTH_SERVER_URL}
+      KC_EXTERNAL_AUTH_SERVER_URL: ${KC_EXTERNAL_AUTH_SERVER_URL}
+      KC_REALM: ${KC_REALM}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      ACCOUNT_SERVICE_URL: ${ACCOUNT_SERVICE_URL}
+    ports:
+      - "8004:8080"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app-network
+
+volumes:
+  auth_db_data:
+  account_db_data:
+  keycloak_data:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge

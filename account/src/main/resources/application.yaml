@@ -1,0 +1,42 @@
+server:
+  port: 8002
+
+spring:
+  application:
+    name: account
+
+  cloud:
+    discovery:
+      enabled: false
+
+  # Configuração do Redis
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000
+      cache-null-values: false
+
+  datasource:
+    url: ${DB_ACCOUNT_URL}
+    username: ${DB_ACCOUNT_USERNAME}
+    password: ${DB_ACCOUNT_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${KC_AUTH_SERVER_URL}/realms/${KC_REALM}/protocol/openid-connect/certs
+
+application:
+  config:
+    user-service-url: ${USER_SERVICE_URL}

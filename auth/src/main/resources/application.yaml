@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: auth
+
+  datasource:
+    url: ${DB_AUTH_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KC_EXTERNAL_AUTH_SERVER_URL}/realms/${KC_REALM}
+          jwk-set-uri: ${KC_AUTH_SERVER_URL}/realms/${KC_REALM}/protocol/openid-connect/certs
+
+keycloak:
+  auth-server-url: ${KC_AUTH_SERVER_URL}
+  realm: ${KC_REALM}
+  client-id: ${KC_CLIENT_ID}
+  client-secret: ${KC_CLIENT_SECRET}
