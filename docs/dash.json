@@ -1,0 +1,79 @@
+{
+  "summary": {
+    "totalBalance": 15450.80,
+    "monthlyIncome": 8500.00,
+    "monthlyExpenses": 3200.45,
+    "creditCardInvoice": 1420.30,
+    "netSavings": 5299.55
+  },
+  "charts": {
+    "monthlyOverview": [
+      { "month": "FEV", "income": 8000.00, "expenses": 3100.00 },
+      { "month": "MAR", "income": 8200.00, "expenses": 2900.00 },
+      { "month": "ABR", "income": 8500.00, "expenses": 3200.45 }
+    ],
+    "expensesByCategory": [
+      { "category": "Alimentação", "amount": 1200.00, "percentage": 37.5 },
+      { "category": "Moradia", "amount": 1000.00, "percentage": 31.2 },
+      { "category": "Lazer", "amount": 500.45, "percentage": 15.6 },
+      { "category": "Transporte", "amount": 500.00, "percentage": 15.6 }
+    ]
+  },
+  "budgetsProgress": [
+    {
+      "budgetId": 1,
+      "category": "Alimentação",
+      "limitAmount": 1500.00,
+      "spentAmount": 1200.00,
+      "percentageUsed": 80.0
+    },
+    {
+      "budgetId": 2,
+      "category": "Lazer",
+      "limitAmount": 600.00,
+      "spentAmount": 500.45,
+      "percentageUsed": 83.4
+    }
+  ],
+  "upcomingTransactions": [
+    {
+      "id": 101,
+      "description": "Assinatura Netflix",
+      "amount": 55.90,
+      "dueDate": "2026-07-25",
+      "type": "EXPENSE",
+      "isRecurring": true
+    },
+    {
+      "id": 102,
+      "description": "Fatura Cartão Nubank",
+      "amount": 1420.30,
+      "dueDate": "2026-07-28",
+      "type": "CREDIT_CARD",
+      "isRecurring": false
+    }
+  ],
+  "recentTransactions": [
+    {
+      "id": 501,
+      "description": "Supermercado Carrefour",
+      "amount": 245.80,
+      "date": "2026-07-22T10:15:00",
+      "type": "EXPENSE",
+      "category": "Alimentação",
+      "accountName": "Conta Corrente Itaú"
+    }
+  ],
+  "aiInsights": [
+    {
+      "id": "insight_1",
+      "type": "WARNING",
+      "message": "Você já atingiu 80% do orçamento de Alimentação e restam 9 dias para o fim do mês."
+    },
+    {
+      "id": "insight_2",
+      "type": "TIP",
+      "message": "Se mantiver o ritmo de gastos atual, você fechará o mês guardando cerca de R$ 5.100,00."
+    }
+  ]
+}
