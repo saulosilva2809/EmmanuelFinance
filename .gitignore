@@ -1,0 +1,70 @@
+# ==========================================
+# 1. JAVA / SPRING BOOT / BUILD TOOLS
+# ==========================================
+# Maven
+**/target/
+**.tag
+**.jar
+**.war
+**.ear
+**.rar
+hs_err_pid*
+replay_pid*
+
+# Gradle
+**/.gradle/
+**/build/
+**/out/
+
+# ==========================================
+# 2. IDEs & EDITORES DE CÓDIGO
+# ==========================================
+# IntelliJ IDEA
+**/.idea/
+**/*.iws
+**/*.iml
+**/*.ipr
+**/out/
+
+# Eclipse
+**/.apt_generated
+**/.classpath
+**/.factorypath
+**/.project
+**/.settings/
+**/.springBeans
+**/.sts4-cache
+
+# VS Code
+**/.vscode/
+
+# ==========================================
+# 3. AMBIENTE & CONFIGURAÇÕES LOCAIS
+# ==========================================
+# Arquivos de propriedades e variáveis de ambiente locais (para evitar vazar senhas/tokens)
+**/application-local.yml
+**/application-local.properties
+**/.env
+**/.env.local
+
+# ==========================================
+# 4. SISTEMA OPERACIONAL
+# ==========================================
+# Windows
+**/Thumbs.db
+**/ehthumbs.db
+**/Desktop.ini
+**/$RECYCLE.BIN/
+
+# macOS
+**/.DS_Store
+**/.AppleDouble
+**/.LSOverride
+
+# ==========================================
+# 5. LOGS & BANCO DE DADOS LOCAL
+# ==========================================
+**/logs/
+**/*.log
+**/*.db
+**/*.sqlite
