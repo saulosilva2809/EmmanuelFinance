@@ -1,6 +1,7 @@
 package com.emmanuelfinance.category;
 
 import com.emmanuelfinance.category.dto.CategoryFIltersDTO;
+import com.emmanuelfinance.category.exceptions.AccountNotFound;
 import com.emmanuelfinance.category.exceptions.CategoryNotFound;
 import com.emmanuelfinance.shared.dto.AccountSummaryDTO;
 import com.emmanuelfinance.category.dto.CreateCategoryDTO;
@@ -11,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
@@ -21,6 +23,7 @@ public class CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final AccountClientCacheService accountClientCacheService;
+    private final StringRedisTemplate redisTemplate;
     
     private ResponseCategoryDTO categoryAsDTO(Category data) {
         AccountSummaryDTO account = accountClientCacheService
@@ -43,8 +46,17 @@ public class CategoryService {
         }
     }
 
+    private void checkAccountExists(CreateCategoryDTO data) {
+        String redisKey = "account:exists:" + data.accountId();
+
+        Boolean accountExists = redisTemplate.hasKey(redisKey);
+        if (Boolean.FALSE.equals(accountExists)) {
+            throw new AccountNotFound();
+        }
+    }
+
     public ResponseCategoryDTO create(CreateCategoryDTO data) {
-        // TODO: criar method para verificar se existe a account
+        checkAccountExists(data);
         checkCategoryExists(data);
 
         Category category = new Category();
