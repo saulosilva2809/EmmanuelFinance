@@ -2,6 +2,9 @@ package com.emmanuelfinance.account;
 
 import com.emmanuelfinance.account.dto.*;
 import com.emmanuelfinance.account.exceptions.AccountNotFound;
+import com.emmanuelfinance.shared.kafka.account.AccountEventDTO;
+import com.emmanuelfinance.account.kafka.producer.AccountEventPublisher;
+import com.emmanuelfinance.shared.kafka.account.enums.StatusEventEnum;
 import com.emmanuelfinance.shared.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.dto.UserSummaryDTO;
@@ -23,6 +26,7 @@ public class AccountService {
     private final AccountRespository accountRespository;
     private final UserClientCacheService userClientCacheService;
     private final AccountMapper accountMapper;
+    private final AccountEventPublisher accountEventPublisher;
 
     private ResponseAccountDTO accountAsDTO(Account data) {
         UserSummaryDTO userData = userClientCacheService.getUserById(data.getUserId());
@@ -46,6 +50,7 @@ public class AccountService {
         return account;
     }
 
+    @Transactional
     public ResponseAccountDTO create(Jwt jwt, CreateAccountDTO data) {
         UUID userId = UUID.fromString(jwt.getSubject());
 
@@ -58,6 +63,10 @@ public class AccountService {
         newAccount.setCurrentBalance(data.initialBalance());
 
         Account savedAccount = accountRespository.save(newAccount);
+        accountEventPublisher.publishAccountCreate(new AccountEventDTO(
+                newAccount.getId(),
+                StatusEventEnum.CREATED
+        ));
 
         return accountAsDTO(savedAccount);
     }
