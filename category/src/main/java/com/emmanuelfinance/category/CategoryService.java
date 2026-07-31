@@ -103,4 +103,9 @@ public class CategoryService {
         Category savedCategory = categoryRepository.save(category);
         return categoryAsDTO(savedCategory);
     }
+
+    public void delete(UUID id) {
+        Category category = getCategoryById(id);
+        categoryRepository.delete(category);
+    }
 }
