@@ -1,20 +1,27 @@
 package com.emmanuelfinance.account;
 
+import com.emmanuelfinance.account.dto.CreateAccountDTO;
 import com.emmanuelfinance.account.dto.ResponseAccountDTO;
 import com.emmanuelfinance.account.dto.UpdateAccountDTO;
 import com.emmanuelfinance.account.enums.TypeEnum;
+import com.emmanuelfinance.account.kafka.producer.AccountEventPublisher;
 import com.emmanuelfinance.shared.dto.UserSummaryDTO;
+import com.emmanuelfinance.shared.kafka.account.AccountEventDTO;
+import com.emmanuelfinance.shared.kafka.account.enums.StatusEventEnum;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.cache.CacheManager;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -40,6 +47,12 @@ class AccountServiceIntegrationTest {
     @MockBean
     private JwtDecoder jwtDecoder;
 
+    @MockBean
+    private AccountEventPublisher accountEventPublisher;
+
+    @MockBean
+    private Jwt jwt;
+
     private UUID accountId;
     private UUID userId;
 
@@ -60,6 +73,31 @@ class AccountServiceIntegrationTest {
         // configura o mock so serviço externo
         when(userClientCacheService.getUserById(userId))
                 .thenReturn(new UserSummaryDTO(userId, "saulo@gmail.com"));
+    }
+
+    @Test
+    void shouldCreateAccountAndPublishEventSuccessfully() {
+        UUID userId = UUID.randomUUID();
+        when(jwt.getSubject()).thenReturn(userId.toString());
+
+        CreateAccountDTO accountDTO = new CreateAccountDTO(
+                "Conta Itaú",
+                TypeEnum.CHECKING,
+                new BigDecimal(BigInteger.ZERO)
+        );
+
+        ResponseAccountDTO response = accountService.create(jwt, accountDTO);
+
+        assertNotNull(response);
+        assertEquals(response.name(), accountDTO.name());
+
+        Optional<Account> savedAccountInDb = accountRespository.findById(response.id());
+        assertNotNull(savedAccountInDb);
+        assertEquals(savedAccountInDb.get().getId(), response.id());
+
+        verify(accountEventPublisher, times(1)).publishAccountCreate(
+                new AccountEventDTO(response.id(), StatusEventEnum.CREATED)
+        );
     }
 
     @Test
