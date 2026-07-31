@@ -1,6 +1,7 @@
 package com.emmanuelfinance.category;
 
 import com.emmanuelfinance.category.dto.CategoryFIltersDTO;
+import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
 import com.emmanuelfinance.category.exceptions.AccountNotFound;
 import com.emmanuelfinance.category.exceptions.CategoryNotFound;
 import com.emmanuelfinance.shared.dto.AccountSummaryDTO;
@@ -24,6 +25,14 @@ public class CategoryService {
     private final CategoryRepository categoryRepository;
     private final AccountClientCacheService accountClientCacheService;
     private final StringRedisTemplate redisTemplate;
+    private final CategoryMapper categoryMapper;
+
+    private Category getCategoryById(UUID id) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new CategoryNotFound());
+
+        return category;
+    }
     
     private ResponseCategoryDTO categoryAsDTO(Category data) {
         AccountSummaryDTO account = accountClientCacheService
@@ -70,9 +79,7 @@ public class CategoryService {
     }
 
     public ResponseCategoryDTO view(UUID id) {
-        Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new CategoryNotFound());
-
+        Category category = getCategoryById(id);
         return categoryAsDTO(category);
     }
 
@@ -87,5 +94,13 @@ public class CategoryService {
         Page<ResponseCategoryDTO> dtoPage = page.map(this::categoryAsDTO);
 
         return PageResponseDTO.from(dtoPage);
+    }
+
+    public ResponseCategoryDTO update(UUID id, UpdateCategoryDTO data) {
+        Category category = getCategoryById(id);
+        categoryMapper.updateCategoryFromDTO(data, category);
+
+        Category savedCategory = categoryRepository.save(category);
+        return categoryAsDTO(savedCategory);
     }
 }
