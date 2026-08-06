@@ -65,8 +65,8 @@ public class CategoryService {
     }
 
     public ResponseCategoryDTO create(CreateCategoryDTO data) {
-        checkAccountExists(data);
         checkCategoryExists(data);
+        checkAccountExists(data);
 
         Category category = new Category();
 
