@@ -55,7 +55,7 @@ Entidade especializada para cartões de crédito. Ao invés de saldo líquido, g
 
 ## 3. Módulo de Categorias e Orçamentos
 
-### Entity: `Category`
+### Entity: `Category` ✅
 Estrutura em árvore (auto-relacionamento) para permitir categorias e subcategorias ilimitadas para classificação de fluxos.
 
 | Atributo | Tipo | Restrições | Descrição |
