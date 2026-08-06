@@ -23,6 +23,7 @@
         <module>config</module>
         <module>dashboard</module>
         <module>shared</module>
+        <module>transaction</module>
     </modules>
 
     <properties>
