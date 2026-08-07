@@ -1,6 +1,5 @@
-package com.emmanuelfinance.category.kafka.consumer.account;
+package com.emmanuelfinance.shared.kafka.account;
 
-import com.emmanuelfinance.shared.kafka.account.AccountEventDTO;
 import com.emmanuelfinance.shared.kafka.account.enums.StatusEventEnum;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,9 +13,9 @@ import org.springframework.stereotype.Component;
 public class AccountEventListener {
 
     private final StringRedisTemplate redisTemplate;
-    private static final String REDIS_KEY_PREFIX = "account:exists:";
+    private static final String REDIS_KEY_PREFIX = "account:";
 
-    @KafkaListener(topics = "account-events", groupId = "category-service-group")
+    @KafkaListener(topics = "account-events", groupId = "shared-service-group")
     public void handleAccountEvent(AccountEventDTO event) {
         log.info("Evento de conta recebido no Category Service: {}", event);
 
@@ -24,7 +23,7 @@ public class AccountEventListener {
 
         if (StatusEventEnum.CREATED.equals(event.status())) {
             // salva a cache no redis com o valor true
-            redisTemplate.opsForValue().set(redisKey, "true");
+            redisTemplate.opsForValue().set(redisKey, event.userId().toString());
             log.info("Conta {} armazenada no cache Redis com sucesso!", event.accountId());
         } else if (StatusEventEnum.DELETED.equals(event.status())) {
             redisTemplate.delete(redisKey);

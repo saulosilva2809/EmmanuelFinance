@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -22,8 +24,11 @@ public class CategoryController {
     private final CategoryService categoryService;
 
     @PostMapping
-    public ResponseEntity<ResponseCategoryDTO> create(@Valid @RequestBody CreateCategoryDTO data) {
-        ResponseCategoryDTO response = categoryService.create(data);
+    public ResponseEntity<ResponseCategoryDTO> create(
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody CreateCategoryDTO data
+    ) {
+        ResponseCategoryDTO response = categoryService.create(jwt, data);
         return ResponseEntity.ok().body(response);
     }
 
