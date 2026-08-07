@@ -6,5 +6,6 @@ import java.util.UUID;
 
 public record AccountEventDTO(
         UUID accountId,
+        UUID userId,
         StatusEventEnum status
 ) {}

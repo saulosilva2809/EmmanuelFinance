@@ -4,6 +4,7 @@ import com.emmanuelfinance.category.dto.CategoryFIltersDTO;
 import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
 import com.emmanuelfinance.category.exceptions.AccountNotFound;
 import com.emmanuelfinance.category.exceptions.CategoryNotFound;
+import com.emmanuelfinance.shared.cache.AccountCache;
 import com.emmanuelfinance.shared.dto.AccountSummaryDTO;
 import com.emmanuelfinance.category.dto.CreateCategoryDTO;
 import com.emmanuelfinance.category.dto.ResponseCategoryDTO;
@@ -13,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
@@ -24,8 +25,8 @@ public class CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final AccountClientCacheService accountClientCacheService;
-    private final StringRedisTemplate redisTemplate;
     private final CategoryMapper categoryMapper;
+    private final AccountCache accountCache;
 
     private Category getCategoryById(UUID id) {
         Category category = categoryRepository.findById(id)
@@ -55,18 +56,18 @@ public class CategoryService {
         }
     }
 
-    private void checkAccountExists(CreateCategoryDTO data) {
-        String redisKey = "account:exists:" + data.accountId();
+    public void checkAccountExists(Jwt jwt, CreateCategoryDTO dto) {
+        UUID userId = UUID.fromString(jwt.getSubject());
 
-        Boolean accountExists = redisTemplate.hasKey(redisKey);
-        if (Boolean.FALSE.equals(accountExists)) {
+        boolean isOwner = accountCache.isAccountOwnedByUser(dto.accountId(), userId);
+        if (!isOwner) {
             throw new AccountNotFound();
         }
     }
 
-    public ResponseCategoryDTO create(CreateCategoryDTO data) {
+    public ResponseCategoryDTO create(Jwt jwt, CreateCategoryDTO data) {
         checkCategoryExists(data);
-        checkAccountExists(data);
+        checkAccountExists(jwt, data);
 
         Category category = new Category();
 

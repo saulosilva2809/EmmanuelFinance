@@ -65,6 +65,7 @@ public class AccountService {
         Account savedAccount = accountRespository.save(newAccount);
         accountEventPublisher.publishAccountCreate(new AccountEventDTO(
                 newAccount.getId(),
+                newAccount.getUserId(),
                 StatusEventEnum.CREATED
         ));
 

@@ -1,0 +1,17 @@
+package com.emmanuelfinance.creditcard.dto;
+
+import com.emmanuelfinance.shared.dto.AccountSummaryDTO;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+public record ResponseCreditCardDTO(
+        UUID id,
+        AccountSummaryDTO account,
+        String name,
+        BigDecimal creditLimit,
+        Integer closingDay,
+        Integer dueDay,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
+) {}
