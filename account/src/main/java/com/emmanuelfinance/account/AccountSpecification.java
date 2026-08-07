@@ -6,12 +6,15 @@ import org.springframework.data.jpa.domain.Specification;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class AccountSpecification {
 
-    public static Specification<Account> withFilter(AccountFiltersDTO filter) {
+    public static Specification<Account> withFilter(AccountFiltersDTO filter, UUID userId   ) {
         return (root, query, builder) -> {
             List<Predicate> predicates = new ArrayList<>();
+
+            predicates.add(builder.equal(root.get("userId"), userId));
 
             if (filter.name() != null && !filter.name().isBlank()) {
                 predicates.add(

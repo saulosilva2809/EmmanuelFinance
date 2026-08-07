@@ -8,6 +8,7 @@ import com.emmanuelfinance.shared.kafka.account.enums.StatusEventEnum;
 import com.emmanuelfinance.shared.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.dto.UserSummaryDTO;
+import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
@@ -27,6 +28,7 @@ public class AccountService {
     private final UserClientCacheService userClientCacheService;
     private final AccountMapper accountMapper;
     private final AccountEventPublisher accountEventPublisher;
+    private final SecurityUtils securityUtils;
 
     private ResponseAccountDTO accountAsDTO(Account data) {
         UserSummaryDTO userData = userClientCacheService.getUserById(data.getUserId());
@@ -43,16 +45,18 @@ public class AccountService {
         );
     }
 
-    private Account getAccountById(UUID id) {
-        Account account = accountRespository.findById(id)
+    private Account getAccountByIdAndUserId(UUID id) {
+        UUID userId = securityUtils.getCurrentUserId();
+
+        Account account = accountRespository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new AccountNotFound());
 
         return account;
     }
 
     @Transactional
-    public ResponseAccountDTO create(Jwt jwt, CreateAccountDTO data) {
-        UUID userId = UUID.fromString(jwt.getSubject());
+    public ResponseAccountDTO create(CreateAccountDTO data) {
+        UUID userId = securityUtils.getCurrentUserId();
 
         Account newAccount = new Account();
 
@@ -73,14 +77,15 @@ public class AccountService {
     }
 
     public ResponseAccountDTO view(UUID uuid) {
-        Account account = getAccountById(uuid);
+        Account account = getAccountByIdAndUserId(uuid);
 
         return accountAsDTO(account);
     }
 
     public PageResponseDTO<ResponseAccountDTO> list(AccountFiltersDTO filters, Pageable pageable) {
-        Specification<Account> specification = AccountSpecification.withFilter(filters);
+        UUID userId = securityUtils.getCurrentUserId();
 
+        Specification<Account> specification = AccountSpecification.withFilter(filters, userId);
         Page<Account> page = accountRespository.findAll(
                 specification,
                 pageable
@@ -94,7 +99,7 @@ public class AccountService {
     @Transactional
     @CacheEvict(value = "accounts", key = "#uuid")
     public ResponseAccountDTO update(UUID uuid, UpdateAccountDTO data) {
-        Account account = getAccountById(uuid);
+        Account account = getAccountByIdAndUserId(uuid);
 
         accountMapper.updateAccountFromDTO(data, account);
 
@@ -104,13 +109,13 @@ public class AccountService {
     }
 
     public void delete(UUID id) {
-        Account account = getAccountById(id);
+        Account account = getAccountByIdAndUserId(id);
 
         accountRespository.delete(account);
     }
 
     public AccountSummaryDTO getInternalAccount(UUID id) {
-        Account account = getAccountById(id);
+        Account account = getAccountByIdAndUserId(id);
         return new AccountSummaryDTO(account.getId(), account.getName());
     }
 }
