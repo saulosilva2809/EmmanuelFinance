@@ -27,4 +27,4 @@ jobs:
         run: chmod +x mvnw
 
       - name: Executar os tests
-        run: ./mvnw test
+        run: ./mvnw test -B --no-transfer-progress
