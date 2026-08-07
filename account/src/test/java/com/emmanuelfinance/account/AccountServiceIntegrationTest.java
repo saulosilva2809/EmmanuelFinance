@@ -8,6 +8,7 @@ import com.emmanuelfinance.account.kafka.producer.AccountEventPublisher;
 import com.emmanuelfinance.shared.dto.UserSummaryDTO;
 import com.emmanuelfinance.shared.kafka.account.AccountEventDTO;
 import com.emmanuelfinance.shared.kafka.account.enums.StatusEventEnum;
+import com.emmanuelfinance.shared.security.SecurityUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,12 +54,15 @@ class AccountServiceIntegrationTest {
     @MockBean
     private AccountEventPublisher accountEventPublisher;
 
+    @MockBean
+    private SecurityUtils securityUtils;
+
     private UUID accountId;
-    private UUID userId;
 
     @BeforeEach
     void setUp() {
-        userId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        when(securityUtils.getCurrentUserId()).thenReturn(userId);
 
         // Autentica o usuário no contexto do Spring Security para o teste
         mockAuthenticatedUser(userId);
