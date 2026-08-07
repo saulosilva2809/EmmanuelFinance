@@ -77,7 +77,7 @@ public class AccountServiceTest {
             });
 
             // execucão
-            ResponseAccountDTO result = accountService.create(jwtMock, createDTO);
+            ResponseAccountDTO result = accountService.create(createDTO);
 
             // validação
             assertNotNull(result);

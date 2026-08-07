@@ -23,10 +23,9 @@ public class AccountController {
 
     @PostMapping()
     public ResponseEntity<ResponseAccountDTO> create(
-            @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody CreateAccountDTO data
     ) {
-        ResponseAccountDTO response = accountService.create(jwt, data);
+        ResponseAccountDTO response = accountService.create(data);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
