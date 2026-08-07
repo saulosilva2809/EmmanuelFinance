@@ -9,6 +9,8 @@ import com.emmanuelfinance.account.exceptions.AccountNotFound;
 import com.emmanuelfinance.shared.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.dto.UserSummaryDTO;
+import com.emmanuelfinance.shared.security.SecurityUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -43,8 +45,20 @@ public class AccountServiceTest {
     @Mock
     private UserClientCacheService userClientCacheService;
 
+    @Mock
+    private SecurityUtils securityUtils;
+
     @Spy
     private AccountMapper accountMapper = Mappers.getMapper(AccountMapper.class);
+
+    private UUID userId;
+
+    @BeforeEach
+    void setUp() {
+        userId = UUID.randomUUID();
+
+        lenient().when(securityUtils.getCurrentUserId()).thenReturn(userId);
+    }
 
     @Nested
     @DisplayName("Tests of the create method")
