@@ -21,6 +21,7 @@
         <module>auth</module>
         <module>category</module>
         <module>config</module>
+        <module>creditcard</module>
         <module>dashboard</module>
         <module>shared</module>
         <module>transaction</module>
