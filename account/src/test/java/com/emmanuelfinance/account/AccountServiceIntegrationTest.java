@@ -58,10 +58,11 @@ class AccountServiceIntegrationTest {
     private SecurityUtils securityUtils;
 
     private UUID accountId;
+    private UUID userId;
 
     @BeforeEach
     void setUp() {
-        UUID userId = UUID.randomUUID();
+        userId = UUID.randomUUID();
         when(securityUtils.getCurrentUserId()).thenReturn(userId);
 
         // Autentica o usuário no contexto do Spring Security para o teste
@@ -110,7 +111,10 @@ class AccountServiceIntegrationTest {
         assertNotNull(response);
         assertEquals(response.name(), accountDTO.name());
 
-        Optional<Account> savedAccountInDb = accountRespository.findById(response.id());
+        Optional<Account> savedAccountInDb = accountRespository.findByIdAndUserId(
+                response.id(),
+                userId
+        );
         assertTrue(savedAccountInDb.isPresent());
         assertEquals(savedAccountInDb.get().getId(), response.id());
 
@@ -136,7 +140,10 @@ class AccountServiceIntegrationTest {
         assertNotNull(updateResponse);
         assertEquals("Conta Nova", updateResponse.name());
 
-        Account accountInDb = accountRespository.findById(accountId).orElseThrow();
+        Account accountInDb = accountRespository.findByIdAndUserId(
+                accountId,
+                userId
+        ).orElseThrow();
         assertEquals("Conta Nova", accountInDb.getName());
         assertEquals(TypeEnum.INVESTMENT, accountInDb.getType());
 
