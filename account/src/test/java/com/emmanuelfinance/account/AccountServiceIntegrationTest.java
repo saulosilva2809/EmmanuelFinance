@@ -7,7 +7,7 @@ import com.emmanuelfinance.account.enums.TypeEnum;
 import com.emmanuelfinance.account.kafka.producer.AccountEventPublisher;
 import com.emmanuelfinance.shared.dto.UserSummaryDTO;
 import com.emmanuelfinance.shared.kafka.account.AccountEventDTO;
-import com.emmanuelfinance.shared.kafka.account.enums.StatusEventEnum;
+import com.emmanuelfinance.shared.security.SecurityUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +39,7 @@ class AccountServiceIntegrationTest {
     private AccountService accountService;
 
     @Autowired
-    private AccountRespository accountRespository;
+    private AccountRepository accountRepository;
 
     @Autowired
     private CacheManager cacheManager;
@@ -53,15 +53,16 @@ class AccountServiceIntegrationTest {
     @MockBean
     private AccountEventPublisher accountEventPublisher;
 
+    @MockBean
+    private SecurityUtils securityUtils;
+
     private UUID accountId;
     private UUID userId;
 
     @BeforeEach
     void setUp() {
-        userId = UUID.randomUUID();
-
-        // Autentica o usuário no contexto do Spring Security para o teste
-        mockAuthenticatedUser(userId);
+        when(securityUtils.getCurrentUserId()).thenReturn(UUID.randomUUID());
+        userId = securityUtils.getCurrentUserId();
 
         Account account = new Account();
         account.setUserId(userId);
@@ -70,27 +71,11 @@ class AccountServiceIntegrationTest {
         account.setInitialBalance(new BigDecimal("1000.00"));
         account.setCurrentBalance(new BigDecimal("1000.00"));
 
-        Account saved = accountRespository.save(account);
+        Account saved = accountRepository.save(account);
         accountId = saved.getId();
 
         when(userClientCacheService.getUserById(userId))
                 .thenReturn(new UserSummaryDTO(userId, "saulo@gmail.com"));
-    }
-
-    @AfterEach
-    void tearDown() {
-        // Limpa o contexto de segurança após cada teste
-        SecurityContextHolder.clearContext();
-    }
-
-    private void mockAuthenticatedUser(UUID userId) {
-        Jwt jwt = Jwt.withTokenValue("mock-token")
-                .header("alg", "none")
-                .subject(userId.toString())
-                .build();
-
-        JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
     @Test
@@ -106,7 +91,10 @@ class AccountServiceIntegrationTest {
         assertNotNull(response);
         assertEquals(response.name(), accountDTO.name());
 
-        Optional<Account> savedAccountInDb = accountRespository.findById(response.id());
+        Optional<Account> savedAccountInDb = accountRepository.findByIdAndUserId(
+                response.id(),
+                userId
+        );
         assertTrue(savedAccountInDb.isPresent());
         assertEquals(savedAccountInDb.get().getId(), response.id());
 
@@ -132,7 +120,10 @@ class AccountServiceIntegrationTest {
         assertNotNull(updateResponse);
         assertEquals("Conta Nova", updateResponse.name());
 
-        Account accountInDb = accountRespository.findById(accountId).orElseThrow();
+        Account accountInDb = accountRepository.findByIdAndUserId(
+                accountId,
+                userId
+        ).orElseThrow();
         assertEquals("Conta Nova", accountInDb.getName());
         assertEquals(TypeEnum.INVESTMENT, accountInDb.getType());
 

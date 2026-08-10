@@ -6,9 +6,12 @@ import com.emmanuelfinance.account.dto.ResponseAccountDTO;
 import com.emmanuelfinance.account.dto.UpdateAccountDTO;
 import com.emmanuelfinance.account.enums.TypeEnum;
 import com.emmanuelfinance.account.exceptions.AccountNotFound;
+import com.emmanuelfinance.account.kafka.producer.AccountEventPublisher;
 import com.emmanuelfinance.shared.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.dto.UserSummaryDTO;
+import com.emmanuelfinance.shared.security.SecurityUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -35,7 +38,7 @@ import static org.mockito.Mockito.*;
 public class AccountServiceTest {
 
     @Mock
-    private AccountRespository accountRespository;
+    private AccountRepository accountRepository;
 
     @InjectMocks
     private AccountService accountService;
@@ -43,8 +46,22 @@ public class AccountServiceTest {
     @Mock
     private UserClientCacheService userClientCacheService;
 
+    @Mock
+    private SecurityUtils securityUtils;
+
+    @Mock
+    private AccountEventPublisher accountEventPublisher;
+
     @Spy
     private AccountMapper accountMapper = Mappers.getMapper(AccountMapper.class);
+
+    private UUID userId;
+
+    @BeforeEach
+    void setUp() {
+        when(securityUtils.getCurrentUserId()).thenReturn(UUID.randomUUID());
+        userId = securityUtils.getCurrentUserId();
+    }
 
     @Nested
     @DisplayName("Tests of the create method")
@@ -53,12 +70,7 @@ public class AccountServiceTest {
         @Test
         void shouldCreateAccountSuccessfully() {
             // preparação
-            UUID userId = UUID.randomUUID();
             UUID generatedAccountId = UUID.randomUUID();
-
-            // Mock JWT
-            Jwt jwtMock = mock(Jwt.class);
-            when(jwtMock.getSubject()).thenReturn(userId.toString());
 
             UserSummaryDTO mockUser = new UserSummaryDTO(userId, "saulocomercial7@gmail.com");
             when(userClientCacheService.getUserById(userId)).thenReturn(mockUser);
@@ -70,7 +82,7 @@ public class AccountServiceTest {
             );
 
             // ensinando o repository a simular a geração do ID ao salvar
-            when(accountRespository.save(any(Account.class))).thenAnswer(invocation -> {
+            when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> {
                 Account accountToSave = invocation.getArgument(0);
                 accountToSave.setId(generatedAccountId);
                 return accountToSave;
@@ -87,7 +99,7 @@ public class AccountServiceTest {
             assertEquals(new BigDecimal("1000.00"), result.currentBalance());
 
             // comportamento do mock
-            verify(accountRespository, times(1)).save(argThat(
+            verify(accountRepository, times(1)).save(argThat(
                     account -> account.getUserId().equals(userId) &&
                             account.getName().equals("Conta Itaú") &&
                             account.getInitialBalance().equals(new BigDecimal("1000.00"))
@@ -104,7 +116,6 @@ public class AccountServiceTest {
         @Test
         void shouldReturnTheAccountSuccessfully() {
             // fase de preparação
-            UUID userId = UUID.randomUUID();
             UUID accountId = UUID.randomUUID();
 
             Account mockAccount = new Account();
@@ -118,7 +129,10 @@ public class AccountServiceTest {
             UserSummaryDTO mockUser = new UserSummaryDTO(userId, "saulocomercial7@gmail.com");
 
             // ensinando os mocks
-            when(accountRespository.findById(accountId)).thenReturn(Optional.of(mockAccount));
+            when(accountRepository.findByIdAndUserId(
+                    accountId,
+                    userId
+            )).thenReturn(Optional.of(mockAccount));
             when(userClientCacheService.getUserById(userId)).thenReturn(mockUser);
 
             // when
@@ -132,7 +146,10 @@ public class AccountServiceTest {
             assertEquals(new BigDecimal("1000.00"), result.currentBalance());
 
             // verificaões de chamada
-            verify(accountRespository, times(1)).findById(accountId);
+            verify(accountRepository, times(1)).findByIdAndUserId(
+                    accountId,
+                    userId
+            );
             verify(userClientCacheService, times(1)).getUserById(userId);
         }
 
@@ -142,7 +159,10 @@ public class AccountServiceTest {
             UUID nonExistentAccountId = UUID.randomUUID();
 
             // ensinando o repository a retornar um optional nulo
-            when(accountRespository.findById(nonExistentAccountId)).thenReturn(Optional.empty());
+            when(accountRepository.findByIdAndUserId(
+                    nonExistentAccountId,
+                    userId
+            )).thenReturn(Optional.empty());
 
             // when e then
             // valida a chamada do method e lança a exeção
@@ -151,7 +171,10 @@ public class AccountServiceTest {
             });
 
             // garante que o repositoty foi chamado
-            verify(accountRespository, times(1)).findById(nonExistentAccountId);
+            verify(accountRepository, times(1)).findByIdAndUserId(
+                    nonExistentAccountId,
+                    userId
+            );
 
             // verifica se o userClientCacheService não foi chamado
             verifyNoInteractions(userClientCacheService);
@@ -165,7 +188,6 @@ public class AccountServiceTest {
         @Test
         void shouldReturnPaginatedAccountsSuccessfully() {
             // preparação
-            UUID userId = UUID.randomUUID();
             UUID accountId = UUID.randomUUID();
 
             Account mockAccount = new Account();
@@ -186,7 +208,7 @@ public class AccountServiceTest {
             Page<Account> accountPage = new PageImpl<>(accountList, pageable, accountList.size());
 
             // ensinando os mocks
-            when(accountRespository.findAll(any(Specification.class), eq(pageable))).thenReturn(accountPage);
+            when(accountRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(accountPage);
             when(userClientCacheService.getUserById(userId)).thenReturn(mockUser);
 
             // when
@@ -200,7 +222,7 @@ public class AccountServiceTest {
             assertEquals("Conta Itaú", result.content().get(0).name());
 
             // verificações
-            verify(accountRespository, times(1)).findAll(any(Specification.class), eq(pageable));
+            verify(accountRepository, times(1)).findAll(any(Specification.class), eq(pageable));
             verify(userClientCacheService, times(1)).getUserById(userId);
         }
 
@@ -210,7 +232,7 @@ public class AccountServiceTest {
             Pageable pageable = PageRequest.of(0, 10);
 
             Page<Account> emptyPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
-            when(accountRespository.findAll(any(Specification.class), eq(pageable))).thenReturn(emptyPage);
+            when(accountRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(emptyPage);
 
             // when
             PageResponseDTO<ResponseAccountDTO> result = accountService.list(filters, pageable);
@@ -220,7 +242,7 @@ public class AccountServiceTest {
             assertTrue(result.content().isEmpty()); // valida que o content está vazio
 
             // verificações
-            verify(accountRespository, times(1)).findAll(any(Specification.class), eq(pageable));
+            verify(accountRepository, times(1)).findAll(any(Specification.class), eq(pageable));
             verifyNoInteractions(userClientCacheService);
         }
     }
@@ -232,7 +254,6 @@ public class AccountServiceTest {
         @Test
         void shouldUpdateAccountSuccessfully() {
             UUID id = UUID.randomUUID();
-            UUID userId = UUID.randomUUID();
 
             Account account = new Account();
 
@@ -245,8 +266,11 @@ public class AccountServiceTest {
 
             UpdateAccountDTO dto = new UpdateAccountDTO("Conta Nubank", TypeEnum.INVESTMENT);
 
-            when(accountRespository.findById(id)).thenReturn(Optional.of(account));
-            when(accountRespository.save(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            when(accountRepository.findByIdAndUserId(
+                    id,
+                    userId
+            )).thenReturn(Optional.of(account));
+            when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             ResponseAccountDTO result = accountService.update(id, dto);
 
@@ -260,15 +284,21 @@ public class AccountServiceTest {
             UUID nonExistentAccountId = UUID.randomUUID();
             UpdateAccountDTO updateDTO = new UpdateAccountDTO("Conta Inexsistente", TypeEnum.CASH);
 
-            when(accountRespository.findById(nonExistentAccountId)).thenReturn(Optional.empty());
+            when(accountRepository.findByIdAndUserId(
+                    nonExistentAccountId,
+                    userId
+            )).thenReturn(Optional.empty());
 
             assertThrows(AccountNotFound.class, () -> {
                 accountService.update(nonExistentAccountId, updateDTO);
             });
 
-            verify(accountRespository, times(1)).findById(nonExistentAccountId);
+            verify(accountRepository, times(1)).findByIdAndUserId(
+                    nonExistentAccountId,
+                    userId
+            );
             verify(accountMapper, never()).updateAccountFromDTO(any(), any());
-            verify(accountRespository, never()).save(any());
+            verify(accountRepository, never()).save(any());
         }
     }
 
@@ -279,7 +309,6 @@ public class AccountServiceTest {
         @Test
         void shouldDeleteAccountSuccessfullyWhenIdExists() {
             UUID accountId = UUID.randomUUID();
-            UUID userId = UUID.randomUUID();
 
             Account account = new Account();
 
@@ -290,26 +319,38 @@ public class AccountServiceTest {
             account.setInitialBalance(BigDecimal.ZERO);
             account.setCurrentBalance(BigDecimal.ZERO);
 
-            when(accountRespository.findById(accountId)).thenReturn(Optional.of(account));
+            when(accountRepository.findByIdAndUserId(
+                    accountId,
+                    userId
+            )).thenReturn(Optional.of(account));
 
             assertDoesNotThrow(() -> accountService.delete(accountId));
 
-            verify(accountRespository, times(1)).findById(accountId);
-            verify(accountRespository, times(1)).delete(account);
+            verify(accountRepository, times(1)).findByIdAndUserId(
+                    accountId,
+                    userId
+            );
+            verify(accountRepository, times(1)).delete(account);
         }
 
         @Test
         void shouldThrowAccountNotFoundWhenIdDoesNotExist() {
             UUID nonExistentId = UUID.randomUUID();
 
-            when(accountRespository.findById(nonExistentId)).thenReturn(Optional.empty());
+            when(accountRepository.findByIdAndUserId(
+                    nonExistentId,
+                    userId
+            )).thenReturn(Optional.empty());
 
             assertThrows(AccountNotFound.class, () -> {
                 accountService.delete(nonExistentId);
             });
 
-            verify(accountRespository, times(1)).findById(nonExistentId);
-            verify(accountRespository, never()).deleteById(any());
+            verify(accountRepository, times(1)).findByIdAndUserId(
+                    nonExistentId,
+                    userId
+            );
+            verify(accountRepository, never()).deleteById(any());
         }
     }
 
@@ -320,7 +361,6 @@ public class AccountServiceTest {
         @Test
         void shouldReturnAccountSummaryDTOWhenAccountExists() {
             UUID accountId = UUID.randomUUID();
-            UUID userId = UUID.randomUUID();
 
             Account account = new Account();
 
@@ -331,26 +371,38 @@ public class AccountServiceTest {
             account.setInitialBalance(BigDecimal.ZERO);
             account.setCurrentBalance(BigDecimal.ZERO);
 
-            when(accountRespository.findById(accountId)).thenReturn(Optional.of(account));
+            when(accountRepository.findByIdAndUserId(
+                    accountId,
+                    userId
+            )).thenReturn(Optional.of(account));
 
             AccountSummaryDTO result = accountService.getInternalAccount(accountId);
 
             assertEquals(accountId, result.id());
             assertEquals(account.getName(), result.name());
 
-            verify(accountRespository, times(1)).findById(accountId);
+            verify(accountRepository, times(1)).findByIdAndUserId(
+                    accountId,
+                    userId
+            );
         }
 
         @Test
         void shouldThrowAccountNotFoundWhenIdDoesNotExist() {
             UUID nonExistentId = UUID.randomUUID();
 
-            when(accountRespository.findById(nonExistentId)).thenReturn(Optional.empty());
+            when(accountRepository.findByIdAndUserId(
+                    nonExistentId,
+                    userId
+            )).thenReturn(Optional.empty());
             assertThrows(AccountNotFound.class, () -> {
                 accountService.getInternalAccount(nonExistentId);
             });
 
-            verify(accountRespository, times(1)).findById(nonExistentId);
+            verify(accountRepository, times(1)).findByIdAndUserId(
+                    nonExistentId,
+                    userId
+            );
         }
     }
 }
