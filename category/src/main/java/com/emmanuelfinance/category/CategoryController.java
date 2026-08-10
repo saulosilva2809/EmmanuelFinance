@@ -24,11 +24,8 @@ public class CategoryController {
     private final CategoryService categoryService;
 
     @PostMapping
-    public ResponseEntity<ResponseCategoryDTO> create(
-            @AuthenticationPrincipal Jwt jwt,
-            @Valid @RequestBody CreateCategoryDTO data
-    ) {
-        ResponseCategoryDTO response = categoryService.create(jwt, data);
+    public ResponseEntity<ResponseCategoryDTO> create(@Valid @RequestBody CreateCategoryDTO data) {
+        ResponseCategoryDTO response = categoryService.create(data);
         return ResponseEntity.ok().body(response);
     }
 
