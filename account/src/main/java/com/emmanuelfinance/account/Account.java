@@ -21,9 +21,6 @@ import java.util.UUID;
 @EntityListeners(AuditingEntityListener.class)
 public class Account extends BaseEntity {
 
-    @Column(name = "user_id", nullable = false)
-    private UUID userId;
-
     @Column(name = "name", nullable = false)
     private String name;
 
