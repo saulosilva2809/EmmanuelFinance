@@ -10,6 +10,7 @@ import com.emmanuelfinance.category.dto.CreateCategoryDTO;
 import com.emmanuelfinance.category.dto.ResponseCategoryDTO;
 import com.emmanuelfinance.category.exceptions.CategoryAlreadyExists;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
+import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,9 +28,11 @@ public class CategoryService {
     private final AccountClientCacheService accountClientCacheService;
     private final CategoryMapper categoryMapper;
     private final AccountCache accountCache;
+    private final SecurityUtils securityUtils;
 
     private Category getCategoryById(UUID id) {
-        Category category = categoryRepository.findById(id)
+        UUID userId = securityUtils.getCurrentUserId();
+        Category category = categoryRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new CategoryNotFound());
 
         return category;
@@ -50,14 +53,19 @@ public class CategoryService {
     }
 
     private void checkCategoryExists(CreateCategoryDTO data) {
-        boolean exists = categoryRepository.existsByNameIgnoreCaseAndType(data.name(), data.type());
+        UUID userId = securityUtils.getCurrentUserId();
+        boolean exists = categoryRepository.existsByNameIgnoreCaseAndTypeAndUserId(
+                data.name(),
+                data.type(),
+                userId
+        );
         if (exists) {
             throw new CategoryAlreadyExists();
         }
     }
 
-    public void checkAccountExists(Jwt jwt, CreateCategoryDTO dto) {
-        UUID userId = UUID.fromString(jwt.getSubject());
+    public void checkAccountExists(CreateCategoryDTO dto) {
+        UUID userId = securityUtils.getCurrentUserId();
 
         boolean isOwner = accountCache.isAccountOwnedByUser(dto.accountId(), userId);
         if (!isOwner) {
@@ -65,12 +73,14 @@ public class CategoryService {
         }
     }
 
-    public ResponseCategoryDTO create(Jwt jwt, CreateCategoryDTO data) {
+    public ResponseCategoryDTO create(CreateCategoryDTO data) {
+        UUID userId = securityUtils.getCurrentUserId();
         checkCategoryExists(data);
-        checkAccountExists(jwt, data);
+        checkAccountExists(data);
 
         Category category = new Category();
 
+        category.setUserId(userId);
         category.setAccountId(data.accountId());
         category.setName(data.name());
         category.setType(data.type());
@@ -85,8 +95,9 @@ public class CategoryService {
     }
 
     public PageResponseDTO<ResponseCategoryDTO> list(CategoryFIltersDTO filters, Pageable pageable) {
-        Specification<Category> specification = CategorySpecification.withFilter(filters);
+        UUID userId = securityUtils.getCurrentUserId();
 
+        Specification<Category> specification = CategorySpecification.withFilter(filters, userId);
         Page<Category> page = categoryRepository.findAll(
                 specification,
                 pageable
