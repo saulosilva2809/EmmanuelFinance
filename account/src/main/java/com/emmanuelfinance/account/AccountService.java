@@ -14,7 +14,6 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +23,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AccountService {
 
-    private final AccountRespository accountRespository;
+    private final AccountRepository accountRepository;
     private final UserClientCacheService userClientCacheService;
     private final AccountMapper accountMapper;
     private final AccountEventPublisher accountEventPublisher;
@@ -48,7 +47,7 @@ public class AccountService {
     private Account getAccountByIdAndUserId(UUID id) {
         UUID userId = securityUtils.getCurrentUserId();
 
-        Account account = accountRespository.findByIdAndUserId(id, userId)
+        Account account = accountRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new AccountNotFound());
 
         return account;
@@ -66,7 +65,7 @@ public class AccountService {
         newAccount.setInitialBalance(data.initialBalance());
         newAccount.setCurrentBalance(data.initialBalance());
 
-        Account savedAccount = accountRespository.save(newAccount);
+        Account savedAccount = accountRepository.save(newAccount);
         accountEventPublisher.publishAccountCreate(new AccountEventDTO(
                 newAccount.getId(),
                 newAccount.getUserId(),
@@ -86,7 +85,7 @@ public class AccountService {
         UUID userId = securityUtils.getCurrentUserId();
 
         Specification<Account> specification = AccountSpecification.withFilter(filters, userId);
-        Page<Account> page = accountRespository.findAll(
+        Page<Account> page = accountRepository.findAll(
                 specification,
                 pageable
         );
@@ -103,7 +102,7 @@ public class AccountService {
 
         accountMapper.updateAccountFromDTO(data, account);
 
-        Account savedAccount = accountRespository.save(account);
+        Account savedAccount = accountRepository.save(account);
 
         return accountAsDTO(savedAccount);
     }
@@ -111,7 +110,7 @@ public class AccountService {
     public void delete(UUID id) {
         Account account = getAccountByIdAndUserId(id);
 
-        accountRespository.delete(account);
+        accountRepository.delete(account);
     }
 
     public AccountSummaryDTO getInternalAccount(UUID id) {
