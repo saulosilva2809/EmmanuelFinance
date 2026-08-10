@@ -8,8 +8,11 @@ import com.emmanuelfinance.category.enums.TypeEnum;
 import com.emmanuelfinance.category.exceptions.AccountNotFound;
 import com.emmanuelfinance.category.exceptions.CategoryAlreadyExists;
 import com.emmanuelfinance.category.exceptions.CategoryNotFound;
+import com.emmanuelfinance.shared.cache.AccountCache;
 import com.emmanuelfinance.shared.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
+import com.emmanuelfinance.shared.security.SecurityUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -50,8 +53,22 @@ class CategoryServiceTests {
     @Mock
     private StringRedisTemplate redisTemplate;
 
+    @Mock
+    private SecurityUtils securityUtils;
+
+    @Mock
+    private AccountCache accountCache;
+
     @InjectMocks
     private CategoryService categoryService;
+
+    private UUID userId;
+
+    @BeforeEach
+    void setUp() {
+        when(securityUtils.getCurrentUserId()).thenReturn(UUID.randomUUID());
+        userId = securityUtils.getCurrentUserId();
+    }
 
     @Nested
     @DisplayName("Tests of create method")
@@ -64,7 +81,7 @@ class CategoryServiceTests {
             AccountSummaryDTO mockAccountSummary = CategoryTestDataBuilder.accountSummaryDTO(inputDto.accountId());
             ResponseCategoryDTO expectedResponse = CategoryTestDataBuilder.responseCategoryDTO(categoryEntity, mockAccountSummary);
 
-            when(redisTemplate.hasKey(any(String.class))).thenReturn(true);
+            when(accountCache.isAccountOwnedByUser(categoryEntity.getAccountId(), userId)).thenReturn(true);
 
             when(accountClientCacheService.getInternalAccountById(inputDto.accountId()))
                     .thenReturn(mockAccountSummary);
@@ -87,13 +104,21 @@ class CategoryServiceTests {
         void shouldGiveErrorWhenCreatingTwoEqualCategories() {
             CreateCategoryDTO inputDto = CategoryTestDataBuilder.createCategoryDTO();
 
-            when(categoryRepository.existsByNameIgnoreCaseAndType(any(String.class), any(TypeEnum.class))).thenReturn(true);
+            when(categoryRepository.existsByNameIgnoreCaseAndTypeAndUserId(
+                    "Salário",
+                    TypeEnum.INCOME,
+                    userId
+            )).thenReturn(true);
 
             assertThrows(CategoryAlreadyExists.class, () -> {
                 categoryService.create(inputDto);
             });
 
-            verify(categoryRepository, times(1)).existsByNameIgnoreCaseAndType(any(String.class), any(TypeEnum.class));
+            verify(categoryRepository, times(1)).existsByNameIgnoreCaseAndTypeAndUserId(
+                    "Salário",
+                    TypeEnum.INCOME,
+                    userId
+            );
             verify(categoryRepository, never()).save(any(Category.class));
         }
 
@@ -101,13 +126,10 @@ class CategoryServiceTests {
         void shouldGiveErrorWhenAccountDoesNotExist() {
             CreateCategoryDTO inputDto = CategoryTestDataBuilder.createCategoryDTO();
 
-            when(redisTemplate.hasKey(any(String.class))).thenReturn(false);
-
             assertThrows(AccountNotFound.class, () -> {
                 categoryService.create(inputDto);
             });
 
-            verify(redisTemplate, times(1)).hasKey(any(String.class));
             verify(categoryRepository, never()).save(any(Category.class));
         }
     }
@@ -128,7 +150,10 @@ class CategoryServiceTests {
 
             when(accountClientCacheService.getInternalAccountById(categoryDTO.accountId()))
                     .thenReturn(mockAccount);
-            when(categoryRepository.findById(any(UUID.class))).thenReturn(Optional.of(categoryEntity));
+            when(categoryRepository.findByIdAndUserId(
+                    categoryEntity.getId(),
+                    userId
+            )).thenReturn(Optional.of(categoryEntity));
 
             ResponseCategoryDTO response = categoryService.view(expectedResponse.id());
 
@@ -136,21 +161,31 @@ class CategoryServiceTests {
             assertEquals(expectedResponse.id(), response.id());
             assertEquals(expectedResponse.name(), response.name());
 
-            verify(categoryRepository, times(1)).findById(expectedResponse.id());
+            verify(categoryRepository, times(1)).findByIdAndUserId(
+                    expectedResponse.id(),
+                    userId
+            );
         }
-    }
 
-    @Test
-    void shouldGiveCategoryNotFoundError() {
-        UUID categoryNotFoundId = UUID.randomUUID();
 
-        when(categoryRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
+        @Test
+        void shouldGiveCategoryNotFoundError() {
+            UUID categoryNotFoundId = UUID.randomUUID();
 
-        assertThrows(CategoryNotFound.class, () -> {
-            categoryService.view(categoryNotFoundId);
-        });
+            when(categoryRepository.findByIdAndUserId(
+                    categoryNotFoundId,
+                    userId
+            )).thenReturn(Optional.empty());
 
-        verify(categoryRepository, times(1)).findById(any(UUID.class));
+            assertThrows(CategoryNotFound.class, () -> {
+                categoryService.view(categoryNotFoundId);
+            });
+
+            verify(categoryRepository, times(1)).findByIdAndUserId(
+                    categoryNotFoundId,
+                    userId
+            );
+        }
     }
 
     @Nested
@@ -228,7 +263,10 @@ class CategoryServiceTests {
 
             when(accountClientCacheService.getInternalAccountById(categoryDTO.accountId()))
                     .thenReturn(mockAccount);
-            when(categoryRepository.findById(any(UUID.class))).thenReturn(Optional.of(categoryEntity));
+            when(categoryRepository.findByIdAndUserId(
+                    categoryEntity.getId(),
+                    userId
+            )).thenReturn(Optional.of(categoryEntity));
             when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             ResponseCategoryDTO result = categoryService.update(categoryEntity.getId(), updateDTO);
@@ -236,7 +274,10 @@ class CategoryServiceTests {
             assertEquals(updateDTO.name(), result.name());
             assertEquals(updateDTO.type(), result.type());
 
-            verify(categoryRepository, times(1)).findById(any(UUID.class));
+            verify(categoryRepository, times(1)).findByIdAndUserId(
+                    categoryEntity.getId(),
+                    userId
+            );
             verify(categoryRepository, times(1)).save(any(Category.class));
         }
     }
@@ -249,11 +290,17 @@ class CategoryServiceTests {
             CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
             Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO);
 
-            when(categoryRepository.findById(any(UUID.class))).thenReturn(Optional.of(categoryEntity));
+            when(categoryRepository.findByIdAndUserId(
+                    categoryEntity.getId(),
+                    userId
+            )).thenReturn(Optional.of(categoryEntity));
 
             assertDoesNotThrow(() -> categoryService.delete(categoryEntity.getId()));
 
-            verify(categoryRepository, times(1)).findById(any(UUID.class));
+            verify(categoryRepository, times(1)).findByIdAndUserId(
+                    categoryEntity.getId(),
+                    userId
+            );
             verify(categoryRepository, times(1)).delete(any(Category.class));
         }
     }
