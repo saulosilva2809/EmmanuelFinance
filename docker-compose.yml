@@ -199,7 +199,6 @@ services:
 
 volumes:
   auth_db_data:
-  account_db_data:
   keycloak_data:
   redis_data:
 

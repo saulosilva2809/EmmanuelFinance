@@ -7,6 +7,7 @@ import com.emmanuelfinance.account.dto.UpdateAccountDTO;
 import com.emmanuelfinance.account.enums.TypeEnum;
 import com.emmanuelfinance.account.exceptions.AccountNotFound;
 import com.emmanuelfinance.account.kafka.producer.AccountEventPublisher;
+import com.emmanuelfinance.shared.cache.AccountCache;
 import com.emmanuelfinance.shared.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.dto.UserSummaryDTO;
@@ -51,6 +52,9 @@ public class AccountServiceTest {
 
     @Mock
     private AccountEventPublisher accountEventPublisher;
+
+    @Mock
+    private AccountCache accountCache;
 
     @Spy
     private AccountMapper accountMapper = Mappers.getMapper(AccountMapper.class);

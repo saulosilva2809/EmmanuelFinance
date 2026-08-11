@@ -9,6 +9,7 @@ import com.emmanuelfinance.auth.user.exceptions.UserNotFound;
 import com.emmanuelfinance.shared.dto.UserSummaryDTO;
 import jakarta.ws.rs.core.Response;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
@@ -22,6 +23,7 @@ import java.util.Collections;
 import java.util.UUID;
 
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -107,9 +109,14 @@ public class UserService {
             return userAsDTO(savedUser);
 
         } catch (Exception e) {
-            // se der erro deleta o user no keycloak
-            keycloak.realm(realm).users().get(keycloakUserId).remove();
-            System.out.println("Rollback Keycloak: Usuário removido devido a falha no banco local.");
+            log.error("Falha ao persistir usuário localmente, revertendo criação no Keycloak (id={})", keycloakUserId, e);
+            try {
+                keycloak.realm(realm).users().get(keycloakUserId).remove();
+                log.info("Rollback Keycloak: usuário {} removido devido a falha no banco local.", keycloakUserId);
+            } catch (Exception rollbackException) {
+                e.addSuppressed(rollbackException);
+                log.error("Falha ao reverter criação do usuário {} no Keycloak", keycloakUserId, rollbackException);
+            }
             throw e;
         }
     }

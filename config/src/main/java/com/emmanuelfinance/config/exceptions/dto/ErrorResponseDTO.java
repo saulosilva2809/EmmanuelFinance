@@ -9,7 +9,7 @@ public record ErrorResponseDTO (
         String error,
         String message,
         String path,
-        List<ValidationErrorField> errros
+        List<ValidationErrorField> errors
 ) {
     public ErrorResponseDTO(LocalDateTime timestamp, Integer status, String error, String message, String path) {
         this(timestamp, status, error, message, path, null);

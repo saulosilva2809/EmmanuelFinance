@@ -6,6 +6,7 @@ import com.emmanuelfinance.auth.user.dto.ResponseUserDTO;
 import com.emmanuelfinance.shared.dto.UserSummaryDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -16,6 +17,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -65,7 +67,7 @@ public class UserController {
             ResponseEntity<String> response = restTemplate.postForEntity(url                                                                                            , request, String.class);
             return ResponseEntity.ok(response.getBody());
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            log.warn("Falha ao autenticar usuário no Keycloak: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials.");
         }
     }

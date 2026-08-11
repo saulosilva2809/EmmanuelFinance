@@ -1,6 +1,6 @@
 package com.emmanuelfinance.category;
 
-import com.emmanuelfinance.category.dto.CategoryFIltersDTO;
+import com.emmanuelfinance.category.dto.CategoryFiltersDTO;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -10,7 +10,7 @@ import java.util.UUID;
 
 public class CategorySpecification {
 
-    public static Specification<Category> withFilter(CategoryFIltersDTO filters, UUID userId) {
+    public static Specification<Category> withFilter(CategoryFiltersDTO filters, UUID userId) {
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
 

@@ -6,8 +6,8 @@ import java.util.UUID;
 public record ResponseUserDTO (
         UUID id,
         String firstName,
-        String lastname,
+        String lastName,
         String email,
-        LocalDateTime created_at,
-        LocalDateTime updated_at
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
 ) {}
