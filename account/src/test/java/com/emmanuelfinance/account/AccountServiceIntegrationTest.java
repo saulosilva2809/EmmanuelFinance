@@ -98,7 +98,7 @@ class AccountServiceIntegrationTest {
         assertTrue(savedAccountInDb.isPresent());
         assertEquals(savedAccountInDb.get().getId(), response.id());
 
-        verify(accountEventPublisher, times(1)).publishAccountCreate(
+        verify(accountEventPublisher, times(1)).publishAccount(
                 any(AccountEventDTO.class)
         );
     }
