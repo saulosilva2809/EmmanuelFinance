@@ -15,10 +15,9 @@ public class AccountEventPublisher {
 
     private static final String TOPIC = "account-events";
 
-    public void publishAccountCreate(AccountEventDTO event) {
-        log.info("Publicando evento de conta criada no Kafka: {}", event.accountId());
+    public void publishAccount(AccountEventDTO event) {
+        log.info("Publicando evento de conta no Kafka [Status: {}]: {}", event.status(), event.accountId());
 
-        // envia evento para o tópico usando o ID da conta como chave
         kafkaTemplate.send(TOPIC, event.accountId().toString(), event);
     }
 }

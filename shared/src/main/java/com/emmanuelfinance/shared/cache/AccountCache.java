@@ -19,7 +19,6 @@ public class AccountCache {
     }
 
     public boolean isAccountOwnedByUser(UUID accountId, UUID userId) {
-        saveAccountOwner(accountId, userId);
         String redisKey = REDIS_KEY_PREFIX + accountId;
         String ownerIdInCache = redisTemplate.opsForValue().get(redisKey);
 

@@ -2,6 +2,7 @@ package com.emmanuelfinance.account;
 
 import com.emmanuelfinance.account.dto.*;
 import com.emmanuelfinance.account.exceptions.AccountNotFound;
+import com.emmanuelfinance.shared.cache.AccountCache;
 import com.emmanuelfinance.shared.kafka.account.AccountEventDTO;
 import com.emmanuelfinance.account.kafka.producer.AccountEventPublisher;
 import com.emmanuelfinance.shared.kafka.account.enums.StatusEventEnum;
@@ -28,6 +29,7 @@ public class AccountService {
     private final AccountMapper accountMapper;
     private final AccountEventPublisher accountEventPublisher;
     private final SecurityUtils securityUtils;
+    private final AccountCache accountCache;
 
     private ResponseAccountDTO accountAsDTO(Account data) {
         UserSummaryDTO userData = userClientCacheService.getUserById(data.getUserId());
@@ -66,11 +68,12 @@ public class AccountService {
         newAccount.setCurrentBalance(data.initialBalance());
 
         Account savedAccount = accountRepository.save(newAccount);
-        accountEventPublisher.publishAccountCreate(new AccountEventDTO(
+        accountEventPublisher.publishAccount(new AccountEventDTO(
                 newAccount.getId(),
                 newAccount.getUserId(),
                 StatusEventEnum.CREATED
         ));
+        accountCache.saveAccountOwner(newAccount.getId(), newAccount.getUserId());
 
         return accountAsDTO(savedAccount);
     }
@@ -107,10 +110,17 @@ public class AccountService {
         return accountAsDTO(savedAccount);
     }
 
+    @Transactional
+    @CacheEvict(value = "accounts", key = "#id")
     public void delete(UUID id) {
         Account account = getAccountByIdAndUserId(id);
 
         accountRepository.delete(account);
+        accountEventPublisher.publishAccount(new AccountEventDTO(
+                account.getId(),
+                account.getUserId(),
+                StatusEventEnum.DELETED
+        ));
     }
 
     public AccountSummaryDTO getInternalAccount(UUID id) {
