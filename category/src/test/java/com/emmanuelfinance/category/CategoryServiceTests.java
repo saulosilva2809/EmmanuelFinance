@@ -1,6 +1,6 @@
 package com.emmanuelfinance.category;
 
-import com.emmanuelfinance.category.dto.CategoryFIltersDTO;
+import com.emmanuelfinance.category.dto.CategoryFiltersDTO;
 import com.emmanuelfinance.category.dto.CreateCategoryDTO;
 import com.emmanuelfinance.category.dto.ResponseCategoryDTO;
 import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
@@ -198,7 +198,7 @@ class CategoryServiceTests {
             Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO);
             AccountSummaryDTO mockAccount = CategoryTestDataBuilder.accountSummaryDTO(categoryDTO.accountId());
 
-            CategoryFIltersDTO filters = new CategoryFIltersDTO(
+            CategoryFiltersDTO filters = new CategoryFiltersDTO(
                     categoryDTO.accountId(),
                     "Salá",
                     TypeEnum.INCOME
@@ -225,7 +225,7 @@ class CategoryServiceTests {
 
         @Test
         void shouldReturnABlankPage() {
-            CategoryFIltersDTO filters = new CategoryFIltersDTO(
+            CategoryFiltersDTO filters = new CategoryFiltersDTO(
                     null,
                     null,
                     TypeEnum.EXPENSE
@@ -279,6 +279,62 @@ class CategoryServiceTests {
                     userId
             );
             verify(categoryRepository, times(1)).save(any(Category.class));
+        }
+
+        @Test
+        void shouldUpdateAccountIdWhenOwnedByUser() {
+            CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
+            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO);
+            AccountSummaryDTO mockAccount = CategoryTestDataBuilder.accountSummaryDTO(categoryDTO.accountId());
+            UUID newAccountId = UUID.randomUUID();
+
+            UpdateCategoryDTO updateDTO = new UpdateCategoryDTO(
+                    newAccountId,
+                    "Conta Atualizada",
+                    TypeEnum.EXPENSE
+            );
+
+            when(categoryRepository.findByIdAndUserId(
+                    categoryEntity.getId(),
+                    userId
+            )).thenReturn(Optional.of(categoryEntity));
+            when(accountCache.isAccountOwnedByUser(newAccountId, userId)).thenReturn(true);
+            when(accountClientCacheService.getInternalAccountById(newAccountId))
+                    .thenReturn(mockAccount);
+            when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            ResponseCategoryDTO result = categoryService.update(categoryEntity.getId(), updateDTO);
+
+            assertEquals(newAccountId, categoryEntity.getAccountId());
+            assertEquals(updateDTO.name(), result.name());
+
+            verify(accountCache, times(1)).isAccountOwnedByUser(newAccountId, userId);
+            verify(categoryRepository, times(1)).save(any(Category.class));
+        }
+
+        @Test
+        void shouldGiveErrorWhenUpdatingToAnAccountUserDoesNotOwn() {
+            CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
+            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO);
+            UUID otherUsersAccountId = UUID.randomUUID();
+
+            UpdateCategoryDTO updateDTO = new UpdateCategoryDTO(
+                    otherUsersAccountId,
+                    "Conta Atualizada",
+                    TypeEnum.EXPENSE
+            );
+
+            when(categoryRepository.findByIdAndUserId(
+                    categoryEntity.getId(),
+                    userId
+            )).thenReturn(Optional.of(categoryEntity));
+            when(accountCache.isAccountOwnedByUser(otherUsersAccountId, userId)).thenReturn(false);
+
+            assertThrows(AccountNotFound.class, () ->
+                    categoryService.update(categoryEntity.getId(), updateDTO)
+            );
+
+            verify(categoryRepository, never()).save(any(Category.class));
         }
     }
 

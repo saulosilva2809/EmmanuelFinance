@@ -1,6 +1,6 @@
 package com.emmanuelfinance.category;
 
-import com.emmanuelfinance.category.dto.CategoryFIltersDTO;
+import com.emmanuelfinance.category.dto.CategoryFiltersDTO;
 import com.emmanuelfinance.category.enums.TypeEnum;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,7 +68,7 @@ class CategoryIntegrationTest {
 
     @Test
     void shouldListTheAccountsSuccessfully() {
-        CategoryFIltersDTO fIltersDTO = new CategoryFIltersDTO(
+        CategoryFiltersDTO fIltersDTO = new CategoryFiltersDTO(
                 account1,
                 "Salá",
                 TypeEnum.INCOME
@@ -87,7 +87,7 @@ class CategoryIntegrationTest {
 
     @Test
     void shouldReturnABlankPage() {
-        CategoryFIltersDTO fIltersDTO = new CategoryFIltersDTO(
+        CategoryFiltersDTO fIltersDTO = new CategoryFiltersDTO(
                 account2,
                 null,
                 TypeEnum.EXPENSE

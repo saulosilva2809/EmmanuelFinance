@@ -1,6 +1,6 @@
 package com.emmanuelfinance.category;
 
-import com.emmanuelfinance.category.dto.CategoryFIltersDTO;
+import com.emmanuelfinance.category.dto.CategoryFiltersDTO;
 import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
 import com.emmanuelfinance.category.exceptions.AccountNotFound;
 import com.emmanuelfinance.category.exceptions.CategoryNotFound;
@@ -64,10 +64,10 @@ public class CategoryService {
         }
     }
 
-    public void checkAccountExists(CreateCategoryDTO dto) {
+    public void checkAccountExists(UUID accountId) {
         UUID userId = securityUtils.getCurrentUserId();
 
-        boolean isOwner = accountCache.isAccountOwnedByUser(dto.accountId(), userId);
+        boolean isOwner = accountCache.isAccountOwnedByUser(accountId, userId);
         if (!isOwner) {
             throw new AccountNotFound();
         }
@@ -76,7 +76,7 @@ public class CategoryService {
     public ResponseCategoryDTO create(CreateCategoryDTO data) {
         UUID userId = securityUtils.getCurrentUserId();
         checkCategoryExists(data);
-        checkAccountExists(data);
+        checkAccountExists(data.accountId());
 
         Category category = new Category();
 
@@ -94,7 +94,7 @@ public class CategoryService {
         return categoryAsDTO(category);
     }
 
-    public PageResponseDTO<ResponseCategoryDTO> list(CategoryFIltersDTO filters, Pageable pageable) {
+    public PageResponseDTO<ResponseCategoryDTO> list(CategoryFiltersDTO filters, Pageable pageable) {
         UUID userId = securityUtils.getCurrentUserId();
 
         Specification<Category> specification = CategorySpecification.withFilter(filters, userId);
@@ -110,6 +110,11 @@ public class CategoryService {
 
     public ResponseCategoryDTO update(UUID id, UpdateCategoryDTO data) {
         Category category = getCategoryById(id);
+
+        if (data.accountId() != null) {
+            checkAccountExists(data.accountId());
+        }
+
         categoryMapper.updateCategoryFromDTO(data, category);
 
         Category savedCategory = categoryRepository.save(category);

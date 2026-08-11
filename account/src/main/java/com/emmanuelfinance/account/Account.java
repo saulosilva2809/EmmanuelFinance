@@ -33,4 +33,8 @@ public class Account extends BaseEntity {
 
     @Column(name = "current_balance", nullable = false)
     private BigDecimal currentBalance;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 }

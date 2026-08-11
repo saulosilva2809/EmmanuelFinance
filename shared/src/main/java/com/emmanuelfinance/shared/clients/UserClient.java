@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import java.util.UUID;
 
 @FeignClient(name = "user-server", url = "${application.config.user-service-url}")
-@ConditionalOnProperty(name = "application.config.account-service-url")
+@ConditionalOnProperty(name = "application.config.user-service-url")
 public interface UserClient {
 
     @GetMapping("/auth/users/{id}")
