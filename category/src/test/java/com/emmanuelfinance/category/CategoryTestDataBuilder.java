@@ -3,7 +3,7 @@ package com.emmanuelfinance.category;
 import com.emmanuelfinance.category.dto.CreateCategoryDTO;
 import com.emmanuelfinance.category.dto.ResponseCategoryDTO;
 import com.emmanuelfinance.category.enums.TypeEnum;
-import com.emmanuelfinance.shared.dto.AccountSummaryDTO;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

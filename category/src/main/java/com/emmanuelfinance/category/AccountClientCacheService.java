@@ -1,7 +1,7 @@
 package com.emmanuelfinance.category;
 
-import com.emmanuelfinance.shared.clients.AccountClient;
-import com.emmanuelfinance.shared.dto.AccountSummaryDTO;
+import com.emmanuelfinance.shared.modules.account.AccountClient;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;

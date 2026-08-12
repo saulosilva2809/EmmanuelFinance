@@ -1,4 +1,4 @@
-package com.emmanuelfinance.shared.dto;
+package com.emmanuelfinance.shared.modules.account.dto;
 
 import java.io.Serializable;
 import java.util.UUID;

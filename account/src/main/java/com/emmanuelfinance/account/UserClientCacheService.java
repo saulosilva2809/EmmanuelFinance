@@ -1,6 +1,6 @@
 package com.emmanuelfinance.account;
 
-import com.emmanuelfinance.shared.clients.UserClient;
+import com.emmanuelfinance.shared.modules.user.UserClient;
 import com.emmanuelfinance.shared.dto.UserSummaryDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,6 +1,6 @@
 package com.emmanuelfinance.category;
 
-import com.emmanuelfinance.shared.clients.AccountClient;
+import com.emmanuelfinance.shared.modules.account.AccountClient;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;

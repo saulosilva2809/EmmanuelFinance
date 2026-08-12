@@ -1,4 +1,4 @@
-package com.emmanuelfinance.shared.clients;
+package com.emmanuelfinance.shared.modules.user;
 
 import com.emmanuelfinance.shared.dto.UserSummaryDTO;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

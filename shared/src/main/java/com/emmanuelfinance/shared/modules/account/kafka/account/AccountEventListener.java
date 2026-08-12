@@ -1,7 +1,7 @@
-package com.emmanuelfinance.shared.kafka.account;
+package com.emmanuelfinance.shared.modules.account.kafka.account;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.emmanuelfinance.shared.kafka.account.enums.StatusEventEnum;
+import com.emmanuelfinance.shared.modules.account.kafka.account.enums.StatusEventEnum;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
