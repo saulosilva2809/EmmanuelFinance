@@ -1,4 +1,4 @@
-package com.emmanuelfinance.shared.cache;
+package com.emmanuelfinance.shared.modules.account;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;

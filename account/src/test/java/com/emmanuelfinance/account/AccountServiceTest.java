@@ -7,8 +7,8 @@ import com.emmanuelfinance.account.dto.UpdateAccountDTO;
 import com.emmanuelfinance.account.enums.TypeEnum;
 import com.emmanuelfinance.account.exceptions.AccountNotFound;
 import com.emmanuelfinance.account.kafka.producer.AccountEventPublisher;
-import com.emmanuelfinance.shared.cache.AccountCache;
-import com.emmanuelfinance.shared.dto.AccountSummaryDTO;
+import com.emmanuelfinance.shared.modules.account.AccountCache;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.dto.UserSummaryDTO;
 import com.emmanuelfinance.shared.security.SecurityUtils;
@@ -27,7 +27,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.math.BigDecimal;
 import java.util.*;

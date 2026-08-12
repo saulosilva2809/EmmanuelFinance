@@ -1,7 +1,6 @@
-package com.emmanuelfinance.shared.clients;
+package com.emmanuelfinance.shared.modules.account;
 
-import com.emmanuelfinance.shared.dto.AccountSummaryDTO;
-import com.emmanuelfinance.shared.dto.UserSummaryDTO;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;

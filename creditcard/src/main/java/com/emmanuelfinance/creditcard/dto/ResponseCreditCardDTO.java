@@ -1,6 +1,6 @@
 package com.emmanuelfinance.creditcard.dto;
 
-import com.emmanuelfinance.shared.dto.AccountSummaryDTO;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;

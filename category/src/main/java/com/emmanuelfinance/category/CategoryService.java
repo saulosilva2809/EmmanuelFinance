@@ -4,8 +4,8 @@ import com.emmanuelfinance.category.dto.CategoryFiltersDTO;
 import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
 import com.emmanuelfinance.category.exceptions.AccountNotFound;
 import com.emmanuelfinance.category.exceptions.CategoryNotFound;
-import com.emmanuelfinance.shared.cache.AccountCache;
-import com.emmanuelfinance.shared.dto.AccountSummaryDTO;
+import com.emmanuelfinance.shared.modules.account.AccountCache;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import com.emmanuelfinance.category.dto.CreateCategoryDTO;
 import com.emmanuelfinance.category.dto.ResponseCategoryDTO;
 import com.emmanuelfinance.category.exceptions.CategoryAlreadyExists;
@@ -15,7 +15,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;

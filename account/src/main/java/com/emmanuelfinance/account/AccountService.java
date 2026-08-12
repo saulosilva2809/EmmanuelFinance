@@ -2,11 +2,11 @@ package com.emmanuelfinance.account;
 
 import com.emmanuelfinance.account.dto.*;
 import com.emmanuelfinance.account.exceptions.AccountNotFound;
-import com.emmanuelfinance.shared.cache.AccountCache;
-import com.emmanuelfinance.shared.kafka.account.AccountEventDTO;
+import com.emmanuelfinance.shared.modules.account.AccountCache;
+import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
 import com.emmanuelfinance.account.kafka.producer.AccountEventPublisher;
-import com.emmanuelfinance.shared.kafka.account.enums.StatusEventEnum;
-import com.emmanuelfinance.shared.dto.AccountSummaryDTO;
+import com.emmanuelfinance.shared.modules.account.kafka.account.enums.StatusEventEnum;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.dto.UserSummaryDTO;
 import com.emmanuelfinance.shared.security.SecurityUtils;

@@ -1,6 +1,6 @@
 package com.emmanuelfinance.account.kafka.producer;
 
-import com.emmanuelfinance.shared.kafka.account.AccountEventDTO;
+import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;

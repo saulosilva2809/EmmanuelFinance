@@ -1,7 +1,7 @@
 package com.emmanuelfinance.account;
 
 import com.emmanuelfinance.account.dto.*;
-import com.emmanuelfinance.shared.dto.AccountSummaryDTO;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

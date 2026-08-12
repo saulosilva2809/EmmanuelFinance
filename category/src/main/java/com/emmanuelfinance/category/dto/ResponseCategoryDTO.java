@@ -1,6 +1,6 @@
 package com.emmanuelfinance.category.dto;
 
-import com.emmanuelfinance.shared.dto.AccountSummaryDTO;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import com.emmanuelfinance.category.enums.TypeEnum;
 
 import java.time.LocalDateTime;
