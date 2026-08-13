@@ -31,7 +31,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KC_EXTERNAL_AUTH_SERVER_URL}/realms/${KC_REALM}
+          issuer-uri: ${KC_EXTERNAL_AUTH_SERVER_URL:}/realms/${KC_REALM:}
           jwk-set-uri: ${KC_AUTH_SERVER_URL}/realms/${KC_REALM}/protocol/openid-connect/certs
 
   cache:
