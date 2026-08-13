@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: shared
+
+application:
+  config:
+    account-service-url: ${ACCOUNT_SERVICE_URL}

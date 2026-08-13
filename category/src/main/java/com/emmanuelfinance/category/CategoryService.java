@@ -2,9 +2,9 @@ package com.emmanuelfinance.category;
 
 import com.emmanuelfinance.category.dto.CategoryFiltersDTO;
 import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
-import com.emmanuelfinance.category.exceptions.AccountNotFound;
 import com.emmanuelfinance.category.exceptions.CategoryNotFound;
-import com.emmanuelfinance.shared.modules.account.AccountCache;
+import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
+import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import com.emmanuelfinance.category.dto.CreateCategoryDTO;
 import com.emmanuelfinance.category.dto.ResponseCategoryDTO;
@@ -26,8 +26,8 @@ public class CategoryService {
     private final CategoryRepository categoryRepository;
     private final AccountClientCacheService accountClientCacheService;
     private final CategoryMapper categoryMapper;
-    private final AccountCache accountCache;
     private final SecurityUtils securityUtils;
+    private final AccountOwnershipValidator accountOwnershipValidator;
 
     private Category getCategoryById(UUID id) {
         UUID userId = securityUtils.getCurrentUserId();
@@ -63,19 +63,10 @@ public class CategoryService {
         }
     }
 
-    public void checkAccountExists(UUID accountId) {
-        UUID userId = securityUtils.getCurrentUserId();
-
-        boolean isOwner = accountCache.isAccountOwnedByUser(accountId, userId);
-        if (!isOwner) {
-            throw new AccountNotFound();
-        }
-    }
-
     public ResponseCategoryDTO create(CreateCategoryDTO data) {
         UUID userId = securityUtils.getCurrentUserId();
         checkCategoryExists(data);
-        checkAccountExists(data.accountId());
+        accountOwnershipValidator.validate(data.accountId());
 
         Category category = new Category();
 
@@ -111,7 +102,7 @@ public class CategoryService {
         Category category = getCategoryById(id);
 
         if (data.accountId() != null) {
-            checkAccountExists(data.accountId());
+            accountOwnershipValidator.validate(data.accountId());
         }
 
         categoryMapper.updateCategoryFromDTO(data, category);

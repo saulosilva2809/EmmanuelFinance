@@ -5,12 +5,12 @@ import com.emmanuelfinance.category.dto.CreateCategoryDTO;
 import com.emmanuelfinance.category.dto.ResponseCategoryDTO;
 import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
 import com.emmanuelfinance.category.enums.TypeEnum;
-import com.emmanuelfinance.category.exceptions.AccountNotFound;
 import com.emmanuelfinance.category.exceptions.CategoryAlreadyExists;
 import com.emmanuelfinance.category.exceptions.CategoryNotFound;
 import com.emmanuelfinance.shared.modules.account.AccountCache;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
+import com.emmanuelfinance.shared.modules.account.exceptions.AccountNotFound;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -45,7 +45,7 @@ class CategoryServiceTests {
     private CategoryRepository categoryRepository;
 
     @Mock
-    private AccountClientCacheService accountClientCacheService;
+    private com.emmanuelfinance.shared.modules.account.AccountClientCacheService accountClientCacheService;
 
     @Spy
     private CategoryMapper categoryMapper = Mappers.getMapper(CategoryMapper.class);
