@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class CreditCardService {
 
-    public ResponseCreditCardDTO create(CreateCreditCardDTO data) {
-
+    public void create(CreateCreditCardDTO data) {
     }
 }

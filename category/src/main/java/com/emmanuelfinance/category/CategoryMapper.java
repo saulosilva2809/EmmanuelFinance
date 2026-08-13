@@ -1,6 +1,5 @@
 package com.emmanuelfinance.category;
 
-import com.emmanuelfinance.category.dto.CreateCategoryDTO;
 import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
