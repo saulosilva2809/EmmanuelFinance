@@ -1,10 +1,8 @@
 package com.emmanuelfinance.creditcard;
 
+import com.emmanuelfinance.creditcard.enums.BanksEnum;
 import com.emmanuelfinance.shared.entity.BaseEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -28,6 +26,10 @@ public class CreditCard extends BaseEntity {
 
     @Column(name = "name", nullable = false)
     private String name;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private BanksEnum bank;
 
     @Column(name = "credit_limit")
     private BigDecimal creditLimit;

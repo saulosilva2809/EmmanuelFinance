@@ -1,0 +1,1 @@
+ALTER TABLE credit_card ADD COLUMN bank VARCHAR(50) NOT NULL;
