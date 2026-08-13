@@ -49,10 +49,6 @@ spring:
       properties:
         spring.json.trusted.packages: "*"
 
-application:
-  config:
-    account-service-url: ${ACCOUNT_SERVICE_URL}
-
 feign:
   client:
     config:
