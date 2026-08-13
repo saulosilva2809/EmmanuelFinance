@@ -68,3 +68,5 @@ replay_pid*
 **/*.log
 **/*.db
 **/*.sqlite
+
+todo.todo

@@ -1,5 +1,6 @@
 package com.emmanuelfinance.creditcard.dto;
 
+import com.emmanuelfinance.creditcard.enums.BanksEnum;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
@@ -11,6 +12,9 @@ public record CreateCreditCardDTO (
 
         @NotNull(message = "The name is required")
         String name,
+
+        @NotNull(message = "The bank is required")
+        BanksEnum bank,
 
         BigDecimal creditLimit,
 
