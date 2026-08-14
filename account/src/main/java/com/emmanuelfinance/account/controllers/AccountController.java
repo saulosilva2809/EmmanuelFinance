@@ -1,7 +1,7 @@
-package com.emmanuelfinance.account;
+package com.emmanuelfinance.account.controllers;
 
+import com.emmanuelfinance.account.AccountService;
 import com.emmanuelfinance.account.dto.*;
-import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +39,12 @@ public class AccountController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    @GetMapping("/deleted")
+    public ResponseEntity<PageResponseDTO<ResponseAccountDTO>> listDeleted(AccountFiltersDTO filters, Pageable pageable) {
+        PageResponseDTO<ResponseAccountDTO> response = accountService.listDeleted(filters, pageable);
+        return ResponseEntity.ok().body(response);
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<ResponseAccountDTO> update(
             @PathVariable UUID id,
@@ -52,17 +58,5 @@ public class AccountController {
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         accountService.delete(id);
         return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/internal/{id}")
-    public ResponseEntity<AccountSummaryDTO> summaryAccount(@PathVariable UUID id) {
-        AccountSummaryDTO response = accountService.getAccountSummary(id);
-        return ResponseEntity.ok().body(response);
-    }
-
-    @GetMapping("/deleted")
-    public ResponseEntity<PageResponseDTO<ResponseAccountDTO>> listDeleted(AccountFiltersDTO filters, Pageable pageable) {
-        PageResponseDTO<ResponseAccountDTO> response = accountService.listDeleted(filters, pageable);
-        return ResponseEntity.ok().body(response);
     }
 }
