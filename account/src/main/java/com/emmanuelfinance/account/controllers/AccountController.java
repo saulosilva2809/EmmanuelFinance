@@ -59,4 +59,10 @@ public class AccountController {
         accountService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/restore/{id}")
+    public ResponseEntity<Void> restore(@PathVariable UUID id) {
+        accountService.restore(id);
+        return ResponseEntity.noContent().build();
+    }
 }
