@@ -56,7 +56,13 @@ public class AccountController {
 
     @GetMapping("/internal/{id}")
     public ResponseEntity<AccountSummaryDTO> summaryAccount(@PathVariable UUID id) {
-        AccountSummaryDTO response = accountService.getInternalAccount(id);
+        AccountSummaryDTO response = accountService.getAccountSummary(id);
+        return ResponseEntity.ok().body(response);
+    }
+
+    @GetMapping("/deleted")
+    public ResponseEntity<PageResponseDTO<ResponseAccountDTO>> listDeleted(AccountFiltersDTO filters, Pageable pageable) {
+        PageResponseDTO<ResponseAccountDTO> response = accountService.listDeleted(filters, pageable);
         return ResponseEntity.ok().body(response);
     }
 }

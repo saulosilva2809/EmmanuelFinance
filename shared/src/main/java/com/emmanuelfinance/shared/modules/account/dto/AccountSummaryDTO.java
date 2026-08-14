@@ -5,5 +5,6 @@ import java.util.UUID;
 
 public record AccountSummaryDTO (
         UUID id,
-        String name
+        String name,
+        boolean deleted
 ) implements Serializable {}

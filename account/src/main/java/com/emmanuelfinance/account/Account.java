@@ -7,6 +7,10 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.math.BigDecimal;
@@ -19,6 +23,9 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
+@SQLDelete(sql = "UPDATE account SET deleted = true, version = version + 1 WHERE id = ? AND version = ?")
+@FilterDef(name = "deletedFilter", defaultCondition = "deleted = false")
+@Filter(name = "deletedFilter")
 public class Account extends BaseEntity {
 
     @Column(name = "name", nullable = false)

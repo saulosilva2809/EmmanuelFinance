@@ -15,5 +15,6 @@ public record ResponseAccountDTO (
         BigDecimal initialBalance,
         BigDecimal currentBalance,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        boolean deleted
 ) {}

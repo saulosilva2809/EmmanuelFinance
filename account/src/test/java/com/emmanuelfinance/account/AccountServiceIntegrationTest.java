@@ -87,7 +87,7 @@ class AccountServiceIntegrationTest {
         assertNotNull(response);
         assertEquals(response.name(), accountDTO.name());
 
-        Optional<Account> savedAccountInDb = accountRepository.findByIdAndUserId(
+        Optional<Account> savedAccountInDb = accountRepository.findByIdAndUserIdAndDeletedFalse(
                 response.id(),
                 userId
         );
@@ -116,7 +116,7 @@ class AccountServiceIntegrationTest {
         assertNotNull(updateResponse);
         assertEquals("Conta Nova", updateResponse.name());
 
-        Account accountInDb = accountRepository.findByIdAndUserId(
+        Account accountInDb = accountRepository.findByIdAndUserIdAndDeletedFalse(
                 accountId,
                 userId
         ).orElseThrow();
