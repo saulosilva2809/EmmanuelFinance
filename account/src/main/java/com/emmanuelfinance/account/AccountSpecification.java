@@ -10,11 +10,12 @@ import java.util.UUID;
 
 public class AccountSpecification {
 
-    public static Specification<Account> withFilter(AccountFiltersDTO filter, UUID userId   ) {
+    public static Specification<Account> withFilter(AccountFiltersDTO filter, UUID userId, boolean onlyDeleted) {
         return (root, query, builder) -> {
             List<Predicate> predicates = new ArrayList<>();
 
             predicates.add(builder.equal(root.get("userId"), userId));
+            predicates.add(builder.equal(root.get("deleted"), onlyDeleted));
 
             if (filter.name() != null && !filter.name().isBlank()) {
                 predicates.add(
