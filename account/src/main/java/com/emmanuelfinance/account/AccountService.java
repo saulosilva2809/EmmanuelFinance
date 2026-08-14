@@ -57,6 +57,11 @@ public class AccountService {
         return account;
     }
 
+    @Transactional(readOnly = true)
+    public boolean checkAccountOwner(UUID accountId, UUID userId) {
+        return accountRepository.existsByIdAndUserIdAndDeletedFalse(accountId, userId);
+    }
+
     @Transactional
     public ResponseAccountDTO create(CreateAccountDTO data) {
         UUID userId = securityUtils.getCurrentUserId();
@@ -86,6 +91,14 @@ public class AccountService {
         return accountAsDTO(account);
     }
 
+    public AccountSummaryDTO getAccountSummary(UUID id) {
+        UUID userId = securityUtils.getCurrentUserId();
+        Account account = accountRepository.findByIdAndUserIdIncludingDeleted(id, userId)
+                .orElseThrow(() -> new AccountNotFound());
+
+        return new AccountSummaryDTO(account.getId(), account.getName(), account.isDeleted());
+    }
+
     @WithDeletedFilter(enabled = true)
     public PageResponseDTO<ResponseAccountDTO> list(AccountFiltersDTO filters, Pageable pageable) {
         UUID userId = securityUtils.getCurrentUserId();
@@ -97,6 +110,18 @@ public class AccountService {
         );
 
         Page<ResponseAccountDTO> dtoPage = page.map(this::accountAsDTO);
+        return PageResponseDTO.from(dtoPage);
+    }
+
+    @WithDeletedFilter(enabled = false)
+    public PageResponseDTO<ResponseAccountDTO> listDeleted(AccountFiltersDTO filters, Pageable pageable) {
+        UUID userId = securityUtils.getCurrentUserId();
+
+        Specification<Account> specification = AccountSpecification.withFilter(filters, userId, true);
+
+        Page<Account> page = accountRepository.findAll(specification, pageable);
+        Page<ResponseAccountDTO> dtoPage = page.map(this::accountAsDTO);
+
         return PageResponseDTO.from(dtoPage);
     }
 
@@ -123,25 +148,5 @@ public class AccountService {
                 account.getUserId(),
                 StatusEventEnum.DELETED
         ));
-    }
-
-    public AccountSummaryDTO getAccountSummary(UUID id) {
-        UUID userId = securityUtils.getCurrentUserId();
-        Account account = accountRepository.findByIdAndUserIdIncludingDeleted(id, userId)
-                .orElseThrow(() -> new AccountNotFound());
-
-        return new AccountSummaryDTO(account.getId(), account.getName(), account.isDeleted());
-    }
-
-    @WithDeletedFilter(enabled = false)
-    public PageResponseDTO<ResponseAccountDTO> listDeleted(AccountFiltersDTO filters, Pageable pageable) {
-        UUID userId = securityUtils.getCurrentUserId();
-
-        Specification<Account> specification = AccountSpecification.withFilter(filters, userId, true);
-
-        Page<Account> page = accountRepository.findAll(specification, pageable);
-        Page<ResponseAccountDTO> dtoPage = page.map(this::accountAsDTO);
-
-        return PageResponseDTO.from(dtoPage);
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.UUID;
 
@@ -12,6 +13,12 @@ import java.util.UUID;
 @ConditionalOnProperty(name = "application.config.account-service-url")
 public interface AccountClient {
 
-    @GetMapping("/accounts/internal/{id}")
-    AccountSummaryDTO getInternalAccountById(@PathVariable UUID id);
+    @GetMapping("/internal/accounts/summary/{id}")
+    AccountSummaryDTO getAccountSummary(@PathVariable UUID id);
+
+    @GetMapping("/internal/accounts/{accountId}/ownership")
+    boolean checkAccountOwner(
+            @PathVariable UUID accountId,
+            @RequestParam UUID userId
+    );
 }

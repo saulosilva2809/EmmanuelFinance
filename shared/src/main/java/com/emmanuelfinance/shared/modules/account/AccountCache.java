@@ -18,12 +18,12 @@ public class AccountCache {
         redisTemplate.opsForValue().set(redisKey, userId.toString());
     }
 
-    public boolean isAccountOwnedByUser(UUID accountId, UUID userId) {
+    public Boolean isAccountOwnedByUser(UUID accountId, UUID userId) {
         String redisKey = REDIS_KEY_PREFIX + accountId;
         String ownerIdInCache = redisTemplate.opsForValue().get(redisKey);
 
         if (ownerIdInCache == null) {
-            return false;
+            return null;
         }
 
         return ownerIdInCache.equals(userId.toString());

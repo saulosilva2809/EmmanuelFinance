@@ -20,6 +20,6 @@ public class AccountClientCacheService {
     @Cacheable(value = "accounts", key = "#id")
     public AccountSummaryDTO getInternalAccountById(UUID id) {
         log.info("Buscando conta {} via account-server (cache miss)", id);
-        return accountClient.getInternalAccountById(id);
+        return accountClient.getAccountSummary(id);
     }
 }
