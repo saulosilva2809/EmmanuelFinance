@@ -2,6 +2,7 @@ package com.emmanuelfinance.account;
 
 import com.emmanuelfinance.account.dto.*;
 import com.emmanuelfinance.account.exceptions.AccountNotFound;
+import com.emmanuelfinance.account.exceptions.RestoreAccount;
 import com.emmanuelfinance.shared.annotation.WithDeletedFilter;
 import com.emmanuelfinance.shared.modules.account.AccountCache;
 import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
@@ -57,6 +58,15 @@ public class AccountService {
         return account;
     }
 
+    private Account getAccountByIdIncludingDeleted(UUID accountId) {
+        UUID userId = securityUtils.getCurrentUserId();
+
+        Account account = accountRepository.findByIdAndUserIdIncludingDeleted(accountId, userId)
+                .orElseThrow(() -> new AccountNotFound());
+
+        return account;
+    }
+
     @Transactional(readOnly = true)
     public boolean checkAccountOwner(UUID accountId, UUID userId) {
         return accountRepository.existsByIdAndUserIdAndDeletedFalse(accountId, userId);
@@ -93,8 +103,7 @@ public class AccountService {
 
     public AccountSummaryDTO getAccountSummary(UUID id) {
         UUID userId = securityUtils.getCurrentUserId();
-        Account account = accountRepository.findByIdAndUserIdIncludingDeleted(id, userId)
-                .orElseThrow(() -> new AccountNotFound());
+        Account account = getAccountByIdIncludingDeleted(id);
 
         return new AccountSummaryDTO(account.getId(), account.getName(), account.isDeleted());
     }
@@ -147,6 +156,25 @@ public class AccountService {
                 account.getId(),
                 account.getUserId(),
                 StatusEventEnum.DELETED
+        ));
+    }
+
+    @Transactional
+    @CacheEvict(value = "accounts", key = "#id")
+    public void restore(UUID id) {
+        Account account = getAccountByIdIncludingDeleted(id);
+
+        if (!account.isDeleted()) {
+            throw new RestoreAccount();
+        }
+
+        account.setDeleted(false);
+        accountRepository.save(account);
+
+        accountEventPublisher.publishAccount(new AccountEventDTO(
+                account.getId(),
+                account.getUserId(),
+                StatusEventEnum.RESTORE
         ));
     }
 }
