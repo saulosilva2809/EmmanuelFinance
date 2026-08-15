@@ -24,7 +24,6 @@ import java.util.UUID;
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
 @SQLDelete(sql = "UPDATE account SET deleted = true, version = version + 1 WHERE id = ? AND version = ?")
-@FilterDef(name = "deletedFilter", defaultCondition = "deleted = false")
 @Filter(name = "deletedFilter")
 public class Account extends BaseEntity {
 
