@@ -74,7 +74,7 @@ class CategoryIntegrationTest {
                 TypeEnum.INCOME
         );
         Pageable pageable = PageRequest.of(0, 10);
-        Specification<Category> spec = CategorySpecification.withFilter(fIltersDTO, userId);
+        Specification<Category> spec = CategorySpecification.withFilter(fIltersDTO, userId, false);
 
         Page<Category> result = categoryRepository.findAll(spec, pageable);
 
@@ -93,7 +93,7 @@ class CategoryIntegrationTest {
                 TypeEnum.EXPENSE
         );
         Pageable pageable = PageRequest.of(0, 10);
-        Specification<Category> spec = CategorySpecification.withFilter(fIltersDTO, userId);
+        Specification<Category> spec = CategorySpecification.withFilter(fIltersDTO, userId, false);
 
         Page<Category> result = categoryRepository.findAll(spec, pageable);
 

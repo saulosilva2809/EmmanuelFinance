@@ -374,7 +374,7 @@ public class AccountServiceTest {
             account.setInitialBalance(BigDecimal.ZERO);
             account.setCurrentBalance(BigDecimal.ZERO);
 
-            when(accountRepository.findByIdAndUserIdAndDeletedFalse(
+            when(accountRepository.findByIdAndUserIdIncludingDeleted(
                     accountId,
                     userId
             )).thenReturn(Optional.of(account));
@@ -384,7 +384,7 @@ public class AccountServiceTest {
             assertEquals(accountId, result.id());
             assertEquals(account.getName(), result.name());
 
-            verify(accountRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
+            verify(accountRepository, times(1)).findByIdAndUserIdIncludingDeleted(
                     accountId,
                     userId
             );
@@ -394,7 +394,7 @@ public class AccountServiceTest {
         void shouldThrowAccountNotFoundWhenIdDoesNotExist() {
             UUID nonExistentId = UUID.randomUUID();
 
-            when(accountRepository.findByIdAndUserIdAndDeletedFalse(
+            when(accountRepository.findByIdAndUserIdIncludingDeleted(
                     nonExistentId,
                     userId
             )).thenReturn(Optional.empty());
@@ -402,7 +402,7 @@ public class AccountServiceTest {
                 accountService.getAccountSummary(nonExistentId);
             });
 
-            verify(accountRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
+            verify(accountRepository, times(1)).findByIdAndUserIdIncludingDeleted(
                     nonExistentId,
                     userId
             );

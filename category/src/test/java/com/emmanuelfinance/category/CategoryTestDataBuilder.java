@@ -36,14 +36,16 @@ public class CategoryTestDataBuilder {
                 category.getName(),
                 category.getType(),
                 category.getCreatedAt(),
-                category.getUpdatedAt()
+                category.getUpdatedAt(),
+                category.isDeleted()
         );
     }
 
     public static AccountSummaryDTO accountSummaryDTO(UUID accountId) {
         return new AccountSummaryDTO(
                 accountId,
-                "Conta Corrente"
+                "Conta Corrente",
+                false
         );
     }
 }
