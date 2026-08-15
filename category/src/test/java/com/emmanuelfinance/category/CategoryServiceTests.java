@@ -8,6 +8,7 @@ import com.emmanuelfinance.category.enums.TypeEnum;
 import com.emmanuelfinance.category.exceptions.CategoryAlreadyExists;
 import com.emmanuelfinance.category.exceptions.CategoryNotFound;
 import com.emmanuelfinance.shared.modules.account.AccountCache;
+import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.modules.account.exceptions.AccountNotFound;
@@ -59,6 +60,9 @@ class CategoryServiceTests {
     @Mock
     private AccountCache accountCache;
 
+    @Mock
+    private AccountOwnershipValidator accountOwnershipValidator;
+
     @InjectMocks
     private CategoryService categoryService;
 
@@ -81,7 +85,9 @@ class CategoryServiceTests {
             AccountSummaryDTO mockAccountSummary = CategoryTestDataBuilder.accountSummaryDTO(inputDto.accountId());
             ResponseCategoryDTO expectedResponse = CategoryTestDataBuilder.responseCategoryDTO(categoryEntity, mockAccountSummary);
 
-            when(accountCache.isAccountOwnedByUser(categoryEntity.getAccountId(), userId)).thenReturn(true);
+            doNothing()
+                    .when(accountOwnershipValidator)
+                    .validate(categoryEntity.getAccountId());
 
             when(accountClientCacheService.getInternalAccountById(inputDto.accountId()))
                     .thenReturn(mockAccountSummary);
@@ -126,10 +132,15 @@ class CategoryServiceTests {
         void shouldGiveErrorWhenAccountDoesNotExist() {
             CreateCategoryDTO inputDto = CategoryTestDataBuilder.createCategoryDTO();
 
+            doThrow(new AccountNotFound())
+                    .when(accountOwnershipValidator)
+                    .validate(inputDto.accountId());
+
             assertThrows(AccountNotFound.class, () -> {
                 categoryService.create(inputDto);
             });
 
+            verify(accountOwnershipValidator, times(1)).validate(inputDto.accountId());
             verify(categoryRepository, never()).save(any(Category.class));
         }
     }
@@ -298,7 +309,11 @@ class CategoryServiceTests {
                     categoryEntity.getId(),
                     userId
             )).thenReturn(Optional.of(categoryEntity));
-            when(accountCache.isAccountOwnedByUser(newAccountId, userId)).thenReturn(true);
+
+            doNothing()
+                    .when(accountOwnershipValidator)
+                    .validate(newAccountId);
+
             when(accountClientCacheService.getInternalAccountById(newAccountId))
                     .thenReturn(mockAccount);
             when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -308,7 +323,7 @@ class CategoryServiceTests {
             assertEquals(newAccountId, categoryEntity.getAccountId());
             assertEquals(updateDTO.name(), result.name());
 
-            verify(accountCache, times(1)).isAccountOwnedByUser(newAccountId, userId);
+            verify(accountOwnershipValidator, times(1)).validate(newAccountId);
             verify(categoryRepository, times(1)).save(any(Category.class));
         }
 
@@ -328,12 +343,15 @@ class CategoryServiceTests {
                     categoryEntity.getId(),
                     userId
             )).thenReturn(Optional.of(categoryEntity));
-            when(accountCache.isAccountOwnedByUser(otherUsersAccountId, userId)).thenReturn(false);
+
+            doThrow(new AccountNotFound())
+                    .when(accountOwnershipValidator)
+                            .validate(otherUsersAccountId);
 
             assertThrows(AccountNotFound.class, () ->
                     categoryService.update(categoryEntity.getId(), updateDTO)
             );
-
+            verify(accountOwnershipValidator, times(1)).validate(otherUsersAccountId);
             verify(categoryRepository, never()).save(any(Category.class));
         }
     }
