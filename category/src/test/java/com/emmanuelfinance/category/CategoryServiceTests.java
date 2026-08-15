@@ -150,7 +150,7 @@ class CategoryServiceTests {
 
             when(accountClientCacheService.getInternalAccountById(categoryDTO.accountId()))
                     .thenReturn(mockAccount);
-            when(categoryRepository.findByIdAndUserId(
+            when(categoryRepository.findByIdAndUserIdAndDeletedFalse(
                     categoryEntity.getId(),
                     userId
             )).thenReturn(Optional.of(categoryEntity));
@@ -161,7 +161,7 @@ class CategoryServiceTests {
             assertEquals(expectedResponse.id(), response.id());
             assertEquals(expectedResponse.name(), response.name());
 
-            verify(categoryRepository, times(1)).findByIdAndUserId(
+            verify(categoryRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
                     expectedResponse.id(),
                     userId
             );
@@ -172,7 +172,7 @@ class CategoryServiceTests {
         void shouldGiveCategoryNotFoundError() {
             UUID categoryNotFoundId = UUID.randomUUID();
 
-            when(categoryRepository.findByIdAndUserId(
+            when(categoryRepository.findByIdAndUserIdAndDeletedFalse(
                     categoryNotFoundId,
                     userId
             )).thenReturn(Optional.empty());
@@ -181,7 +181,7 @@ class CategoryServiceTests {
                 categoryService.view(categoryNotFoundId);
             });
 
-            verify(categoryRepository, times(1)).findByIdAndUserId(
+            verify(categoryRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
                     categoryNotFoundId,
                     userId
             );
@@ -263,7 +263,7 @@ class CategoryServiceTests {
 
             when(accountClientCacheService.getInternalAccountById(categoryDTO.accountId()))
                     .thenReturn(mockAccount);
-            when(categoryRepository.findByIdAndUserId(
+            when(categoryRepository.findByIdAndUserIdAndDeletedFalse(
                     categoryEntity.getId(),
                     userId
             )).thenReturn(Optional.of(categoryEntity));
@@ -274,7 +274,7 @@ class CategoryServiceTests {
             assertEquals(updateDTO.name(), result.name());
             assertEquals(updateDTO.type(), result.type());
 
-            verify(categoryRepository, times(1)).findByIdAndUserId(
+            verify(categoryRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
                     categoryEntity.getId(),
                     userId
             );
@@ -294,7 +294,7 @@ class CategoryServiceTests {
                     TypeEnum.EXPENSE
             );
 
-            when(categoryRepository.findByIdAndUserId(
+            when(categoryRepository.findByIdAndUserIdAndDeletedFalse(
                     categoryEntity.getId(),
                     userId
             )).thenReturn(Optional.of(categoryEntity));
@@ -324,7 +324,7 @@ class CategoryServiceTests {
                     TypeEnum.EXPENSE
             );
 
-            when(categoryRepository.findByIdAndUserId(
+            when(categoryRepository.findByIdAndUserIdAndDeletedFalse(
                     categoryEntity.getId(),
                     userId
             )).thenReturn(Optional.of(categoryEntity));
@@ -346,14 +346,14 @@ class CategoryServiceTests {
             CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
             Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO);
 
-            when(categoryRepository.findByIdAndUserId(
+            when(categoryRepository.findByIdAndUserIdAndDeletedFalse(
                     categoryEntity.getId(),
                     userId
             )).thenReturn(Optional.of(categoryEntity));
 
             assertDoesNotThrow(() -> categoryService.delete(categoryEntity.getId()));
 
-            verify(categoryRepository, times(1)).findByIdAndUserId(
+            verify(categoryRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
                     categoryEntity.getId(),
                     userId
             );
