@@ -42,6 +42,15 @@ public class CategoryController {
         return ResponseEntity.ok().body(response);
     }
 
+    @GetMapping("/deleted")
+    public ResponseEntity<PageResponseDTO<ResponseCategoryDTO>> listDeleted(
+            CategoryFiltersDTO filters,
+            Pageable pageable
+    ) {
+        PageResponseDTO<ResponseCategoryDTO> response = categoryService.listDeleted(filters, pageable);
+        return ResponseEntity.ok().body(response);
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<ResponseCategoryDTO> update(
             @PathVariable UUID id,
@@ -51,9 +60,9 @@ public class CategoryController {
         return ResponseEntity.ok().body(response);
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        categoryService.delete(id);
+    @PostMapping("/restore/{id}")
+    public ResponseEntity<Void> restore(@PathVariable UUID id) {
+        categoryService.restore(id);
         return ResponseEntity.noContent().build();
     }
 }

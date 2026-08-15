@@ -12,5 +12,6 @@ public record ResponseCategoryDTO(
         String name,
         TypeEnum type,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        boolean deleted
 ) {}

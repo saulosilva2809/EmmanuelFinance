@@ -3,6 +3,8 @@ package com.emmanuelfinance.category;
 import com.emmanuelfinance.category.dto.CategoryFiltersDTO;
 import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
 import com.emmanuelfinance.category.exceptions.CategoryNotFound;
+import com.emmanuelfinance.category.exceptions.RestoreCategoryError;
+import com.emmanuelfinance.shared.annotation.WithDeletedFilter;
 import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
@@ -16,6 +18,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -31,12 +34,20 @@ public class CategoryService {
 
     private Category getCategoryById(UUID id) {
         UUID userId = securityUtils.getCurrentUserId();
-        Category category = categoryRepository.findByIdAndUserId(id, userId)
+        Category category = categoryRepository.findByIdAndUserIdAndDeletedFalse(id, userId)
                 .orElseThrow(() -> new CategoryNotFound());
 
         return category;
     }
-    
+
+    private Category getCategoryByIdIncludingDeleted(UUID id) {
+        UUID userId = securityUtils.getCurrentUserId();
+        Category category = categoryRepository.findByIdAndUserIdIncludingDeleted(id, userId)
+                .orElseThrow(() -> new CategoryNotFound());
+
+        return category;
+    }
+
     private ResponseCategoryDTO categoryAsDTO(Category data) {
         AccountSummaryDTO account = accountClientCacheService
                 .getInternalAccountById(data.getAccountId());
@@ -47,7 +58,8 @@ public class CategoryService {
                 data.getName(),
                 data.getType(),
                 data.getCreatedAt(),
-                data.getUpdatedAt()
+                data.getUpdatedAt(),
+                data.isDeleted()
         );
     }
 
@@ -84,10 +96,12 @@ public class CategoryService {
         return categoryAsDTO(category);
     }
 
+    @Transactional(readOnly = true)
+    @WithDeletedFilter(enabled = true)
     public PageResponseDTO<ResponseCategoryDTO> list(CategoryFiltersDTO filters, Pageable pageable) {
         UUID userId = securityUtils.getCurrentUserId();
 
-        Specification<Category> specification = CategorySpecification.withFilter(filters, userId);
+        Specification<Category> specification = CategorySpecification.withFilter(filters, userId, false);
         Page<Category> page = categoryRepository.findAll(
                 specification,
                 pageable
@@ -98,6 +112,22 @@ public class CategoryService {
         return PageResponseDTO.from(dtoPage);
     }
 
+    @WithDeletedFilter(enabled = false)
+    public PageResponseDTO<ResponseCategoryDTO> listDeleted(CategoryFiltersDTO filters, Pageable pageable) {
+        UUID userId = securityUtils.getCurrentUserId();
+
+        Specification<Category> specification = CategorySpecification.withFilter(filters, userId, true);
+        Page<Category> page = categoryRepository.findAll(
+                specification,
+                pageable
+        );
+
+        Page<ResponseCategoryDTO> dtoPage = page.map(this::categoryAsDTO);
+
+        return PageResponseDTO.from(dtoPage);
+    }
+
+    @Transactional()
     public ResponseCategoryDTO update(UUID id, UpdateCategoryDTO data) {
         Category category = getCategoryById(id);
 
@@ -111,8 +141,21 @@ public class CategoryService {
         return categoryAsDTO(savedCategory);
     }
 
+    @Transactional()
     public void delete(UUID id) {
         Category category = getCategoryById(id);
         categoryRepository.delete(category);
+    }
+
+    @Transactional
+    public void restore(UUID id) {
+        Category category = getCategoryByIdIncludingDeleted(id);
+
+        if (!category.isDeleted()) {
+            throw new RestoreCategoryError();
+        }
+
+        category.setDeleted(false);
+        categoryRepository.save(category);
     }
 }
