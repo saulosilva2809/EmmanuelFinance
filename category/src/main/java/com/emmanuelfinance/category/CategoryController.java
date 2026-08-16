@@ -8,6 +8,8 @@ import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -36,6 +38,10 @@ public class CategoryController {
     @GetMapping
     public ResponseEntity<PageResponseDTO<ResponseCategoryDTO>> list(
             CategoryFiltersDTO filters,
+            @PageableDefault(
+                    sort = "createdAt",
+                    direction = Sort.Direction.DESC
+            )
             Pageable pageable
     ) {
         PageResponseDTO<ResponseCategoryDTO> response = categoryService.list(filters, pageable);
@@ -45,6 +51,10 @@ public class CategoryController {
     @GetMapping("/deleted")
     public ResponseEntity<PageResponseDTO<ResponseCategoryDTO>> listDeleted(
             CategoryFiltersDTO filters,
+            @PageableDefault(
+                    sort = "createdAt",
+                    direction = Sort.Direction.DESC
+            )
             Pageable pageable
     ) {
         PageResponseDTO<ResponseCategoryDTO> response = categoryService.listDeleted(filters, pageable);
@@ -58,6 +68,12 @@ public class CategoryController {
     ) {
         ResponseCategoryDTO response = categoryService.update(id, data);
         return ResponseEntity.ok().body(response);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        categoryService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/restore/{id}")

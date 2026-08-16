@@ -6,6 +6,8 @@ import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -34,13 +36,27 @@ public class AccountController {
     }
 
     @GetMapping()
-    public ResponseEntity<PageResponseDTO<ResponseAccountDTO>> list(AccountFiltersDTO filters, Pageable pageable) {
+    public ResponseEntity<PageResponseDTO<ResponseAccountDTO>> list(
+            AccountFiltersDTO filters,
+            @PageableDefault(
+                    sort = "createdAt",
+                    direction = Sort.Direction.DESC
+            )
+            Pageable pageable
+    ) {
         PageResponseDTO<ResponseAccountDTO> response = accountService.list(filters, pageable);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     @GetMapping("/deleted")
-    public ResponseEntity<PageResponseDTO<ResponseAccountDTO>> listDeleted(AccountFiltersDTO filters, Pageable pageable) {
+    public ResponseEntity<PageResponseDTO<ResponseAccountDTO>> listDeleted(
+            AccountFiltersDTO filters,
+            @PageableDefault(
+                    sort = "createdAt",
+                    direction = Sort.Direction.DESC
+            )
+            Pageable pageable
+    ) {
         PageResponseDTO<ResponseAccountDTO> response = accountService.listDeleted(filters, pageable);
         return ResponseEntity.ok().body(response);
     }
