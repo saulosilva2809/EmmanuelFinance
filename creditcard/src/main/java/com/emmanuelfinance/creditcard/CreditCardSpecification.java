@@ -10,11 +10,12 @@ import java.util.UUID;
 
 public class CreditCardSpecification {
 
-    public static Specification<CreditCard> withFilter(CreditCardFiltersDTO filters, UUID userId) {
+    public static Specification<CreditCard> withFilter(CreditCardFiltersDTO filters, UUID userId, boolean onlyDeleted) {
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
 
             predicates.add(criteriaBuilder.equal(root.get("userId"), userId));
+            predicates.add(criteriaBuilder.equal(root.get("deleted"), onlyDeleted));
 
             if (filters.accountId() != null) {
                 predicates.add(

@@ -122,7 +122,7 @@ public class CreditCardServiceTests {
             CreateCreditCardDTO creditCardDTO = CreditCardTestDataBuilder.createCardDTO();
             CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO);
 
-            when(creditCardRepository.findByIdAndUserId(
+            when(creditCardRepository.findByIdAndUserIdAndDeletedFalse(
                     creditCardEntity.getId(),
                     userId
             )).thenReturn(Optional.empty());
@@ -131,7 +131,7 @@ public class CreditCardServiceTests {
                 creditCardService.view(creditCardEntity.getId());
             });
 
-            verify(creditCardRepository, times(1)).findByIdAndUserId(
+            verify(creditCardRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
                     creditCardEntity.getId(),
                     userId
             );
@@ -147,7 +147,7 @@ public class CreditCardServiceTests {
                     mockAccount
             );
 
-            when(creditCardRepository.findByIdAndUserId(
+            when(creditCardRepository.findByIdAndUserIdAndDeletedFalse(
                     creditCardEntity.getId(),
                     userId
             )).thenReturn(Optional.of(creditCardEntity));
@@ -157,7 +157,7 @@ public class CreditCardServiceTests {
             assertEquals(expectedResponse.id(), response.id());
             assertEquals(expectedResponse.name(), response.name());
 
-            verify(creditCardRepository, times(1)).findByIdAndUserId(
+            verify(creditCardRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
                     creditCardEntity.getId(),
                     userId
             );
@@ -245,7 +245,7 @@ public class CreditCardServiceTests {
                     null
             );
 
-            when(creditCardRepository.findByIdAndUserId(
+            when(creditCardRepository.findByIdAndUserIdAndDeletedFalse(
                     creditCardEntity.getId(),
                     userId
             )).thenReturn(Optional.empty());
@@ -254,7 +254,7 @@ public class CreditCardServiceTests {
                 creditCardService.update(creditCardEntity.getId(), updateCreditCardDTO);
             });
 
-            verify(creditCardRepository, times(1)).findByIdAndUserId(
+            verify(creditCardRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
                     creditCardEntity.getId(),
                     userId
             );
@@ -276,7 +276,7 @@ public class CreditCardServiceTests {
                     null
             );
 
-            when(creditCardRepository.findByIdAndUserId(
+            when(creditCardRepository.findByIdAndUserIdAndDeletedFalse(
                     creditCardEntity.getId(),
                     userId
             )).thenReturn(Optional.of(creditCardEntity));
@@ -310,7 +310,7 @@ public class CreditCardServiceTests {
             );
 
             when(accountClientCacheService.getInternalAccountById(creditCardEntity.getAccountId())).thenReturn(mockAccount);
-            when(creditCardRepository.findByIdAndUserId(
+            when(creditCardRepository.findByIdAndUserIdAndDeletedFalse(
                     creditCardEntity.getId(),
                     userId
             )).thenReturn(Optional.of(creditCardEntity));
@@ -327,7 +327,7 @@ public class CreditCardServiceTests {
             assertEquals(updateCreditCardDTO.name(), response.name());
             assertEquals(updateCreditCardDTO.bank(), response.bank());
 
-            verify(creditCardRepository, times(1)).findByIdAndUserId(
+            verify(creditCardRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
                     creditCardEntity.getId(),
                     userId
             );
@@ -342,7 +342,7 @@ public class CreditCardServiceTests {
         void shouldReturnCardNotFoundError() {
             UUID cardNotFoundId = UUID.randomUUID();
 
-            when(creditCardRepository.findByIdAndUserId(
+            when(creditCardRepository.findByIdAndUserIdAndDeletedFalse(
                     cardNotFoundId,
                     userId
             )).thenReturn(Optional.empty());
@@ -351,7 +351,7 @@ public class CreditCardServiceTests {
                 creditCardService.delete(cardNotFoundId);
             });
 
-            verify(creditCardRepository, times(1)).findByIdAndUserId(
+            verify(creditCardRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
                     cardNotFoundId,
                     userId
             );
@@ -362,14 +362,14 @@ public class CreditCardServiceTests {
             CreateCreditCardDTO creditCardDTO = CreditCardTestDataBuilder.createCardDTO();
             CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO);
 
-            when(creditCardRepository.findByIdAndUserId(
+            when(creditCardRepository.findByIdAndUserIdAndDeletedFalse(
                     creditCardEntity.getId(),
                     userId
             )).thenReturn(Optional.of(creditCardEntity));
 
             creditCardService.delete(creditCardEntity.getId());
 
-            verify(creditCardRepository, times(1)).findByIdAndUserId(
+            verify(creditCardRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
                     creditCardEntity.getId(),
                     userId
             );

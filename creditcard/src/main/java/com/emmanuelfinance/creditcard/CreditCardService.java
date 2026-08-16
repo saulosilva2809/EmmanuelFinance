@@ -5,6 +5,8 @@ import com.emmanuelfinance.creditcard.dto.CreditCardFiltersDTO;
 import com.emmanuelfinance.creditcard.dto.ResponseCreditCardDTO;
 import com.emmanuelfinance.creditcard.dto.UpdateCreditCardDTO;
 import com.emmanuelfinance.creditcard.exceptions.CreditCardNotFound;
+import com.emmanuelfinance.creditcard.exceptions.RestoreCreditCardError;
+import com.emmanuelfinance.shared.annotation.WithDeletedFilter;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
@@ -49,6 +51,14 @@ public class CreditCardService {
 
     private CreditCard getCreditCardById(UUID cardId) {
         UUID userId = securityUtils.getCurrentUserId();
+        CreditCard creditCard = creditCardRepository.findByIdAndUserIdAndDeletedFalse(cardId, userId)
+                .orElseThrow(() -> new CreditCardNotFound());
+
+        return creditCard;
+    }
+
+    private CreditCard getCreditCardByIdIncludingDeleted(UUID cardId) {
+        UUID userId = securityUtils.getCurrentUserId();
         CreditCard creditCard = creditCardRepository.findByIdAndUserId(cardId, userId)
                 .orElseThrow(() -> new CreditCardNotFound());
 
@@ -80,10 +90,26 @@ public class CreditCardService {
         return cardAsDTO(creditCard);
     }
 
+    @WithDeletedFilter()
     public PageResponseDTO<ResponseCreditCardDTO> list(CreditCardFiltersDTO filters, Pageable pageable) {
         UUID userId = securityUtils.getCurrentUserId();
 
-        Specification<CreditCard> specification = CreditCardSpecification.withFilter(filters, userId);
+        Specification<CreditCard> specification = CreditCardSpecification.withFilter(filters, userId, false);
+        Page<CreditCard> page = creditCardRepository.findAll(
+                specification,
+                pageable
+        );
+
+        Page<ResponseCreditCardDTO> dtoPage = page.map(this::cardAsDTO);
+
+        return PageResponseDTO.from(dtoPage);
+    }
+
+    @WithDeletedFilter(enabled = false)
+    public PageResponseDTO<ResponseCreditCardDTO> listDeleted(CreditCardFiltersDTO filters, Pageable pageable) {
+        UUID userId = securityUtils.getCurrentUserId();
+
+        Specification<CreditCard> specification = CreditCardSpecification.withFilter(filters, userId, true);
         Page<CreditCard> page = creditCardRepository.findAll(
                 specification,
                 pageable
@@ -110,5 +136,16 @@ public class CreditCardService {
     public void delete(UUID cardId) {
         CreditCard creditCard = getCreditCardById(cardId);
         creditCardRepository.delete(creditCard);
+    }
+
+    public void restore(UUID cardId) {
+        CreditCard creditCard = getCreditCardByIdIncludingDeleted(cardId);
+
+        if (!creditCard.isDeleted()) {
+            throw new RestoreCreditCardError();
+        }
+
+        creditCard.setDeleted(false);
+        creditCardRepository.save(creditCard);
     }
 }
