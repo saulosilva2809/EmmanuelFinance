@@ -48,6 +48,19 @@ public class CreditCardController {
         return ResponseEntity.ok().body(response);
     }
 
+    @GetMapping("/deleted")
+    public ResponseEntity<PageResponseDTO<ResponseCreditCardDTO>> listDeleted(
+            CreditCardFiltersDTO filters,
+            @PageableDefault(
+                    sort = "createdAt",
+                    direction = Sort.Direction.DESC
+            )
+            Pageable pageable
+    ) {
+        PageResponseDTO<ResponseCreditCardDTO> response = creditCardService.listDeleted(filters, pageable);
+        return ResponseEntity.ok().body(response);
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<ResponseCreditCardDTO> update(
             @PathVariable UUID id,
@@ -60,6 +73,12 @@ public class CreditCardController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         creditCardService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/restore/{id}")
+    public ResponseEntity<Void> restore(@PathVariable UUID id) {
+        creditCardService.restore(id);
         return ResponseEntity.noContent().build();
     }
 }
