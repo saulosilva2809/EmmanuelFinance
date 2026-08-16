@@ -261,7 +261,6 @@ class CategoryServiceTests {
 
         @Test
         void shouldUpdateACategorySuccessfully() {
-
             CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
             Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO);
             AccountSummaryDTO mockAccount = CategoryTestDataBuilder.accountSummaryDTO(categoryDTO.accountId());
