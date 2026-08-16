@@ -37,6 +37,7 @@ public class CreditCardService {
                 data.getId(),
                 account,
                 data.getName(),
+                data.getBank(),
                 data.getCreditLimit(),
                 data.getClosingDay(),
                 data.getDueDay(),
