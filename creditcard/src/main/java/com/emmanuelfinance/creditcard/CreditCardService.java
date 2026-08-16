@@ -42,7 +42,8 @@ public class CreditCardService {
                 data.getClosingDay(),
                 data.getDueDay(),
                 data.getCreatedAt(),
-                data.getUpdatedAt()
+                data.getUpdatedAt(),
+                data.isDeleted()
         );
     }
 

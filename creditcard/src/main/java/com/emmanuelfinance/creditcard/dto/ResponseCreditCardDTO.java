@@ -15,5 +15,6 @@ public record ResponseCreditCardDTO(
         Integer closingDay,
         Integer dueDay,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        Boolean deleted
 ) {}

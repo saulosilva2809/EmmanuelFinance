@@ -46,7 +46,8 @@ public class CreditCardTestDataBuilder {
                 creditCard.getClosingDay(),
                 creditCard.getDueDay(),
                 creditCard.getCreatedAt(),
-                creditCard.getUpdatedAt()
+                creditCard.getUpdatedAt(),
+                creditCard.isDeleted()
         );
     }
 
