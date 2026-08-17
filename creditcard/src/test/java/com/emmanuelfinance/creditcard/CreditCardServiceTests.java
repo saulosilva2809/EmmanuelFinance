@@ -10,6 +10,7 @@ import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 import com.emmanuelfinance.shared.modules.account.exceptions.AccountNotFound;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -91,7 +92,7 @@ public class CreditCardServiceTests {
         void shouldCreateTheCardSuccessfully() {
             CreateCreditCardDTO creditCardDTO = CreditCardTestDataBuilder.createCardDTO();
             CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO);
-            AccountSummaryDTO mockAccount = CreditCardTestDataBuilder.accountSummaryDTO(creditCardEntity.getAccountId());
+            AccountSummaryInternalDTO mockAccount = CreditCardTestDataBuilder.accountSummaryDTO(creditCardEntity.getAccountId());
             ResponseCreditCardDTO expectedResponse = CreditCardTestDataBuilder.responseCategoryDTO(
                     creditCardEntity,
                     mockAccount
@@ -141,7 +142,7 @@ public class CreditCardServiceTests {
         void shouldReturnTheCardSuccessfully() {
             CreateCreditCardDTO creditCardDTO = CreditCardTestDataBuilder.createCardDTO();
             CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO);
-            AccountSummaryDTO mockAccount = CreditCardTestDataBuilder.accountSummaryDTO(creditCardEntity.getAccountId());
+            AccountSummaryInternalDTO mockAccount = CreditCardTestDataBuilder.accountSummaryDTO(creditCardEntity.getAccountId());
             ResponseCreditCardDTO expectedResponse = CreditCardTestDataBuilder.responseCategoryDTO(
                     creditCardEntity,
                     mockAccount
@@ -195,7 +196,7 @@ public class CreditCardServiceTests {
         void shouldReturnTheCardSuccessfully() {
             CreateCreditCardDTO creditCardDTO = CreditCardTestDataBuilder.createCardDTO();
             CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO);
-            AccountSummaryDTO mockAccount = CreditCardTestDataBuilder.accountSummaryDTO(creditCardEntity.getAccountId());
+            AccountSummaryInternalDTO mockAccount = CreditCardTestDataBuilder.accountSummaryDTO(creditCardEntity.getAccountId());
             ResponseCreditCardDTO expectedResponse = CreditCardTestDataBuilder.responseCategoryDTO(
                     creditCardEntity,
                     mockAccount
@@ -297,8 +298,7 @@ public class CreditCardServiceTests {
         void shouldUpdateAnAccountSuccessfully() {
             CreateCreditCardDTO creditCardDTO = CreditCardTestDataBuilder.createCardDTO();
             CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO);
-            AccountSummaryDTO mockAccount = CreditCardTestDataBuilder.accountSummaryDTO(creditCardEntity.getAccountId());
-
+            AccountSummaryInternalDTO mockAccount = CreditCardTestDataBuilder.accountSummaryDTO(creditCardEntity.getAccountId());
 
             UpdateCreditCardDTO updateCreditCardDTO = new UpdateCreditCardDTO(
                     null,

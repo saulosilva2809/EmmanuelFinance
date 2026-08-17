@@ -3,7 +3,9 @@ package com.emmanuelfinance.category;
 import com.emmanuelfinance.category.dto.CreateCategoryDTO;
 import com.emmanuelfinance.category.dto.ResponseCategoryDTO;
 import com.emmanuelfinance.category.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -29,7 +31,13 @@ public class CategoryTestDataBuilder {
         return category;
     }
 
-    public static ResponseCategoryDTO responseCategoryDTO(Category category, AccountSummaryDTO accountSummary) {
+    public static ResponseCategoryDTO responseCategoryDTO(Category category, AccountSummaryInternalDTO accountSummaryInternal) {
+        AccountSummaryDTO accountSummary = new AccountSummaryDTO(
+                accountSummaryInternal.id(),
+                accountSummaryInternal.name(),
+                accountSummaryInternal.deleted()
+        );
+
         return new ResponseCategoryDTO(
                 category.getId(),
                 accountSummary,
@@ -41,10 +49,11 @@ public class CategoryTestDataBuilder {
         );
     }
 
-    public static AccountSummaryDTO accountSummaryDTO(UUID accountId) {
-        return new AccountSummaryDTO(
+    public static AccountSummaryInternalDTO accountSummaryDTO(UUID accountId) {
+        return new AccountSummaryInternalDTO(
                 accountId,
                 "Conta Corrente",
+                BanksEnum.C6_BANK,
                 false
         );
     }
