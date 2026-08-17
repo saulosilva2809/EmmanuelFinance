@@ -1,6 +1,6 @@
 package com.emmanuelfinance.creditcard.dto;
 
-import com.emmanuelfinance.creditcard.enums.BanksEnum;
+import com.emmanuelfinance.shared.enums.BanksEnum;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;

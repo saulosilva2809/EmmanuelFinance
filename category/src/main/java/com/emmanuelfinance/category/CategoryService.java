@@ -50,7 +50,7 @@ public class CategoryService {
 
     private ResponseCategoryDTO categoryAsDTO(Category data) {
         AccountSummaryDTO account = accountClientCacheService
-                .getInternalAccountById(data.getAccountId());
+                .getAccountSummaryById(data.getAccountId());
 
         return new ResponseCategoryDTO(
                 data.getId(),
