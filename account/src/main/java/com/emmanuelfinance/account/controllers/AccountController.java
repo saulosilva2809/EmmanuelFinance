@@ -3,6 +3,7 @@ package com.emmanuelfinance.account.controllers;
 import com.emmanuelfinance.account.AccountService;
 import com.emmanuelfinance.account.dto.*;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +34,12 @@ public class AccountController {
     public ResponseEntity<ResponseAccountDTO> view(@PathVariable UUID id) {
         ResponseAccountDTO response = accountService.view(id);
         return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @GetMapping("summary/{id}")
+    public ResponseEntity<AccountSummaryDTO> summaryAccount(@PathVariable UUID id) {
+        AccountSummaryDTO response = accountService.getAccountSummary(id);
+        return ResponseEntity.ok().body(response);
     }
 
     @GetMapping()
