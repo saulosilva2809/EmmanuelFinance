@@ -1,0 +1,2 @@
+ALTER TABLE account
+    ADD COLUMN bank VARCHAR(50) NOT NULL;

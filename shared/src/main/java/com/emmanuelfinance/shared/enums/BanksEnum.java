@@ -1,4 +1,4 @@
-package com.emmanuelfinance.creditcard.enums;
+package com.emmanuelfinance.shared.enums;
 
 public enum BanksEnum {
     NUBANK,
