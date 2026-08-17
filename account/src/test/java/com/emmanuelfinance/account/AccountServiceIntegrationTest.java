@@ -6,6 +6,7 @@ import com.emmanuelfinance.account.dto.UpdateAccountDTO;
 import com.emmanuelfinance.account.enums.TypeEnum;
 import com.emmanuelfinance.account.kafka.producer.AccountEventPublisher;
 import com.emmanuelfinance.shared.dto.UserSummaryDTO;
+import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -64,6 +65,7 @@ class AccountServiceIntegrationTest {
         account.setUserId(userId);
         account.setName("Conta Antiga");
         account.setType(TypeEnum.CHECKING);
+        account.setBank(BanksEnum.C6_BANK);
         account.setInitialBalance(new BigDecimal("1000.00"));
         account.setCurrentBalance(new BigDecimal("1000.00"));
 
@@ -79,6 +81,7 @@ class AccountServiceIntegrationTest {
         CreateAccountDTO accountDTO = new CreateAccountDTO(
                 "Conta Itaú",
                 TypeEnum.CHECKING,
+                BanksEnum.C6_BANK,
                 new BigDecimal(BigInteger.ZERO)
         );
 

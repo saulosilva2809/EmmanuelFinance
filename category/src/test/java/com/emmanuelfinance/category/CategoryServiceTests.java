@@ -11,6 +11,7 @@ import com.emmanuelfinance.shared.modules.account.AccountCache;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 import com.emmanuelfinance.shared.modules.account.exceptions.AccountNotFound;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -82,7 +83,7 @@ class CategoryServiceTests {
         void shouldCreateACategorySuccessfully() {
             CreateCategoryDTO inputDto = CategoryTestDataBuilder.createCategoryDTO();
             Category categoryEntity = CategoryTestDataBuilder.categoryEntity(inputDto);
-            AccountSummaryDTO mockAccountSummary = CategoryTestDataBuilder.accountSummaryDTO(inputDto.accountId());
+            AccountSummaryInternalDTO mockAccountSummary = CategoryTestDataBuilder.accountSummaryDTO(inputDto.accountId());
             ResponseCategoryDTO expectedResponse = CategoryTestDataBuilder.responseCategoryDTO(categoryEntity, mockAccountSummary);
 
             doNothing()
@@ -153,7 +154,7 @@ class CategoryServiceTests {
         void shouldReturnACategorySuccessfully() {
             CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
             Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO);
-            AccountSummaryDTO mockAccount = CategoryTestDataBuilder.accountSummaryDTO(categoryDTO.accountId());
+            AccountSummaryInternalDTO mockAccount = CategoryTestDataBuilder.accountSummaryDTO(categoryDTO.accountId());
             ResponseCategoryDTO expectedResponse = CategoryTestDataBuilder.responseCategoryDTO(
                     categoryEntity,
                     mockAccount
@@ -207,7 +208,7 @@ class CategoryServiceTests {
         void shouldListTheAccountsSuccessfully() {
             CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
             Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO);
-            AccountSummaryDTO mockAccount = CategoryTestDataBuilder.accountSummaryDTO(categoryDTO.accountId());
+            AccountSummaryInternalDTO mockAccount = CategoryTestDataBuilder.accountSummaryDTO(categoryDTO.accountId());
 
             CategoryFiltersDTO filters = new CategoryFiltersDTO(
                     categoryDTO.accountId(),
@@ -263,7 +264,7 @@ class CategoryServiceTests {
         void shouldUpdateACategorySuccessfully() {
             CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
             Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO);
-            AccountSummaryDTO mockAccount = CategoryTestDataBuilder.accountSummaryDTO(categoryDTO.accountId());
+            AccountSummaryInternalDTO mockAccount = CategoryTestDataBuilder.accountSummaryDTO(categoryDTO.accountId());
 
             UpdateCategoryDTO updateDTO = new UpdateCategoryDTO(
                     null,
@@ -295,7 +296,7 @@ class CategoryServiceTests {
         void shouldUpdateAccountIdWhenOwnedByUser() {
             CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
             Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO);
-            AccountSummaryDTO mockAccount = CategoryTestDataBuilder.accountSummaryDTO(categoryDTO.accountId());
+            AccountSummaryInternalDTO mockAccount = CategoryTestDataBuilder.accountSummaryDTO(categoryDTO.accountId());
             UUID newAccountId = UUID.randomUUID();
 
             UpdateCategoryDTO updateDTO = new UpdateCategoryDTO(

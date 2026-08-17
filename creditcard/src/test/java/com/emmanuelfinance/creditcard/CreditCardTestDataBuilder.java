@@ -4,6 +4,7 @@ import com.emmanuelfinance.creditcard.dto.CreateCreditCardDTO;
 import com.emmanuelfinance.creditcard.dto.ResponseCreditCardDTO;
 import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -36,7 +37,13 @@ public class CreditCardTestDataBuilder {
         return creditCard;
     }
 
-    public static ResponseCreditCardDTO responseCategoryDTO(CreditCard creditCard, AccountSummaryDTO accountSummary) {
+    public static ResponseCreditCardDTO responseCategoryDTO(CreditCard creditCard, AccountSummaryInternalDTO accountSummaryInternal) {
+        AccountSummaryDTO accountSummary = new AccountSummaryDTO(
+                accountSummaryInternal.id(),
+                accountSummaryInternal.name(),
+                accountSummaryInternal.deleted()
+        );
+
         return new ResponseCreditCardDTO(
                 creditCard.getId(),
                 accountSummary,
@@ -51,10 +58,11 @@ public class CreditCardTestDataBuilder {
         );
     }
 
-    public static AccountSummaryDTO accountSummaryDTO(UUID accountId) {
-        return new AccountSummaryDTO(
+    public static AccountSummaryInternalDTO accountSummaryDTO(UUID accountId) {
+        return new AccountSummaryInternalDTO(
                 accountId,
                 "Conta Corrente",
+                BanksEnum.C6_BANK,
                 false
         );
     }

@@ -7,6 +7,7 @@ import com.emmanuelfinance.account.dto.UpdateAccountDTO;
 import com.emmanuelfinance.account.enums.TypeEnum;
 import com.emmanuelfinance.account.exceptions.AccountNotFound;
 import com.emmanuelfinance.account.kafka.producer.AccountEventPublisher;
+import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.modules.account.AccountCache;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
@@ -81,6 +82,7 @@ public class AccountServiceTest {
             CreateAccountDTO createDTO = new CreateAccountDTO(
                     "Conta Itaú",
                     TypeEnum.CHECKING,
+                    BanksEnum.C6_BANK,
                     new BigDecimal("1000.00")
             );
 
