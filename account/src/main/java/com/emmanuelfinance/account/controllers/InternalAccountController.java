@@ -2,6 +2,7 @@ package com.emmanuelfinance.account.controllers;
 
 import com.emmanuelfinance.account.AccountService;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,8 +17,8 @@ public class InternalAccountController {
     private final AccountService accountService;
 
     @GetMapping("summary/{id}")
-    public ResponseEntity<AccountSummaryDTO> summaryAccount(@PathVariable UUID id) {
-        AccountSummaryDTO response = accountService.getAccountSummary(id);
+    public ResponseEntity<AccountSummaryInternalDTO> summaryAccount(@PathVariable UUID id) {
+        AccountSummaryInternalDTO response = accountService.getAccountSummaryInternal(id);
         return ResponseEntity.ok().body(response);
     }
 

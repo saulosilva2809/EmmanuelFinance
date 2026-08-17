@@ -5,6 +5,7 @@ import com.emmanuelfinance.account.exceptions.AccountNotFound;
 import com.emmanuelfinance.account.exceptions.RestoreAccount;
 import com.emmanuelfinance.shared.annotation.WithDeletedFilter;
 import com.emmanuelfinance.shared.modules.account.AccountCache;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
 import com.emmanuelfinance.account.kafka.producer.AccountEventPublisher;
 import com.emmanuelfinance.shared.modules.account.kafka.account.enums.StatusEventEnum;
@@ -41,6 +42,7 @@ public class AccountService {
                 userData,
                 data.getName(),
                 data.getType(),
+                data.getBank(),
                 data.getInitialBalance(),
                 data.getCurrentBalance(),
                 data.getCreatedAt(),
@@ -81,6 +83,7 @@ public class AccountService {
         newAccount.setUserId(userId);
         newAccount.setName(data.name());
         newAccount.setType(data.type());
+        newAccount.setBank(data.bank());
         newAccount.setInitialBalance(data.initialBalance());
         newAccount.setCurrentBalance(data.initialBalance());
 
@@ -102,10 +105,20 @@ public class AccountService {
     }
 
     public AccountSummaryDTO getAccountSummary(UUID id) {
-        UUID userId = securityUtils.getCurrentUserId();
         Account account = getAccountByIdIncludingDeleted(id);
 
         return new AccountSummaryDTO(account.getId(), account.getName(), account.isDeleted());
+    }
+
+    public AccountSummaryInternalDTO getAccountSummaryInternal(UUID id) {
+        Account account = getAccountByIdIncludingDeleted(id);
+
+        return new AccountSummaryInternalDTO(
+                account.getId(),
+                account.getName(),
+                account.getBank(),
+                account.isDeleted()
+        );
     }
 
     @WithDeletedFilter(enabled = true)

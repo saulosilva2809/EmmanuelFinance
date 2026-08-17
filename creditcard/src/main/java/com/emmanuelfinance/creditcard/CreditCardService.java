@@ -4,13 +4,16 @@ import com.emmanuelfinance.creditcard.dto.CreateCreditCardDTO;
 import com.emmanuelfinance.creditcard.dto.CreditCardFiltersDTO;
 import com.emmanuelfinance.creditcard.dto.ResponseCreditCardDTO;
 import com.emmanuelfinance.creditcard.dto.UpdateCreditCardDTO;
+import com.emmanuelfinance.creditcard.exceptions.CheckCardAndAccountBankError;
 import com.emmanuelfinance.creditcard.exceptions.CreditCardNotFound;
 import com.emmanuelfinance.creditcard.exceptions.RestoreCreditCardError;
 import com.emmanuelfinance.shared.annotation.WithDeletedFilter;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
+import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -33,7 +36,7 @@ public class CreditCardService {
 
     private ResponseCreditCardDTO cardAsDTO(CreditCard data) {
         AccountSummaryDTO account = accountClientCacheService
-                .getInternalAccountById(data.getAccountId());
+                .getAccountSummaryById(data.getAccountId());
 
         return new ResponseCreditCardDTO(
                 data.getId(),
@@ -65,9 +68,19 @@ public class CreditCardService {
         return creditCard;
     }
 
+    private void checkCardAndAccountBank(BanksEnum cardBank, UUID accountId) {
+        AccountSummaryInternalDTO account = accountClientCacheService.getInternalAccountById(accountId);
+
+        if (!cardBank.equals(account.bank())) {
+            throw new CheckCardAndAccountBankError();
+        }
+    }
+
     public ResponseCreditCardDTO create(CreateCreditCardDTO data) {
         UUID userId = securityUtils.getCurrentUserId();
+
         accountOwnershipValidator.validate(data.accountId());
+        checkCardAndAccountBank(data.bank(), data.accountId());
 
         CreditCard creditCard = new CreditCard();
 

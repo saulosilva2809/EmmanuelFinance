@@ -2,6 +2,7 @@ package com.emmanuelfinance.account.dto;
 
 import com.emmanuelfinance.account.enums.TypeEnum;
 import com.emmanuelfinance.shared.dto.UserSummaryDTO;
+import com.emmanuelfinance.shared.enums.BanksEnum;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -12,6 +13,7 @@ public record ResponseAccountDTO (
         UserSummaryDTO user,
         String name,
         TypeEnum type,
+        BanksEnum bank,
         BigDecimal initialBalance,
         BigDecimal currentBalance,
         LocalDateTime createdAt,

@@ -1,6 +1,7 @@
 package com.emmanuelfinance.account;
 
 import com.emmanuelfinance.shared.entity.BaseEntity;
+import  com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.account.enums.TypeEnum;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -8,13 +9,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.math.BigDecimal;
-import java.util.UUID;
 
 @Entity
 @Table(name = "account")
@@ -33,6 +31,10 @@ public class Account extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
     private TypeEnum type;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private BanksEnum bank;
 
     @Column(name = "initial_balance", nullable = false)
     private BigDecimal initialBalance;

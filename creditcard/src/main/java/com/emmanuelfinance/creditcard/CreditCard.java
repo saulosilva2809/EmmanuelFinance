@@ -1,6 +1,6 @@
 package com.emmanuelfinance.creditcard;
 
-import com.emmanuelfinance.creditcard.enums.BanksEnum;
+import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

@@ -1,6 +1,7 @@
 package com.emmanuelfinance.shared.modules.account;
 
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -18,8 +19,14 @@ public class AccountClientCacheService {
     private final AccountClient accountClient;
 
     @Cacheable(value = "accounts", key = "#id")
-    public AccountSummaryDTO getInternalAccountById(UUID id) {
+    public AccountSummaryDTO getAccountSummaryById(UUID id) {
         log.info("Buscando conta {} via account-server (cache miss)", id);
         return accountClient.getAccountSummary(id);
+    }
+
+    @Cacheable(value = "accounts-internal", key = "#id")
+    public AccountSummaryInternalDTO getInternalAccountById(UUID id) {
+        log.info("Buscando conta {} via account-server (cache miss)", id);
+        return accountClient.getAccountSummaryInternal(id);
     }
 }
