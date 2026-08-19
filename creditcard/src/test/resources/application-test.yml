@@ -1,5 +1,6 @@
 spring:
   datasource:
+    # Mantive os parâmetros DB_CLOSE_DELAY=-1 e DB_CLOSE_ON_EXIT=FALSE que ajudam o H2 a manter o banco vivo entre as operações dos testes
     url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
     username: sa
@@ -16,9 +17,6 @@ spring:
 
   cache:
     type: simple
-
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVER}
 
   security:
     oauth2:

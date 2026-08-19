@@ -20,23 +20,21 @@ public class CategoryTestDataBuilder {
         );
     }
 
-    public static Category categoryEntity(CreateCategoryDTO inputDto) {
+    public static Category categoryEntity(CreateCategoryDTO inputDto, UUID userId, boolean isDeleted) {
         Category category = new Category();
         category.setId(UUID.randomUUID());
         category.setAccountId(inputDto.accountId());
+        category.setUserId(userId);
         category.setName(inputDto.name());
         category.setType(inputDto.type());
         category.setCreatedAt(LocalDateTime.now());
         category.setUpdatedAt(null);
+        category.setDeleted(isDeleted);
         return category;
     }
 
     public static ResponseCategoryDTO responseCategoryDTO(Category category, AccountSummaryInternalDTO accountSummaryInternal) {
-        AccountSummaryDTO accountSummary = new AccountSummaryDTO(
-                accountSummaryInternal.id(),
-                accountSummaryInternal.name(),
-                accountSummaryInternal.deleted()
-        );
+        AccountSummaryDTO accountSummary = accountSummaryDTO(accountSummaryInternal);
 
         return new ResponseCategoryDTO(
                 category.getId(),
@@ -49,12 +47,21 @@ public class CategoryTestDataBuilder {
         );
     }
 
-    public static AccountSummaryInternalDTO accountSummaryDTO(UUID accountId) {
+    public static AccountSummaryInternalDTO accountSummaryInternalDTO(UUID accountId) {
         return new AccountSummaryInternalDTO(
                 accountId,
                 "Conta Corrente",
                 BanksEnum.C6_BANK,
                 false
         );
+    }
+
+    public static AccountSummaryDTO accountSummaryDTO(AccountSummaryInternalDTO accountSummaryInternal) {
+        return new AccountSummaryDTO(
+                accountSummaryInternal.id(),
+                accountSummaryInternal.name(),
+                accountSummaryInternal.deleted()
+        );
+
     }
 }

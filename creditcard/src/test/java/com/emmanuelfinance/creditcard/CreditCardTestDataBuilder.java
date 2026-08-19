@@ -15,15 +15,15 @@ public class CreditCardTestDataBuilder {
     public static CreateCreditCardDTO createCardDTO() {
         return new CreateCreditCardDTO(
                 UUID.randomUUID(),
-                "Cartão de Crédito Nubank",
-                BanksEnum.NUBANK,
+                "Cartão de Crédito C6",
+                BanksEnum.C6_BANK,
                 new BigDecimal(10000),
                 17,
                 24
         );
     }
 
-    public static CreditCard createEntity(CreateCreditCardDTO inputDto) {
+    public static CreditCard createEntity(CreateCreditCardDTO inputDto, boolean deleted) {
         CreditCard creditCard = new CreditCard();
         creditCard.setId(UUID.randomUUID());
         creditCard.setAccountId(inputDto.accountId());
@@ -34,15 +34,12 @@ public class CreditCardTestDataBuilder {
         creditCard.setDueDay(inputDto.dueDay());
         creditCard.setCreatedAt(LocalDateTime.now());
         creditCard.setUpdatedAt(null);
+        creditCard.setDeleted(deleted);
         return creditCard;
     }
 
     public static ResponseCreditCardDTO responseCategoryDTO(CreditCard creditCard, AccountSummaryInternalDTO accountSummaryInternal) {
-        AccountSummaryDTO accountSummary = new AccountSummaryDTO(
-                accountSummaryInternal.id(),
-                accountSummaryInternal.name(),
-                accountSummaryInternal.deleted()
-        );
+        AccountSummaryDTO accountSummary = accountSummaryDTO(accountSummaryInternal);
 
         return new ResponseCreditCardDTO(
                 creditCard.getId(),
@@ -58,7 +55,15 @@ public class CreditCardTestDataBuilder {
         );
     }
 
-    public static AccountSummaryInternalDTO accountSummaryDTO(UUID accountId) {
+    public static AccountSummaryDTO accountSummaryDTO(AccountSummaryInternalDTO internalDTO) {
+        return new AccountSummaryDTO(
+                internalDTO.id(),
+                internalDTO.name(),
+                internalDTO.deleted()
+        );
+    }
+
+    public static AccountSummaryInternalDTO accountSummaryInternalDTO(UUID accountId) {
         return new AccountSummaryInternalDTO(
                 accountId,
                 "Conta Corrente",

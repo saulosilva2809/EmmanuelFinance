@@ -4,6 +4,8 @@ import com.emmanuelfinance.creditcard.dto.CreateCreditCardDTO;
 import com.emmanuelfinance.creditcard.dto.CreditCardFiltersDTO;
 import com.emmanuelfinance.creditcard.dto.ResponseCreditCardDTO;
 import com.emmanuelfinance.creditcard.dto.UpdateCreditCardDTO;
+import com.emmanuelfinance.creditcard.exceptions.CheckCardAndAccountBankError;
+import com.emmanuelfinance.creditcard.exceptions.RestoreCreditCardError;
 import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.creditcard.exceptions.CreditCardNotFound;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
@@ -89,19 +91,48 @@ public class CreditCardServiceTests {
         }
 
         @Test
+        void shouldGiveErrorWhenTryingToCreateCardWithBankDifferentFromAccount() {
+            CreateCreditCardDTO creditCardDTO = new CreateCreditCardDTO(
+                    UUID.randomUUID(),
+                    "Cartão de Crédito C6",
+                    BanksEnum.NUBANK,
+                    new BigDecimal(10000),
+                    17,
+                    24
+            );
+            AccountSummaryInternalDTO mockAccountInternal = CreditCardTestDataBuilder.accountSummaryInternalDTO(creditCardDTO.accountId());
+
+            doNothing()
+                    .when(accountOwnershipValidator)
+                    .validate(creditCardDTO.accountId());
+            when(accountClientCacheService.getInternalAccountById(creditCardDTO.accountId())).thenReturn(mockAccountInternal);
+
+            assertThrows(CheckCardAndAccountBankError.class, () -> {
+                creditCardService.create(creditCardDTO);
+            });
+
+            verify(accountOwnershipValidator, times(1)).validate(
+                    creditCardDTO.accountId()
+            );
+            verify(creditCardRepository, never()).save(any(CreditCard.class));
+        }
+
+        @Test
         void shouldCreateTheCardSuccessfully() {
             CreateCreditCardDTO creditCardDTO = CreditCardTestDataBuilder.createCardDTO();
-            CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO);
-            AccountSummaryInternalDTO mockAccount = CreditCardTestDataBuilder.accountSummaryDTO(creditCardEntity.getAccountId());
+            CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO, false);
+            AccountSummaryInternalDTO mockAccountInternal = CreditCardTestDataBuilder.accountSummaryInternalDTO(creditCardEntity.getAccountId());
+            AccountSummaryDTO mockAccount = CreditCardTestDataBuilder.accountSummaryDTO(mockAccountInternal);
             ResponseCreditCardDTO expectedResponse = CreditCardTestDataBuilder.responseCategoryDTO(
                     creditCardEntity,
-                    mockAccount
+                    mockAccountInternal
             );
 
             doNothing()
                     .when(accountOwnershipValidator)
                     .validate(creditCardEntity.getAccountId());
-            when(accountClientCacheService.getInternalAccountById(creditCardEntity.getAccountId())).thenReturn(mockAccount);
+            when(accountClientCacheService.getInternalAccountById(creditCardEntity.getAccountId())).thenReturn(mockAccountInternal);
+            when(accountClientCacheService.getAccountSummaryById(creditCardEntity.getAccountId())).thenReturn(mockAccount);
             when(creditCardRepository.save(any(CreditCard.class))).thenReturn(creditCardEntity);
 
             ResponseCreditCardDTO response = creditCardService.create(creditCardDTO);
@@ -121,7 +152,27 @@ public class CreditCardServiceTests {
         @Test
         void shouldReturnCardNotFoundError() {
             CreateCreditCardDTO creditCardDTO = CreditCardTestDataBuilder.createCardDTO();
-            CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO);
+            CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO, false);
+
+            when(creditCardRepository.findByIdAndUserIdAndDeletedFalse(
+                    creditCardEntity.getId(),
+                    userId
+            )).thenReturn(Optional.empty());
+
+            assertThrows(CreditCardNotFound.class, () -> {
+                creditCardService.view(creditCardEntity.getId());
+            });
+
+            verify(creditCardRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
+                    creditCardEntity.getId(),
+                    userId
+            );
+        }
+
+        @Test
+        void shouldGiveErrorWhenTryingToViewADeletedCard() {
+            CreateCreditCardDTO creditCardDTO = CreditCardTestDataBuilder.createCardDTO();
+            CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO, true);
 
             when(creditCardRepository.findByIdAndUserIdAndDeletedFalse(
                     creditCardEntity.getId(),
@@ -141,8 +192,8 @@ public class CreditCardServiceTests {
         @Test
         void shouldReturnTheCardSuccessfully() {
             CreateCreditCardDTO creditCardDTO = CreditCardTestDataBuilder.createCardDTO();
-            CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO);
-            AccountSummaryInternalDTO mockAccount = CreditCardTestDataBuilder.accountSummaryDTO(creditCardEntity.getAccountId());
+            CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO, false);
+            AccountSummaryInternalDTO mockAccount = CreditCardTestDataBuilder.accountSummaryInternalDTO(creditCardEntity.getAccountId());
             ResponseCreditCardDTO expectedResponse = CreditCardTestDataBuilder.responseCategoryDTO(
                     creditCardEntity,
                     mockAccount
@@ -195,8 +246,8 @@ public class CreditCardServiceTests {
         @Test
         void shouldReturnTheCardSuccessfully() {
             CreateCreditCardDTO creditCardDTO = CreditCardTestDataBuilder.createCardDTO();
-            CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO);
-            AccountSummaryInternalDTO mockAccount = CreditCardTestDataBuilder.accountSummaryDTO(creditCardEntity.getAccountId());
+            CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO, false);
+            AccountSummaryInternalDTO mockAccount = CreditCardTestDataBuilder.accountSummaryInternalDTO(creditCardEntity.getAccountId());
             ResponseCreditCardDTO expectedResponse = CreditCardTestDataBuilder.responseCategoryDTO(
                     creditCardEntity,
                     mockAccount
@@ -235,7 +286,7 @@ public class CreditCardServiceTests {
         @Test
         void shouldReturnCardNotFoundError() {
             CreateCreditCardDTO creditCardDTO = CreditCardTestDataBuilder.createCardDTO();
-            CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO);
+            CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO, false);
 
             UpdateCreditCardDTO updateCreditCardDTO = new UpdateCreditCardDTO(
                     null,
@@ -262,11 +313,42 @@ public class CreditCardServiceTests {
         }
 
         @Test
+        void shouldFailWhenUpdatingADeletedCard() {
+            CreateCreditCardDTO creditCardDTO = CreditCardTestDataBuilder.createCardDTO();
+            CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(
+                    creditCardDTO,
+                    true
+            );
+
+            UpdateCreditCardDTO updateDTO = new UpdateCreditCardDTO(
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+            );
+            when(creditCardRepository.findByIdAndUserIdAndDeletedFalse(
+                    creditCardEntity.getId(),
+                    userId
+            )).thenReturn(Optional.empty());
+
+            assertThrows(CreditCardNotFound.class, () -> {
+                creditCardService.update(creditCardEntity.getId(), updateDTO);
+            });
+
+            verify(creditCardRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
+                    creditCardEntity.getId(),
+                    userId
+            );
+        }
+
+        @Test
         void shouldReturnAccountNotFoundError() {
             UUID accountNotFoundId = UUID.randomUUID();
 
             CreateCreditCardDTO creditCardDTO = CreditCardTestDataBuilder.createCardDTO();
-            CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO);
+            CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO, false);
 
             UpdateCreditCardDTO updateCreditCardDTO = new UpdateCreditCardDTO(
                     accountNotFoundId,
@@ -297,8 +379,9 @@ public class CreditCardServiceTests {
         @Test
         void shouldUpdateAnAccountSuccessfully() {
             CreateCreditCardDTO creditCardDTO = CreditCardTestDataBuilder.createCardDTO();
-            CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO);
-            AccountSummaryInternalDTO mockAccount = CreditCardTestDataBuilder.accountSummaryDTO(creditCardEntity.getAccountId());
+            CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO, false);
+            AccountSummaryInternalDTO mockAccountInternal = CreditCardTestDataBuilder.accountSummaryInternalDTO(creditCardEntity.getAccountId());
+            AccountSummaryDTO mockAccount = CreditCardTestDataBuilder.accountSummaryDTO(mockAccountInternal);
 
             UpdateCreditCardDTO updateCreditCardDTO = new UpdateCreditCardDTO(
                     null,
@@ -309,7 +392,7 @@ public class CreditCardServiceTests {
                     null
             );
 
-            when(accountClientCacheService.getInternalAccountById(creditCardEntity.getAccountId())).thenReturn(mockAccount);
+            when(accountClientCacheService.getAccountSummaryById(creditCardEntity.getAccountId())).thenReturn(mockAccount);
             when(creditCardRepository.findByIdAndUserIdAndDeletedFalse(
                     creditCardEntity.getId(),
                     userId
@@ -358,9 +441,32 @@ public class CreditCardServiceTests {
         }
 
         @Test
+        void shouldErrorWhenDeletingADeletedAccount() {
+            CreateCreditCardDTO creditCardDTO = CreditCardTestDataBuilder.createCardDTO();
+            CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(
+                    creditCardDTO,
+                    true
+            );
+
+            when(creditCardRepository.findByIdAndUserIdAndDeletedFalse(
+                    creditCardEntity.getId(),
+                    userId
+            )).thenReturn(Optional.empty());
+
+            assertThrows(CreditCardNotFound.class, () -> {
+                creditCardService.delete(creditCardEntity.getId());
+            });
+
+            verify(creditCardRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
+                    creditCardEntity.getId(),
+                    userId
+            );
+        }
+
+        @Test
         void shouldDeleteAnAccountSuccessfully() {
             CreateCreditCardDTO creditCardDTO = CreditCardTestDataBuilder.createCardDTO();
-            CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO);
+            CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(creditCardDTO, false);
 
             when(creditCardRepository.findByIdAndUserIdAndDeletedFalse(
                     creditCardEntity.getId(),
@@ -373,6 +479,77 @@ public class CreditCardServiceTests {
                     creditCardEntity.getId(),
                     userId
             );
+        }
+    }
+
+    @Nested
+    @DisplayName("Tests of restore method")
+    class RestoreMethodTests {
+
+        @Test
+        void shouldFailWhenTryingToRestoreNonexistentCard() {
+            UUID cardNotFoundId = UUID.randomUUID();
+
+            when(creditCardRepository.findByIdAndUserId(
+                    cardNotFoundId,
+                    userId
+            )).thenReturn(Optional.empty());
+
+            assertThrows(CreditCardNotFound.class, () -> {
+                creditCardService.restore(cardNotFoundId);
+            });
+
+            verify(creditCardRepository, times(1)).findByIdAndUserId(
+                    cardNotFoundId,
+                    userId
+            );
+            verify(creditCardRepository, never()).save(any(CreditCard.class));
+        }
+
+        @Test
+        void shouldGiveErrorWhenTryingToRestoreNonDeletedCategory() {
+            CreateCreditCardDTO cardDTO = CreditCardTestDataBuilder.createCardDTO();
+            CreditCard cardEntity = CreditCardTestDataBuilder.createEntity(
+                    cardDTO,
+                    false
+            );
+
+            when(creditCardRepository.findByIdAndUserId(
+                    cardEntity.getId(),
+                    userId
+            )).thenReturn(Optional.of(cardEntity));
+
+            assertThrows(RestoreCreditCardError.class, () -> {
+                creditCardService.restore(cardEntity.getId());
+            });
+
+            verify(creditCardRepository, times(1)).findByIdAndUserId(
+                    cardEntity.getId(),
+                    userId
+            );
+            verify(creditCardRepository, never()).save(any(CreditCard.class));
+        }
+
+        @Test
+        void shouldRestoreACategorySuccessfully() {
+            CreateCreditCardDTO cardDTO = CreditCardTestDataBuilder.createCardDTO();
+            CreditCard creditCardEntity = CreditCardTestDataBuilder.createEntity(
+                    cardDTO,
+                    true
+            );
+
+            when(creditCardRepository.findByIdAndUserId(
+                    creditCardEntity.getId(),
+                    userId
+            )).thenReturn(Optional.of(creditCardEntity));
+
+            creditCardService.restore(creditCardEntity.getId());
+
+            verify(creditCardRepository, times(1)).findByIdAndUserId(
+                    creditCardEntity.getId(),
+                    userId
+            );
+            verify(creditCardRepository, times(1)).save(any(CreditCard.class));
         }
     }
 }

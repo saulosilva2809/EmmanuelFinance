@@ -7,6 +7,7 @@ import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
 import com.emmanuelfinance.category.enums.TypeEnum;
 import com.emmanuelfinance.category.exceptions.CategoryAlreadyExists;
 import com.emmanuelfinance.category.exceptions.CategoryNotFound;
+import com.emmanuelfinance.category.exceptions.RestoreCategoryError;
 import com.emmanuelfinance.shared.modules.account.AccountCache;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
@@ -80,34 +81,6 @@ class CategoryServiceTests {
     class CreateMethodTests {
 
         @Test
-        void shouldCreateACategorySuccessfully() {
-            CreateCategoryDTO inputDto = CategoryTestDataBuilder.createCategoryDTO();
-            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(inputDto);
-            AccountSummaryInternalDTO mockAccountSummary = CategoryTestDataBuilder.accountSummaryDTO(inputDto.accountId());
-            ResponseCategoryDTO expectedResponse = CategoryTestDataBuilder.responseCategoryDTO(categoryEntity, mockAccountSummary);
-
-            doNothing()
-                    .when(accountOwnershipValidator)
-                    .validate(categoryEntity.getAccountId());
-
-            when(accountClientCacheService.getInternalAccountById(inputDto.accountId()))
-                    .thenReturn(mockAccountSummary);
-
-            when(categoryRepository.save(any(Category.class)))
-                    .thenReturn(categoryEntity);
-
-            ResponseCategoryDTO response = categoryService.create(inputDto);
-
-            assertNotNull(response);
-            assertEquals(expectedResponse.id(), response.id());
-            assertEquals(expectedResponse.name(), response.name());
-            assertEquals(mockAccountSummary, response.account());
-
-            verify(accountClientCacheService, times(1)).getInternalAccountById(inputDto.accountId());
-            verify(categoryRepository, times(1)).save(any(Category.class));
-        }
-
-        @Test
         void shouldGiveErrorWhenCreatingTwoEqualCategories() {
             CreateCategoryDTO inputDto = CategoryTestDataBuilder.createCategoryDTO();
 
@@ -144,41 +117,40 @@ class CategoryServiceTests {
             verify(accountOwnershipValidator, times(1)).validate(inputDto.accountId());
             verify(categoryRepository, never()).save(any(Category.class));
         }
+
+        @Test
+        void shouldCreateACategorySuccessfully() {
+            CreateCategoryDTO inputDto = CategoryTestDataBuilder.createCategoryDTO();
+            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(inputDto, userId, false);
+            AccountSummaryInternalDTO accountSummaryInternal = CategoryTestDataBuilder.accountSummaryInternalDTO(categoryEntity.getAccountId());
+            AccountSummaryDTO accountSummary = CategoryTestDataBuilder.accountSummaryDTO(accountSummaryInternal);
+            ResponseCategoryDTO expectedResponse = CategoryTestDataBuilder.responseCategoryDTO(categoryEntity, accountSummaryInternal);
+
+            doNothing()
+                    .when(accountOwnershipValidator)
+                    .validate(categoryEntity.getAccountId());
+
+            when(accountClientCacheService.getAccountSummaryById(inputDto.accountId()))
+                    .thenReturn(accountSummary);
+
+            when(categoryRepository.save(any(Category.class)))
+                    .thenReturn(categoryEntity);
+
+            ResponseCategoryDTO response = categoryService.create(inputDto);
+
+            assertNotNull(response);
+            assertEquals(expectedResponse.id(), response.id());
+            assertEquals(expectedResponse.name(), response.name());
+            assertEquals(accountSummary, response.account());
+
+            verify(accountClientCacheService, times(1)).getAccountSummaryById(inputDto.accountId());
+            verify(categoryRepository, times(1)).save(any(Category.class));
+        }
     }
 
     @Nested
     @DisplayName("Tests of view method")
     class ViewMethodTests {
-
-        @Test
-        void shouldReturnACategorySuccessfully() {
-            CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
-            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO);
-            AccountSummaryInternalDTO mockAccount = CategoryTestDataBuilder.accountSummaryDTO(categoryDTO.accountId());
-            ResponseCategoryDTO expectedResponse = CategoryTestDataBuilder.responseCategoryDTO(
-                    categoryEntity,
-                    mockAccount
-            );
-
-            when(accountClientCacheService.getInternalAccountById(categoryDTO.accountId()))
-                    .thenReturn(mockAccount);
-            when(categoryRepository.findByIdAndUserIdAndDeletedFalse(
-                    categoryEntity.getId(),
-                    userId
-            )).thenReturn(Optional.of(categoryEntity));
-
-            ResponseCategoryDTO response = categoryService.view(expectedResponse.id());
-
-            assertNotNull(response);
-            assertEquals(expectedResponse.id(), response.id());
-            assertEquals(expectedResponse.name(), response.name());
-
-            verify(categoryRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
-                    expectedResponse.id(),
-                    userId
-            );
-        }
-
 
         @Test
         void shouldGiveCategoryNotFoundError() {
@@ -198,42 +170,62 @@ class CategoryServiceTests {
                     userId
             );
         }
+
+        @Test
+        void shouldGiveErrorWhenFetchingADeletedCategory() {
+            CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
+            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO, userId, false);
+
+            when(categoryRepository.findByIdAndUserIdAndDeletedFalse(
+                    categoryEntity.getId(),
+                    userId
+            )).thenReturn(Optional.empty());
+
+            assertThrows(CategoryNotFound.class, () -> {
+                categoryService.view(categoryEntity.getId());
+            });
+
+            verify(categoryRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
+                    categoryEntity.getId(),
+                    userId
+            );
+        }
+
+        @Test
+        void shouldReturnACategorySuccessfully() {
+            CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
+            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO, userId, false);
+            AccountSummaryInternalDTO accountSummaryInternal = CategoryTestDataBuilder.accountSummaryInternalDTO(categoryEntity.getAccountId());
+            AccountSummaryDTO accountSummary = CategoryTestDataBuilder.accountSummaryDTO(accountSummaryInternal);
+
+            ResponseCategoryDTO expectedResponse = CategoryTestDataBuilder.responseCategoryDTO(
+                    categoryEntity,
+                    accountSummaryInternal
+            );
+
+            when(accountClientCacheService.getAccountSummaryById(categoryDTO.accountId()))
+                    .thenReturn(accountSummary);
+            when(categoryRepository.findByIdAndUserIdAndDeletedFalse(
+                    categoryEntity.getId(),
+                    userId
+            )).thenReturn(Optional.of(categoryEntity));
+
+            ResponseCategoryDTO response = categoryService.view(expectedResponse.id());
+
+            assertNotNull(response);
+            assertEquals(expectedResponse.id(), response.id());
+            assertEquals(expectedResponse.name(), response.name());
+
+            verify(categoryRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
+                    expectedResponse.id(),
+                    userId
+            );
+        }
     }
 
     @Nested
     @DisplayName("Tests of list method")
     class ListMethodTests {
-
-        @Test
-        void shouldListTheAccountsSuccessfully() {
-            CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
-            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO);
-            AccountSummaryInternalDTO mockAccount = CategoryTestDataBuilder.accountSummaryDTO(categoryDTO.accountId());
-
-            CategoryFiltersDTO filters = new CategoryFiltersDTO(
-                    categoryDTO.accountId(),
-                    "Salá",
-                    TypeEnum.INCOME
-            );
-            Pageable pageable = PageRequest.of(0, 10);
-            List<Category> categoryList = List.of(categoryEntity);
-            Page<Category> categoryPage = new PageImpl<>(categoryList, pageable, categoryList.size());
-
-            when(categoryRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(categoryPage);
-            when(accountClientCacheService.getInternalAccountById(any(UUID.class)))
-                    .thenReturn(mockAccount);
-
-            PageResponseDTO<ResponseCategoryDTO> result = categoryService.list(filters, pageable);
-
-            assertNotNull(result);
-            assertNotNull(result.content());
-            assertEquals(1, result.content().size());
-            assertEquals(categoryEntity.getId(), result.content().get(0).id());
-            assertEquals("Salário", result.content().get(0).name());
-
-            verify(categoryRepository, times(1)).findAll(any(Specification.class), eq(pageable));
-            verify(accountClientCacheService, times(1)).getInternalAccountById(any(UUID.class));
-        }
 
         @Test
         void shouldReturnABlankPage() {
@@ -255,82 +247,105 @@ class CategoryServiceTests {
             verify(categoryRepository, times(1)).findAll(any(Specification.class), eq(pageable));
             verifyNoInteractions(accountClientCacheService);
         }
+
+        @Test
+        void shouldListTheAccountsSuccessfully() {
+            CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
+            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO, userId, false);
+            AccountSummaryInternalDTO accountSummaryInternal = CategoryTestDataBuilder.accountSummaryInternalDTO(categoryEntity.getAccountId());
+            AccountSummaryDTO accountSummary = CategoryTestDataBuilder.accountSummaryDTO(accountSummaryInternal);
+
+            CategoryFiltersDTO filters = new CategoryFiltersDTO(
+                    categoryDTO.accountId(),
+                    "Salá",
+                    TypeEnum.INCOME
+            );
+            Pageable pageable = PageRequest.of(0, 10);
+            List<Category> categoryList = List.of(categoryEntity);
+            Page<Category> categoryPage = new PageImpl<>(categoryList, pageable, categoryList.size());
+
+            when(categoryRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(categoryPage);
+            when(accountClientCacheService.getAccountSummaryById(any(UUID.class)))
+                    .thenReturn(accountSummary);
+
+            PageResponseDTO<ResponseCategoryDTO> result = categoryService.list(filters, pageable);
+
+            assertNotNull(result);
+            assertNotNull(result.content());
+            assertEquals(1, result.content().size());
+            assertEquals(categoryEntity.getId(), result.content().get(0).id());
+            assertEquals("Salário", result.content().get(0).name());
+
+            verify(categoryRepository, times(1)).findAll(any(Specification.class), eq(pageable));
+            verify(accountClientCacheService, times(1)).getAccountSummaryById(any(UUID.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("Tests of listDeleted method")
+    class ListDeletedMethodTests {
+
+        @Test
+        void shouldReturnABlankPage() {
+            CategoryFiltersDTO filters = new CategoryFiltersDTO(
+                    null,
+                    null,
+                    TypeEnum.EXPENSE
+            );
+            Pageable pageable = PageRequest.of(0, 10);
+            Page<Category> categoryPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
+
+            when(categoryRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(categoryPage);
+
+            PageResponseDTO<ResponseCategoryDTO> result = categoryService.listDeleted(filters, pageable);
+
+            assertNotNull(result);
+            assertTrue(result.content().isEmpty());
+
+            verify(categoryRepository, times(1)).findAll(any(Specification.class), eq(pageable));
+            verifyNoInteractions(accountClientCacheService);
+        }
+
+        @Test
+        void shouldListTheAccountsSuccessfully() {
+            CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
+            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO, userId, true);
+
+            AccountSummaryInternalDTO accountSummaryInternal = CategoryTestDataBuilder.accountSummaryInternalDTO(categoryEntity.getAccountId());
+            AccountSummaryDTO accountSummary = CategoryTestDataBuilder.accountSummaryDTO(accountSummaryInternal);
+
+            CategoryFiltersDTO filters = new CategoryFiltersDTO(
+                    categoryDTO.accountId(),
+                    "Salá",
+                    TypeEnum.INCOME
+            );
+            Pageable pageable = PageRequest.of(0, 10);
+            List<Category> categoryList = List.of(categoryEntity);
+            Page<Category> categoryPage = new PageImpl<>(categoryList, pageable, categoryList.size());
+
+            when(categoryRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(categoryPage);
+            when(accountClientCacheService.getAccountSummaryById(any(UUID.class))).thenReturn(accountSummary);
+
+            PageResponseDTO<ResponseCategoryDTO> result = categoryService.listDeleted(filters, pageable);
+
+            assertNotNull(result);
+            assertNotNull(result.content());
+            assertEquals(1, result.content().size());
+            assertEquals(categoryEntity.getId(), result.content().get(0).id());
+            assertEquals(categoryEntity.getName(), result.content().get(0).name());
+
+            verify(categoryRepository, times(1)).findAll(any(Specification.class), eq(pageable));
+            verify(accountClientCacheService, times(1)).getAccountSummaryById(any(UUID.class));
+        }
     }
 
     @Nested
     class UpdateMethodTests{
 
         @Test
-        void shouldUpdateACategorySuccessfully() {
-            CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
-            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO);
-            AccountSummaryInternalDTO mockAccount = CategoryTestDataBuilder.accountSummaryDTO(categoryDTO.accountId());
-
-            UpdateCategoryDTO updateDTO = new UpdateCategoryDTO(
-                    null,
-                    "Conta Atualizada",
-                    TypeEnum.EXPENSE
-            );
-
-            when(accountClientCacheService.getInternalAccountById(categoryDTO.accountId()))
-                    .thenReturn(mockAccount);
-            when(categoryRepository.findByIdAndUserIdAndDeletedFalse(
-                    categoryEntity.getId(),
-                    userId
-            )).thenReturn(Optional.of(categoryEntity));
-            when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-            ResponseCategoryDTO result = categoryService.update(categoryEntity.getId(), updateDTO);
-
-            assertEquals(updateDTO.name(), result.name());
-            assertEquals(updateDTO.type(), result.type());
-
-            verify(categoryRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
-                    categoryEntity.getId(),
-                    userId
-            );
-            verify(categoryRepository, times(1)).save(any(Category.class));
-        }
-
-        @Test
-        void shouldUpdateAccountIdWhenOwnedByUser() {
-            CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
-            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO);
-            AccountSummaryInternalDTO mockAccount = CategoryTestDataBuilder.accountSummaryDTO(categoryDTO.accountId());
-            UUID newAccountId = UUID.randomUUID();
-
-            UpdateCategoryDTO updateDTO = new UpdateCategoryDTO(
-                    newAccountId,
-                    "Conta Atualizada",
-                    TypeEnum.EXPENSE
-            );
-
-            when(categoryRepository.findByIdAndUserIdAndDeletedFalse(
-                    categoryEntity.getId(),
-                    userId
-            )).thenReturn(Optional.of(categoryEntity));
-
-            doNothing()
-                    .when(accountOwnershipValidator)
-                    .validate(newAccountId);
-
-            when(accountClientCacheService.getInternalAccountById(newAccountId))
-                    .thenReturn(mockAccount);
-            when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-            ResponseCategoryDTO result = categoryService.update(categoryEntity.getId(), updateDTO);
-
-            assertEquals(newAccountId, categoryEntity.getAccountId());
-            assertEquals(updateDTO.name(), result.name());
-
-            verify(accountOwnershipValidator, times(1)).validate(newAccountId);
-            verify(categoryRepository, times(1)).save(any(Category.class));
-        }
-
-        @Test
         void shouldGiveErrorWhenUpdatingToAnAccountUserDoesNotOwn() {
             CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
-            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO);
+            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO, userId, false);
             UUID otherUsersAccountId = UUID.randomUUID();
 
             UpdateCategoryDTO updateDTO = new UpdateCategoryDTO(
@@ -354,15 +369,136 @@ class CategoryServiceTests {
             verify(accountOwnershipValidator, times(1)).validate(otherUsersAccountId);
             verify(categoryRepository, never()).save(any(Category.class));
         }
+
+        @Test
+        void shouldGiveErrorWhenTryingToUpdateADeletedAccount() {
+            CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
+            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(
+                    categoryDTO,
+                    userId,
+                    true
+            );
+
+            UpdateCategoryDTO updateDTO = new UpdateCategoryDTO(
+                    null,
+                    "Conta Atualizada",
+                    TypeEnum.EXPENSE
+            );
+
+            when(categoryRepository.findByIdAndUserIdAndDeletedFalse(
+                    categoryEntity.getId(),
+                    userId
+            )).thenReturn(Optional.empty());
+
+            assertThrows(CategoryNotFound.class, () -> {
+                categoryService.update(categoryEntity.getId(), updateDTO);
+            });
+
+            verify(categoryRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
+                    categoryEntity.getId(),
+                    userId
+            );
+            verify(categoryRepository, never()).save(categoryEntity);
+        }
+
+        @Test
+        void shouldUpdateAccountIdWhenOwnedByUser() {
+            CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
+            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO, userId, false);
+            AccountSummaryInternalDTO accountSummaryInternal = CategoryTestDataBuilder.accountSummaryInternalDTO(categoryEntity.getAccountId());
+            AccountSummaryDTO accountSummary = CategoryTestDataBuilder.accountSummaryDTO(accountSummaryInternal);
+            UUID newAccountId = UUID.randomUUID();
+
+            UpdateCategoryDTO updateDTO = new UpdateCategoryDTO(
+                    newAccountId,
+                    "Conta Atualizada",
+                    TypeEnum.EXPENSE
+            );
+
+            when(categoryRepository.findByIdAndUserIdAndDeletedFalse(
+                    categoryEntity.getId(),
+                    userId
+            )).thenReturn(Optional.of(categoryEntity));
+
+            doNothing()
+                    .when(accountOwnershipValidator)
+                    .validate(newAccountId);
+
+            when(accountClientCacheService.getAccountSummaryById(newAccountId))
+                    .thenReturn(accountSummary);
+            when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            ResponseCategoryDTO result = categoryService.update(categoryEntity.getId(), updateDTO);
+
+            assertEquals(newAccountId, categoryEntity.getAccountId());
+            assertEquals(updateDTO.name(), result.name());
+
+            verify(accountOwnershipValidator, times(1)).validate(newAccountId);
+            verify(categoryRepository, times(1)).save(any(Category.class));
+        }
+
+        @Test
+        void shouldUpdateACategorySuccessfully() {
+            CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
+            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO, userId, false);
+            AccountSummaryInternalDTO accountSummaryInternal = CategoryTestDataBuilder.accountSummaryInternalDTO(categoryEntity.getAccountId());
+            AccountSummaryDTO accountSummary = CategoryTestDataBuilder.accountSummaryDTO(accountSummaryInternal);
+
+            UpdateCategoryDTO updateDTO = new UpdateCategoryDTO(
+                    null,
+                    "Conta Atualizada",
+                    TypeEnum.EXPENSE
+            );
+
+            when(accountClientCacheService.getAccountSummaryById(categoryDTO.accountId()))
+                    .thenReturn(accountSummary);
+            when(categoryRepository.findByIdAndUserIdAndDeletedFalse(
+                    categoryEntity.getId(),
+                    userId
+            )).thenReturn(Optional.of(categoryEntity));
+            when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            ResponseCategoryDTO result = categoryService.update(categoryEntity.getId(), updateDTO);
+
+            assertEquals(updateDTO.name(), result.name());
+            assertEquals(updateDTO.type(), result.type());
+
+            verify(categoryRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
+                    categoryEntity.getId(),
+                    userId
+            );
+            verify(categoryRepository, times(1)).save(any(Category.class));
+        }
     }
 
     @Nested
     class DeleteMethodTests{
 
         @Test
+        void shouldErrorWhenTryingToDeleteAnAlreadyDeletedAccount() {
+            CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
+            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO, userId, true);
+
+            when(categoryRepository.findByIdAndUserIdAndDeletedFalse(
+                    categoryEntity.getId(),
+                    userId
+            )).thenReturn(Optional.empty());
+
+            assertThrows(CategoryNotFound.class, () -> {
+                categoryService.delete(categoryEntity.getId());
+            });
+
+            verify(categoryRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
+                    categoryEntity.getId(),
+                    userId
+            );
+            verify(categoryRepository, never()).delete(categoryEntity);
+        }
+
+        @Test
         void shouldDeleteACategorySuccessfully() {
             CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
-            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO);
+            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO, userId, false);
 
             when(categoryRepository.findByIdAndUserIdAndDeletedFalse(
                     categoryEntity.getId(),
@@ -376,6 +512,79 @@ class CategoryServiceTests {
                     userId
             );
             verify(categoryRepository, times(1)).delete(any(Category.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("Tests of restore method")
+    class RestoreMethodTests {
+
+        @Test
+        void shouldFailWhenTryingToRestoreNonexistentCategory() {
+            UUID categoryNotFoundId = UUID.randomUUID();
+
+            when(categoryRepository.findByIdAndUserIdIncludingDeleted(
+                    categoryNotFoundId,
+                    userId
+            )).thenReturn(Optional.empty());
+
+            assertThrows(CategoryNotFound.class, () -> {
+                categoryService.restore(categoryNotFoundId);
+            });
+
+            verify(categoryRepository, times(1)).findByIdAndUserIdIncludingDeleted(
+                    categoryNotFoundId,
+                    userId
+            );
+            verify(categoryRepository, never()).save(any(Category.class));
+        }
+
+        @Test
+        void shouldGiveErrorWhenTryingToRestoreNonDeletedCategory() {
+            CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
+            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(
+                    categoryDTO,
+                    userId,
+                    false
+            );
+
+            when(categoryRepository.findByIdAndUserIdIncludingDeleted(
+                    categoryEntity.getId(),
+                    userId
+            )).thenReturn(Optional.of(categoryEntity));
+
+            assertThrows(RestoreCategoryError.class, () -> {
+                categoryService.restore(categoryEntity.getId());
+            });
+
+            verify(categoryRepository, times(1)).findByIdAndUserIdIncludingDeleted(
+                    categoryEntity.getId(),
+                    userId
+            );
+            verify(categoryRepository, never()).save(any(Category.class));
+        }
+
+        @Test
+        void shouldRestoreACategorySuccessfully() {
+            CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
+            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(
+                    categoryDTO,
+                    userId,
+                    true
+            );
+
+            when(categoryRepository.findByIdAndUserIdIncludingDeleted(
+                    categoryEntity.getId(),
+                    userId
+            )).thenReturn(Optional.of(categoryEntity));
+
+            categoryService.restore(categoryEntity.getId());
+
+            verify(categoryRepository, times(1)).findByIdAndUserIdIncludingDeleted(
+                    categoryEntity.getId(),
+                    userId
+            );
+            verify(categoryRepository, times(1)).save(any(Category.class));
         }
     }
 }

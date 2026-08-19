@@ -20,6 +20,9 @@ spring:
         jwt:
           jwk-set-uri: http://localhost:8080/dummy-url
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVER:localhost:9092}
+
 application:
   config:
     user-service-url: http://localhost:8081

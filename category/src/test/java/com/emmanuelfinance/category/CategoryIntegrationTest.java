@@ -1,104 +1,166 @@
 package com.emmanuelfinance.category;
 
 import com.emmanuelfinance.category.dto.CategoryFiltersDTO;
+import com.emmanuelfinance.category.dto.CreateCategoryDTO;
+import com.emmanuelfinance.category.dto.ResponseCategoryDTO;
 import com.emmanuelfinance.category.enums.TypeEnum;
+import com.emmanuelfinance.shared.dto.PageResponseDTO;
+import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.domain.Page;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @ActiveProfiles("test")
-class CategoryIntegrationTest {
+public class CategoryIntegrationTest {
+
+    @Autowired
+    private CategoryService categoryService;
 
     @Autowired
     private CategoryRepository categoryRepository;
 
-    @Mock
+    @MockBean
     private SecurityUtils securityUtils;
 
+    @MockBean
+    private AccountClientCacheService accountClientCacheService;
+
     private UUID userId;
-    private UUID account1;
-    private UUID account2;
+    private UUID accountId;
 
     @BeforeEach
     void setUp() {
-        when(securityUtils.getCurrentUserId()).thenReturn(UUID.randomUUID());
-        userId = securityUtils.getCurrentUserId();
+        userId = UUID.randomUUID();
+        accountId = UUID.randomUUID();
 
-        categoryRepository.deleteAll();
+        when(securityUtils.getCurrentUserId()).thenReturn(userId);
 
-        account1 = UUID.randomUUID();
-        account2 = UUID.randomUUID();
-
-        Category cat1 = new Category();
-        cat1.setUserId(userId);
-        cat1.setAccountId(account1);
-        cat1.setName("Salário Mensal");
-        cat1.setType(TypeEnum.INCOME);
-
-        Category cat2 = new Category();
-        cat2.setUserId(userId);
-        cat2.setAccountId(account1);
-        cat2.setName("Salário Funcionários");
-        cat2.setType(TypeEnum.EXPENSE);
-
-        Category cat3 = new Category();
-        cat3.setUserId(userId);
-        cat3.setAccountId(account2);
-        cat3.setName("Investimentos");
-        cat3.setType(TypeEnum.INCOME);
-
-        categoryRepository.save(cat1);
-        categoryRepository.save(cat2);
-        categoryRepository.save(cat3);
+        AccountSummaryInternalDTO summaryInternalDTO = CategoryTestDataBuilder.accountSummaryInternalDTO(UUID.randomUUID());
+        AccountSummaryDTO fakeAccountSummary = CategoryTestDataBuilder.accountSummaryDTO(summaryInternalDTO);
+        when(accountClientCacheService.getAccountSummaryById(any()))
+                .thenReturn(fakeAccountSummary);
     }
 
-    @Test
-    void shouldListTheAccountsSuccessfully() {
-        CategoryFiltersDTO fIltersDTO = new CategoryFiltersDTO(
-                account1,
-                "Salá",
-                TypeEnum.INCOME
-        );
-        Pageable pageable = PageRequest.of(0, 10);
-        Specification<Category> spec = CategorySpecification.withFilter(fIltersDTO, userId, false);
+    @Nested
+    @DisplayName("Tests of listDeleted method")
+    class ListDeletedMethodTests {
 
-        Page<Category> result = categoryRepository.findAll(spec, pageable);
+        @Test
+        void shouldListDeletedCards() {
+            categoryRepository.deleteAll();
 
-        assertNotNull(result);
-        assertEquals(1, result.getTotalElements());
-        assertEquals("Salário Mensal", result.getContent().get(0).getName());
-        assertEquals(TypeEnum.INCOME, result.getContent().get(0).getType());
-        assertEquals(account1, result.getContent().get(0).getAccountId());
+            CreateCategoryDTO categoryActiveDTO = new CreateCategoryDTO(
+                    accountId,
+                    "categoria 1",
+                    TypeEnum.EXPENSE
+            );
+            Category categoryActiveEntity = CategoryTestDataBuilder.categoryEntity(
+                    categoryActiveDTO,
+                    userId,
+                    false
+            );
+            categoryActiveEntity.setUserId(userId);
+
+            CreateCategoryDTO categoryDeletedDTO = new CreateCategoryDTO(
+                    accountId,
+                    "categoria 2",
+                    TypeEnum.EXPENSE
+            );
+            Category categoryDeletedEntity = CategoryTestDataBuilder.categoryEntity(
+                    categoryDeletedDTO,
+                    userId,
+                    true
+            );
+            categoryDeletedEntity.setUserId(userId);
+
+            CategoryFiltersDTO filters = new CategoryFiltersDTO(
+                    null,
+                    null,
+                    null
+            );
+
+            categoryRepository.save(categoryActiveEntity);
+            Category savedDeletedCategory = categoryRepository.save(categoryDeletedEntity);
+
+            Pageable pageable = PageRequest.of(0, 10);
+
+            PageResponseDTO<ResponseCategoryDTO> response = categoryService.listDeleted(
+                    filters,
+                    pageable
+            );
+
+            assertEquals(1, response.content().size());
+            assertEquals(savedDeletedCategory.getId(), response.content().get(0).id());
+        }
     }
 
-    @Test
-    void shouldReturnABlankPage() {
-        CategoryFiltersDTO fIltersDTO = new CategoryFiltersDTO(
-                account2,
-                null,
-                TypeEnum.EXPENSE
-        );
-        Pageable pageable = PageRequest.of(0, 10);
-        Specification<Category> spec = CategorySpecification.withFilter(fIltersDTO, userId, false);
+    @Nested
+    @DisplayName("Tests of list method")
+    class ListMethodTests {
 
-        Page<Category> result = categoryRepository.findAll(spec, pageable);
+        @Test
+        void shouldListTheActiveCards() {
+            categoryRepository.deleteAll();
 
-        assertNotNull(result);
-        assertTrue(result.getContent().isEmpty());
-        assertEquals(0, result.getTotalElements());
+            CreateCategoryDTO categoryActiveDTO = new CreateCategoryDTO(
+                    accountId,
+                    "categoria 1",
+                    TypeEnum.EXPENSE
+            );
+            Category categoryActiveEntity = CategoryTestDataBuilder.categoryEntity(
+                    categoryActiveDTO,
+                    userId,
+                    false
+            );
+            categoryActiveEntity.setUserId(userId);
+
+            CreateCategoryDTO categoryDeletedDTO = new CreateCategoryDTO(
+                    accountId,
+                    "categoria 2",
+                    TypeEnum.EXPENSE
+            );
+            Category categoryDeletedEntity = CategoryTestDataBuilder.categoryEntity(
+                    categoryDeletedDTO,
+                    userId,
+                    true
+            );
+            categoryDeletedEntity.setUserId(userId);
+
+            CategoryFiltersDTO filters = new CategoryFiltersDTO(
+                    null,
+                    null,
+                    null
+            );
+
+            categoryRepository.save(categoryDeletedEntity);
+            Category savedActiveCategory = categoryRepository.save(categoryActiveEntity);
+
+            Pageable pageable = PageRequest.of(0, 10);
+
+            PageResponseDTO<ResponseCategoryDTO> response = categoryService.list(
+                    filters,
+                    pageable
+            );
+
+            assertEquals(1, response.content().size());
+            assertEquals(savedActiveCategory.getId(), response.content().get(0).id());
+        }
     }
 }
