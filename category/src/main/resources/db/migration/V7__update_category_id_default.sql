@@ -1,0 +1,2 @@
+ALTER TABLE category
+    ALTER COLUMN id DROP DEFAULT;

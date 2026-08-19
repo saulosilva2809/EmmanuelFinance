@@ -2,7 +2,7 @@ package com.emmanuelfinance.account;
 
 import com.emmanuelfinance.account.dto.*;
 import com.emmanuelfinance.account.exceptions.AccountNotFound;
-import com.emmanuelfinance.account.exceptions.RestoreAccount;
+import com.emmanuelfinance.account.exceptions.RestoreAccountError;
 import com.emmanuelfinance.shared.annotation.WithDeletedFilter;
 import com.emmanuelfinance.shared.modules.account.AccountCache;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
@@ -178,7 +178,7 @@ public class AccountService {
         Account account = getAccountByIdIncludingDeleted(id);
 
         if (!account.isDeleted()) {
-            throw new RestoreAccount();
+            throw new RestoreAccountError();
         }
 
         account.setDeleted(false);
