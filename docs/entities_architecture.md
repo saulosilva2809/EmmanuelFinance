@@ -38,7 +38,7 @@ Representa qualquer local onde o usuário possui saldo ou movimentação finance
 | `current_balance`| Decimal(15,2) | Not Null, Default 0.00| Saldo atualizado em tempo real pelas transações. |
 | `created_at` | Timestamp | Not Null, Default NOW | Data de criação do registro. |
 
-### Entity: `CreditCard`
+### Entity: `CreditCard` ✅
 Entidade especializada para cartões de crédito. Ao invés de saldo líquido, gerencia limites, datas de fechamento e vencimento de faturas.
 
 | Atributo | Tipo | Restrições | Descrição |

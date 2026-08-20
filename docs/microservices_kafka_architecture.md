@@ -38,7 +38,7 @@ O núcleo transacional do sistema. Garante consistência absoluta de saldo, extr
 * **Categories (CRUD + Filtros de URL)** ✅
 * **Transactions (CRUD + Filtros de URL)**
 * **Transfers (CRUD + Filtros de URL)**
-* **Credit Card (CRUD + Filtros de URL)**
+* **Credit Card (CRUD + Filtros de URL)** ✅
 * **Recurring Transactions (CRUD + Filtros de URL)**
 
 ### 2.4 Budget & Planning Service
