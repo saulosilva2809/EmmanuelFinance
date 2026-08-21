@@ -1,4 +1,4 @@
-package com.emmanuelfinance.category.enums;
+package com.emmanuelfinance.shared.enums;
 
 public enum TypeEnum {
     INCOME,
