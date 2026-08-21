@@ -1,5 +1,6 @@
-package com.emmanuelfinance.creditcard;
+package com.emmanuelfinance.creditcard.services;
 
+import com.emmanuelfinance.creditcard.*;
 import com.emmanuelfinance.creditcard.dto.CreateCreditCardDTO;
 import com.emmanuelfinance.creditcard.dto.CreditCardFiltersDTO;
 import com.emmanuelfinance.creditcard.dto.ResponseCreditCardDTO;
@@ -33,6 +34,7 @@ public class CreditCardService {
     private final SecurityUtils securityUtils;
     private final CreditCardRepository creditCardRepository;
     private final CreditCardMapper cardMapper;
+    private final CreditCardSelector cardSelector;
 
     private ResponseCreditCardDTO cardAsDTO(CreditCard data) {
         AccountSummaryDTO account = accountClientCacheService
@@ -50,22 +52,6 @@ public class CreditCardService {
                 data.getUpdatedAt(),
                 data.isDeleted()
         );
-    }
-
-    private CreditCard getCreditCardById(UUID cardId) {
-        UUID userId = securityUtils.getCurrentUserId();
-        CreditCard creditCard = creditCardRepository.findByIdAndUserIdAndDeletedFalse(cardId, userId)
-                .orElseThrow(() -> new CreditCardNotFound());
-
-        return creditCard;
-    }
-
-    private CreditCard getCreditCardByIdIncludingDeleted(UUID cardId) {
-        UUID userId = securityUtils.getCurrentUserId();
-        CreditCard creditCard = creditCardRepository.findByIdAndUserId(cardId, userId)
-                .orElseThrow(() -> new CreditCardNotFound());
-
-        return creditCard;
     }
 
     private void checkCardAndAccountBank(BanksEnum cardBank, UUID accountId) {
@@ -99,7 +85,7 @@ public class CreditCardService {
     }
 
     public ResponseCreditCardDTO view(UUID cardId) {
-        CreditCard creditCard = getCreditCardById(cardId);
+        CreditCard creditCard = cardSelector.getCreditCardById(cardId);
         return cardAsDTO(creditCard);
     }
 
@@ -134,7 +120,7 @@ public class CreditCardService {
     }
 
     public ResponseCreditCardDTO update(UUID cardId, UpdateCreditCardDTO data) {
-        CreditCard creditCard = getCreditCardById(cardId);
+        CreditCard creditCard = cardSelector.getCreditCardById(cardId);
 
         if (data.accountId() != null) {
             accountOwnershipValidator.validate(data.accountId());
@@ -147,12 +133,12 @@ public class CreditCardService {
     }
 
     public void delete(UUID cardId) {
-        CreditCard creditCard = getCreditCardById(cardId);
+        CreditCard creditCard = cardSelector.getCreditCardById(cardId);
         creditCardRepository.delete(creditCard);
     }
 
     public void restore(UUID cardId) {
-        CreditCard creditCard = getCreditCardByIdIncludingDeleted(cardId);
+        CreditCard creditCard = cardSelector.getCreditCardByIdIncludingDeleted(cardId);
 
         if (!creditCard.isDeleted()) {
             throw new RestoreCreditCardError();

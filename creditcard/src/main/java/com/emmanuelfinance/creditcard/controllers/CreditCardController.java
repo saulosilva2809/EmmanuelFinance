@@ -1,4 +1,4 @@
-package com.emmanuelfinance.creditcard;
+package com.emmanuelfinance.creditcard.controllers;
 
 import com.emmanuelfinance.creditcard.dto.CreateCreditCardDTO;
 import com.emmanuelfinance.creditcard.dto.CreditCardFiltersDTO;

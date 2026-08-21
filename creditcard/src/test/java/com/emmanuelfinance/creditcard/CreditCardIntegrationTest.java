@@ -3,6 +3,7 @@ package com.emmanuelfinance.creditcard;
 import com.emmanuelfinance.creditcard.dto.CreateCreditCardDTO;
 import com.emmanuelfinance.creditcard.dto.CreditCardFiltersDTO;
 import com.emmanuelfinance.creditcard.dto.ResponseCreditCardDTO;
+import com.emmanuelfinance.creditcard.services.CreditCardService;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
