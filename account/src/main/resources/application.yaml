@@ -47,7 +47,6 @@ spring:
 application:
   config:
     user-service-url: ${USER_SERVICE_URL}
-    account-service-url: ${ACCOUNT_SERVICE_URL}
 
 feign:
   client:
