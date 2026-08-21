@@ -1,6 +1,6 @@
 package com.emmanuelfinance.category;
 
-import com.emmanuelfinance.category.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeEnum;
 import feign.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;

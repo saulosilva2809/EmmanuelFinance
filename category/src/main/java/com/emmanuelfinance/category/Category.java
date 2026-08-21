@@ -1,14 +1,13 @@
 package com.emmanuelfinance.category;
 
 import com.emmanuelfinance.shared.entity.BaseEntity;
-import com.emmanuelfinance.category.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeEnum;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.SQLDelete;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
