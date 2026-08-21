@@ -1,6 +1,6 @@
 package com.emmanuelfinance.category.dto;
 
-import com.emmanuelfinance.category.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeEnum;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
