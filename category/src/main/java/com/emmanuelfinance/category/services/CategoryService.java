@@ -1,5 +1,6 @@
-package com.emmanuelfinance.category;
+package com.emmanuelfinance.category.services;
 
+import com.emmanuelfinance.category.*;
 import com.emmanuelfinance.category.dto.CategoryFiltersDTO;
 import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
 import com.emmanuelfinance.category.exceptions.CategoryNotFound;
@@ -31,22 +32,7 @@ public class CategoryService {
     private final CategoryMapper categoryMapper;
     private final SecurityUtils securityUtils;
     private final AccountOwnershipValidator accountOwnershipValidator;
-
-    private Category getCategoryById(UUID id) {
-        UUID userId = securityUtils.getCurrentUserId();
-        Category category = categoryRepository.findByIdAndUserIdAndDeletedFalse(id, userId)
-                .orElseThrow(() -> new CategoryNotFound());
-
-        return category;
-    }
-
-    private Category getCategoryByIdIncludingDeleted(UUID id) {
-        UUID userId = securityUtils.getCurrentUserId();
-        Category category = categoryRepository.findByIdAndUserIdIncludingDeleted(id, userId)
-                .orElseThrow(() -> new CategoryNotFound());
-
-        return category;
-    }
+    private final CategorySelector categorySelector;
 
     private ResponseCategoryDTO categoryAsDTO(Category data) {
         AccountSummaryDTO account = accountClientCacheService
@@ -92,7 +78,7 @@ public class CategoryService {
     }
 
     public ResponseCategoryDTO view(UUID id) {
-        Category category = getCategoryById(id);
+        Category category = categorySelector.getCategoryById(id);
         return categoryAsDTO(category);
     }
 
@@ -129,7 +115,7 @@ public class CategoryService {
 
     @Transactional()
     public ResponseCategoryDTO update(UUID id, UpdateCategoryDTO data) {
-        Category category = getCategoryById(id);
+        Category category = categorySelector.getCategoryById(id);
 
         if (data.accountId() != null) {
             accountOwnershipValidator.validate(data.accountId());
@@ -143,13 +129,13 @@ public class CategoryService {
 
     @Transactional()
     public void delete(UUID id) {
-        Category category = getCategoryById(id);
+        Category category = categorySelector.getCategoryById(id);
         categoryRepository.delete(category);
     }
 
     @Transactional
     public void restore(UUID id) {
-        Category category = getCategoryByIdIncludingDeleted(id);
+        Category category = categorySelector.getCategoryByIdIncludingDeleted(id);
 
         if (!category.isDeleted()) {
             throw new RestoreCategoryError();
