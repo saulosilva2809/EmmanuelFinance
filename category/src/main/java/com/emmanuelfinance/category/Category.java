@@ -24,9 +24,6 @@ import java.util.UUID;
 @Filter(name = "deletedFilter")
 public class Category extends BaseEntity {
 
-    @Column(name = "account_id", nullable = false)
-    private UUID accountId;
-
     @Column(name = "name", nullable = false)
     private String name;
 
