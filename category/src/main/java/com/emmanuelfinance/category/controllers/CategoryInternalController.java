@@ -1,6 +1,7 @@
 package com.emmanuelfinance.category.controllers;
 
 import com.emmanuelfinance.category.services.CategoryInternalService;
+import com.emmanuelfinance.shared.modules.category.dtos.CategoryInternalSummaryDTO;
 import com.emmanuelfinance.shared.modules.category.dtos.CategorySummaryDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +22,12 @@ public class CategoryInternalController {
     @GetMapping("/summary/{id}")
     public ResponseEntity<CategorySummaryDTO> getCategorySummary(@PathVariable UUID id) {
         CategorySummaryDTO response = categoryInternalService.getCategorySummary(id);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/internal-summary/{id}")
+    public ResponseEntity<CategoryInternalSummaryDTO> getCategoryInternalSummary(@PathVariable UUID id) {
+        CategoryInternalSummaryDTO response = categoryInternalService.getCategoryInternalSummary(id);
         return ResponseEntity.ok(response);
     }
 }

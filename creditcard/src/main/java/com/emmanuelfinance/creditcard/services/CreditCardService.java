@@ -6,7 +6,6 @@ import com.emmanuelfinance.creditcard.dto.CreditCardFiltersDTO;
 import com.emmanuelfinance.creditcard.dto.ResponseCreditCardDTO;
 import com.emmanuelfinance.creditcard.dto.UpdateCreditCardDTO;
 import com.emmanuelfinance.creditcard.exceptions.CheckCardAndAccountBankError;
-import com.emmanuelfinance.creditcard.exceptions.CreditCardNotFound;
 import com.emmanuelfinance.creditcard.exceptions.RestoreCreditCardError;
 import com.emmanuelfinance.shared.annotation.WithDeletedFilter;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;

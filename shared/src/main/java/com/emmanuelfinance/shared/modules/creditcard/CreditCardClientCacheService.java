@@ -1,5 +1,6 @@
 package com.emmanuelfinance.shared.modules.creditcard;
 
+import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardInternalSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardSummaryDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,5 +22,11 @@ public class CreditCardClientCacheService {
     public CreditCardSummaryDTO getCreditCardSummaryDTO(UUID id) {
         log.info("Buscando credit-card via credit-card server (cache miss)", id);
         return creditCardClient.getCreditCardSummary(id);
+    }
+
+    @Cacheable(value = "credit_card_internal_summary", key = "#id")
+    public CreditCardInternalSummaryDTO getCreditCardInternalSummaryDTO(UUID id) {
+        log.info("Buscando credit-card via credit-card server (cache miss)", id);
+        return creditCardClient.getCreditCardInternalSummary(id);
     }
 }

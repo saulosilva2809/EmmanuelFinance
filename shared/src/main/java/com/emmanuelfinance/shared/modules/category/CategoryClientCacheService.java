@@ -1,5 +1,6 @@
 package com.emmanuelfinance.shared.modules.category;
 
+import com.emmanuelfinance.shared.modules.category.dtos.CategoryInternalSummaryDTO;
 import com.emmanuelfinance.shared.modules.category.dtos.CategorySummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.CreditCardClient;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardSummaryDTO;
@@ -23,5 +24,11 @@ public class CategoryClientCacheService {
     public CategorySummaryDTO getCategorySummaryDTO(UUID id) {
         log.info("Buscando category via category server (cache miss)", id);
         return categoryClient.getCategorySummary(id);
+    }
+
+    @Cacheable(value = "category_internal_summary", key = "#id")
+    public CategoryInternalSummaryDTO getCategoryInternalSummaryDTO(UUID id) {
+        log.info("Buscando category via category server (cache miss)", id);
+        return categoryClient.getCategoryInternalSummary(id);
     }
 }

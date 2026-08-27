@@ -7,7 +7,7 @@ import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
 import com.emmanuelfinance.category.services.CategoryService;
 import com.emmanuelfinance.shared.enums.TypeEnum;
 import com.emmanuelfinance.category.exceptions.CategoryAlreadyExists;
-import com.emmanuelfinance.category.exceptions.CategoryNotFound;
+import com.emmanuelfinance.shared.modules.category.exceptions.CategoryNotFound;
 import com.emmanuelfinance.category.exceptions.RestoreCategoryError;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
