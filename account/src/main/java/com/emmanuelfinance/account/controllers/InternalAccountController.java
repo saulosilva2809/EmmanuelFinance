@@ -1,7 +1,6 @@
 package com.emmanuelfinance.account.controllers;
 
-import com.emmanuelfinance.account.AccountService;
-import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
+import com.emmanuelfinance.account.services.AccountService;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

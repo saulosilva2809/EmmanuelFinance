@@ -1,13 +1,13 @@
-package com.emmanuelfinance.account;
+package com.emmanuelfinance.account.services;
 
+import com.emmanuelfinance.account.*;
 import com.emmanuelfinance.account.dto.*;
-import com.emmanuelfinance.account.exceptions.AccountNotFound;
 import com.emmanuelfinance.account.exceptions.RestoreAccountError;
 import com.emmanuelfinance.shared.annotation.WithDeletedFilter;
 import com.emmanuelfinance.shared.modules.account.AccountCache;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
-import com.emmanuelfinance.account.kafka.producer.AccountEventPublisher;
+import com.emmanuelfinance.account.kafka.AccountEventPublisher;
 import com.emmanuelfinance.shared.modules.account.kafka.account.enums.StatusEventEnum;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
@@ -33,46 +33,7 @@ public class AccountService {
     private final AccountEventPublisher accountEventPublisher;
     private final SecurityUtils securityUtils;
     private final AccountCache accountCache;
-
-    private ResponseAccountDTO accountAsDTO(Account data) {
-        UserSummaryDTO userData = userClientCacheService.getUserById(data.getUserId());
-
-        return new ResponseAccountDTO(
-                data.getId(),
-                userData,
-                data.getName(),
-                data.getType(),
-                data.getBank(),
-                data.getInitialBalance(),
-                data.getCurrentBalance(),
-                data.getCreatedAt(),
-                data.getUpdatedAt(),
-                data.isDeleted()
-        );
-    }
-
-    private Account getAccountByIdAndUserId(UUID id) {
-        UUID userId = securityUtils.getCurrentUserId();
-
-        Account account = accountRepository.findByIdAndUserIdAndDeletedFalse(id, userId)
-                .orElseThrow(() -> new AccountNotFound());
-
-        return account;
-    }
-
-    private Account getAccountByIdIncludingDeleted(UUID accountId) {
-        UUID userId = securityUtils.getCurrentUserId();
-
-        Account account = accountRepository.findByIdAndUserIdIncludingDeleted(accountId, userId)
-                .orElseThrow(() -> new AccountNotFound());
-
-        return account;
-    }
-
-    @Transactional(readOnly = true)
-    public boolean checkAccountOwner(UUID accountId, UUID userId) {
-        return accountRepository.existsByIdAndUserIdAndDeletedFalse(accountId, userId);
-    }
+    private final AccountSelector accountSelector;
 
     @Transactional
     public ResponseAccountDTO create(CreateAccountDTO data) {
@@ -99,19 +60,19 @@ public class AccountService {
     }
 
     public ResponseAccountDTO view(UUID uuid) {
-        Account account = getAccountByIdAndUserId(uuid);
+        Account account = accountSelector.getAccountByIdAndUserId(uuid);
 
         return accountAsDTO(account);
     }
 
     public AccountSummaryDTO getAccountSummary(UUID id) {
-        Account account = getAccountByIdIncludingDeleted(id);
+        Account account = accountSelector.getAccountByIdIncludingDeleted(id);
 
         return new AccountSummaryDTO(account.getId(), account.getName(), account.isDeleted());
     }
 
     public AccountSummaryInternalDTO getAccountSummaryInternal(UUID id) {
-        Account account = getAccountByIdIncludingDeleted(id);
+        Account account = accountSelector.getAccountByIdIncludingDeleted(id);
 
         return new AccountSummaryInternalDTO(
                 account.getId(),
@@ -150,7 +111,7 @@ public class AccountService {
     @Transactional
     @CacheEvict(value = "accounts", key = "#uuid")
     public ResponseAccountDTO update(UUID uuid, UpdateAccountDTO data) {
-        Account account = getAccountByIdAndUserId(uuid);
+        Account account = accountSelector.getAccountByIdAndUserId(uuid);
 
         accountMapper.updateAccountFromDTO(data, account);
 
@@ -162,7 +123,7 @@ public class AccountService {
     @Transactional
     @CacheEvict(value = "accounts", key = "#id")
     public void delete(UUID id) {
-        Account account = getAccountByIdAndUserId(id);
+        Account account = accountSelector.getAccountByIdAndUserId(id);
 
         accountRepository.delete(account);
         accountEventPublisher.publishAccount(new AccountEventDTO(
@@ -175,7 +136,7 @@ public class AccountService {
     @Transactional
     @CacheEvict(value = "accounts", key = "#id")
     public void restore(UUID id) {
-        Account account = getAccountByIdIncludingDeleted(id);
+        Account account = accountSelector.getAccountByIdIncludingDeleted(id);
 
         if (!account.isDeleted()) {
             throw new RestoreAccountError();
@@ -189,5 +150,27 @@ public class AccountService {
                 account.getUserId(),
                 StatusEventEnum.RESTORE
         ));
+    }
+
+    @Transactional(readOnly = true)
+    public boolean checkAccountOwner(UUID accountId, UUID userId) {
+        return accountRepository.existsByIdAndUserIdAndDeletedFalse(accountId, userId);
+    }
+
+    private ResponseAccountDTO accountAsDTO(Account data) {
+        UserSummaryDTO userData = userClientCacheService.getUserById(data.getUserId());
+
+        return new ResponseAccountDTO(
+                data.getId(),
+                userData,
+                data.getName(),
+                data.getType(),
+                data.getBank(),
+                data.getInitialBalance(),
+                data.getCurrentBalance(),
+                data.getCreatedAt(),
+                data.getUpdatedAt(),
+                data.isDeleted()
+        );
     }
 }

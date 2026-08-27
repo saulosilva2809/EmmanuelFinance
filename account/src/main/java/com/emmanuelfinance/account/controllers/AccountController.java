@@ -1,6 +1,6 @@
 package com.emmanuelfinance.account.controllers;
 
-import com.emmanuelfinance.account.AccountService;
+import com.emmanuelfinance.account.services.AccountService;
 import com.emmanuelfinance.account.dto.*;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;

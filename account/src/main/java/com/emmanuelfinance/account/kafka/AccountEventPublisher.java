@@ -1,4 +1,4 @@
-package com.emmanuelfinance.account.kafka.producer;
+package com.emmanuelfinance.account.kafka;
 
 import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
 import lombok.RequiredArgsConstructor;
