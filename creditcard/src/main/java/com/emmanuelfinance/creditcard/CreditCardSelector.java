@@ -1,6 +1,6 @@
 package com.emmanuelfinance.creditcard;
 
-import com.emmanuelfinance.creditcard.exceptions.CreditCardNotFound;
+import com.emmanuelfinance.shared.modules.creditcard.exceptions.CreditCardNotFound;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

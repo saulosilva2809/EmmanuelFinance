@@ -6,9 +6,6 @@ import com.emmanuelfinance.category.dto.ResponseCategoryDTO;
 import com.emmanuelfinance.category.services.CategoryService;
 import com.emmanuelfinance.shared.enums.TypeEnum;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
-import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
-import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
-import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,7 +21,6 @@ import org.springframework.test.context.ActiveProfiles;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest
@@ -40,23 +36,13 @@ public class CategoryIntegrationTest {
     @MockBean
     private SecurityUtils securityUtils;
 
-    @MockBean
-    private AccountClientCacheService accountClientCacheService;
-
     private UUID userId;
-    private UUID accountId;
 
     @BeforeEach
     void setUp() {
         userId = UUID.randomUUID();
-        accountId = UUID.randomUUID();
 
         when(securityUtils.getCurrentUserId()).thenReturn(userId);
-
-        AccountSummaryInternalDTO summaryInternalDTO = CategoryTestDataBuilder.accountSummaryInternalDTO(UUID.randomUUID());
-        AccountSummaryDTO fakeAccountSummary = CategoryTestDataBuilder.accountSummaryDTO(summaryInternalDTO);
-        when(accountClientCacheService.getAccountSummaryById(any()))
-                .thenReturn(fakeAccountSummary);
     }
 
     @Nested
@@ -68,7 +54,6 @@ public class CategoryIntegrationTest {
             categoryRepository.deleteAll();
 
             CreateCategoryDTO categoryActiveDTO = new CreateCategoryDTO(
-                    accountId,
                     "categoria 1",
                     TypeEnum.EXPENSE
             );
@@ -80,7 +65,6 @@ public class CategoryIntegrationTest {
             categoryActiveEntity.setUserId(userId);
 
             CreateCategoryDTO categoryDeletedDTO = new CreateCategoryDTO(
-                    accountId,
                     "categoria 2",
                     TypeEnum.EXPENSE
             );
@@ -92,7 +76,6 @@ public class CategoryIntegrationTest {
             categoryDeletedEntity.setUserId(userId);
 
             CategoryFiltersDTO filters = new CategoryFiltersDTO(
-                    null,
                     null,
                     null
             );
@@ -121,7 +104,6 @@ public class CategoryIntegrationTest {
             categoryRepository.deleteAll();
 
             CreateCategoryDTO categoryActiveDTO = new CreateCategoryDTO(
-                    accountId,
                     "categoria 1",
                     TypeEnum.EXPENSE
             );
@@ -133,7 +115,6 @@ public class CategoryIntegrationTest {
             categoryActiveEntity.setUserId(userId);
 
             CreateCategoryDTO categoryDeletedDTO = new CreateCategoryDTO(
-                    accountId,
                     "categoria 2",
                     TypeEnum.EXPENSE
             );
@@ -145,7 +126,6 @@ public class CategoryIntegrationTest {
             categoryDeletedEntity.setUserId(userId);
 
             CategoryFiltersDTO filters = new CategoryFiltersDTO(
-                    null,
                     null,
                     null
             );

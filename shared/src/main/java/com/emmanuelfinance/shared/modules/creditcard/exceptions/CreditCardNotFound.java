@@ -1,4 +1,4 @@
-package com.emmanuelfinance.creditcard.exceptions;
+package com.emmanuelfinance.shared.modules.creditcard.exceptions;
 
 import com.emmanuelfinance.config.exceptions.APIException;
 import org.springframework.http.HttpStatus;

@@ -2,6 +2,7 @@ package com.emmanuelfinance.creditcard.services;
 
 import com.emmanuelfinance.creditcard.CreditCard;
 import com.emmanuelfinance.creditcard.CreditCardSelector;
+import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardInternalSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardSummaryDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,15 @@ public class CreditCardInternalService {
                 creditCard.getId(),
                 creditCard.getName(),
                 creditCard.isDeleted()
+        );
+    }
+
+    public CreditCardInternalSummaryDTO getCreditCardInternalSummary(UUID id) {
+        CreditCard creditCard = cardSelector.getCreditCardById(id);
+
+        return new CreditCardInternalSummaryDTO(
+                creditCard.getId(),
+                creditCard.getAccountId()
         );
     }
 }

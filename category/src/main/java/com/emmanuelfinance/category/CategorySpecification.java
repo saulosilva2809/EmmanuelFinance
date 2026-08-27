@@ -17,15 +17,6 @@ public class CategorySpecification {
             predicates.add(criteriaBuilder.equal(root.get("userId"), userId));
             predicates.add(criteriaBuilder.equal(root.get("deleted"), onlyDeleted));
 
-            if (filters.accountId() != null) {
-                predicates.add(
-                        criteriaBuilder.equal(
-                                root.get("accountId"),
-                                filters.accountId()
-                        )
-                );
-            }
-
             if (filters.name() != null && !filters.name().isBlank()) {
                 predicates.add(
                         criteriaBuilder.like(

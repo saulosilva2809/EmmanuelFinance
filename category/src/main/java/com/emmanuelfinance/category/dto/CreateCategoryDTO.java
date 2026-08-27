@@ -8,9 +8,6 @@ import java.util.UUID;
 
 public record CreateCategoryDTO(
 
-        @NotNull(message = "The accountId is required")
-        UUID accountId,
-
         @NotBlank(message = "The name is required")
         String name,
 

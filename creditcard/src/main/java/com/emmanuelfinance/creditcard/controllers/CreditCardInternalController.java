@@ -1,6 +1,7 @@
 package com.emmanuelfinance.creditcard.controllers;
 
 import com.emmanuelfinance.creditcard.services.CreditCardInternalService;
+import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardInternalSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardSummaryDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,9 +19,15 @@ public class CreditCardInternalController {
 
     private final CreditCardInternalService creditCardInternalService;
 
-    @GetMapping("/{id}")
-    public ResponseEntity<CreditCardSummaryDTO> view(@PathVariable UUID id) {
+    @GetMapping("summary/{id}")
+    public ResponseEntity<CreditCardSummaryDTO> getCreditCardSummary(@PathVariable UUID id) {
         CreditCardSummaryDTO response = creditCardInternalService.getCreditCardSummary(id);
+        return ResponseEntity.ok().body(response);
+    }
+
+    @GetMapping("internal-summary/{id}")
+    public ResponseEntity<CreditCardInternalSummaryDTO> getCreditCardInternalSummary(@PathVariable UUID id) {
+        CreditCardInternalSummaryDTO response = creditCardInternalService.getCreditCardInternalSummary(id);
         return ResponseEntity.ok().body(response);
     }
 }

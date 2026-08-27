@@ -1,6 +1,6 @@
 package com.emmanuelfinance.category;
 
-import com.emmanuelfinance.category.exceptions.CategoryNotFound;
+import com.emmanuelfinance.shared.modules.category.exceptions.CategoryNotFound;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

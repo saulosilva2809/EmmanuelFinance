@@ -3,7 +3,6 @@ package com.emmanuelfinance.category.services;
 import com.emmanuelfinance.category.*;
 import com.emmanuelfinance.category.dto.CategoryFiltersDTO;
 import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
-import com.emmanuelfinance.category.exceptions.CategoryNotFound;
 import com.emmanuelfinance.category.exceptions.RestoreCategoryError;
 import com.emmanuelfinance.shared.annotation.WithDeletedFilter;
 import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
@@ -28,19 +27,14 @@ import java.util.UUID;
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
-    private final AccountClientCacheService accountClientCacheService;
     private final CategoryMapper categoryMapper;
     private final SecurityUtils securityUtils;
     private final AccountOwnershipValidator accountOwnershipValidator;
     private final CategorySelector categorySelector;
 
     private ResponseCategoryDTO categoryAsDTO(Category data) {
-        AccountSummaryDTO account = accountClientCacheService
-                .getAccountSummaryById(data.getAccountId());
-
         return new ResponseCategoryDTO(
                 data.getId(),
-                account,
                 data.getName(),
                 data.getType(),
                 data.getCreatedAt(),
@@ -64,12 +58,10 @@ public class CategoryService {
     public ResponseCategoryDTO create(CreateCategoryDTO data) {
         UUID userId = securityUtils.getCurrentUserId();
         checkCategoryExists(data);
-        accountOwnershipValidator.validate(data.accountId());
 
         Category category = new Category();
 
         category.setUserId(userId);
-        category.setAccountId(data.accountId());
         category.setName(data.name());
         category.setType(data.type());
 
@@ -116,10 +108,6 @@ public class CategoryService {
     @Transactional()
     public ResponseCategoryDTO update(UUID id, UpdateCategoryDTO data) {
         Category category = categorySelector.getCategoryById(id);
-
-        if (data.accountId() != null) {
-            accountOwnershipValidator.validate(data.accountId());
-        }
 
         categoryMapper.updateCategoryFromDTO(data, category);
 
