@@ -7,7 +7,8 @@ import com.emmanuelfinance.account.dto.UpdateAccountDTO;
 import com.emmanuelfinance.account.enums.TypeEnum;
 import com.emmanuelfinance.account.exceptions.AccountNotFound;
 import com.emmanuelfinance.account.exceptions.RestoreAccountError;
-import com.emmanuelfinance.account.kafka.producer.AccountEventPublisher;
+import com.emmanuelfinance.account.kafka.AccountEventPublisher;
+import com.emmanuelfinance.account.services.AccountService;
 import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.modules.account.AccountCache;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
@@ -59,6 +60,9 @@ public class AccountServiceTest {
 
     @Mock
     private AccountCache accountCache;
+
+    @Mock
+    private AccountSelector accountSelector;
 
     @Spy
     private AccountMapper accountMapper = Mappers.getMapper(AccountMapper.class);
@@ -127,11 +131,9 @@ public class AccountServiceTest {
             // preparação
             UUID nonExistentAccountId = UUID.randomUUID();
 
-            // ensinando o repository a retornar um optional nulo
-            when(accountRepository.findByIdAndUserIdAndDeletedFalse(
-                    nonExistentAccountId,
-                    userId
-            )).thenReturn(Optional.empty());
+            // ensinando o selector a lançar a exceção
+            when(accountSelector.getAccountByIdAndUserId(nonExistentAccountId))
+                    .thenThrow(new AccountNotFound());
 
             // when e then
             // valida a chamada do method e lança a exeção
@@ -139,11 +141,8 @@ public class AccountServiceTest {
                 accountService.view(nonExistentAccountId);
             });
 
-            // garante que o repositoty foi chamado
-            verify(accountRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
-                    nonExistentAccountId,
-                    userId
-            );
+            // garante que o selector foi chamado
+            verify(accountSelector, times(1)).getAccountByIdAndUserId(nonExistentAccountId);
 
             // verifica se o userClientCacheService não foi chamado
             verifyNoInteractions(userClientCacheService);
@@ -158,19 +157,14 @@ public class AccountServiceTest {
                     true
             );
 
-            when(accountRepository.findByIdAndUserIdAndDeletedFalse(
-                    accountEntity.getId(),
-                    userId
-            )).thenReturn(Optional.empty());
+            when(accountSelector.getAccountByIdAndUserId(accountEntity.getId()))
+                    .thenThrow(new AccountNotFound());
 
             assertThrows(AccountNotFound.class, () -> {
                 accountService.view(accountEntity.getId());
             });
 
-            verify(accountRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
-                    accountEntity.getId(),
-                    userId
-            );
+            verify(accountSelector, times(1)).getAccountByIdAndUserId(accountEntity.getId());
         }
 
         @Test
@@ -189,10 +183,8 @@ public class AccountServiceTest {
             UserSummaryDTO mockUser = new UserSummaryDTO(userId, "saulocomercial7@gmail.com");
 
             // ensinando os mocks
-            when(accountRepository.findByIdAndUserIdAndDeletedFalse(
-                    accountId,
-                    userId
-            )).thenReturn(Optional.of(mockAccount));
+            when(accountSelector.getAccountByIdAndUserId(accountId))
+                    .thenReturn(mockAccount);
             when(userClientCacheService.getUserById(userId)).thenReturn(mockUser);
 
             // when
@@ -206,10 +198,7 @@ public class AccountServiceTest {
             assertEquals(new BigDecimal("1000.00"), result.currentBalance());
 
             // verificaões de chamada
-            verify(accountRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
-                    accountId,
-                    userId
-            );
+            verify(accountSelector, times(1)).getAccountByIdAndUserId(accountId);
             verify(userClientCacheService, times(1)).getUserById(userId);
         }
     }
@@ -227,38 +216,29 @@ public class AccountServiceTest {
                     false
             );
 
-            when(accountRepository.findByIdAndUserIdIncludingDeleted(
-                    accountEntity.getId(),
-                    userId
-            )).thenReturn(Optional.of(accountEntity));
+            when(accountSelector.getAccountByIdIncludingDeleted(accountEntity.getId()))
+                    .thenReturn(accountEntity);
 
             AccountSummaryDTO result = accountService.getAccountSummary(accountEntity.getId());
 
             assertEquals(accountEntity.getId(), result.id());
             assertEquals(accountEntity.getName(), result.name());
 
-            verify(accountRepository, times(1)).findByIdAndUserIdIncludingDeleted(
-                    accountEntity.getId(),
-                    userId
-            );
+            verify(accountSelector, times(1)).getAccountByIdIncludingDeleted(accountEntity.getId());
         }
 
         @Test
         void shouldThrowAccountNotFoundWhenIdDoesNotExist() {
             UUID nonExistentId = UUID.randomUUID();
 
-            when(accountRepository.findByIdAndUserIdIncludingDeleted(
-                    nonExistentId,
-                    userId
-            )).thenReturn(Optional.empty());
+            when(accountSelector.getAccountByIdIncludingDeleted(nonExistentId))
+                    .thenThrow(new AccountNotFound());
+
             assertThrows(AccountNotFound.class, () -> {
                 accountService.getAccountSummary(nonExistentId);
             });
 
-            verify(accountRepository, times(1)).findByIdAndUserIdIncludingDeleted(
-                    nonExistentId,
-                    userId
-            );
+            verify(accountSelector, times(1)).getAccountByIdIncludingDeleted(nonExistentId);
         }
     }
 
@@ -334,19 +314,14 @@ public class AccountServiceTest {
             UUID nonExistentAccountId = UUID.randomUUID();
             UpdateAccountDTO updateDTO = new UpdateAccountDTO("Conta Inexsistente", TypeEnum.CASH);
 
-            when(accountRepository.findByIdAndUserIdAndDeletedFalse(
-                    nonExistentAccountId,
-                    userId
-            )).thenReturn(Optional.empty());
+            when(accountSelector.getAccountByIdAndUserId(nonExistentAccountId))
+                    .thenThrow(new AccountNotFound());
 
             assertThrows(AccountNotFound.class, () -> {
                 accountService.update(nonExistentAccountId, updateDTO);
             });
 
-            verify(accountRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
-                    nonExistentAccountId,
-                    userId
-            );
+            verify(accountSelector, times(1)).getAccountByIdAndUserId(nonExistentAccountId);
             verify(accountMapper, never()).updateAccountFromDTO(any(), any());
             verify(accountRepository, never()).save(any());
         }
@@ -361,19 +336,14 @@ public class AccountServiceTest {
             );
             UpdateAccountDTO updateDTO = new UpdateAccountDTO("Conta Atualizada", null);
 
-            when(accountRepository.findByIdAndUserIdAndDeletedFalse(
-                    accountEntity.getId(),
-                    userId
-            )).thenReturn(Optional.empty());
+            when(accountSelector.getAccountByIdAndUserId(accountEntity.getId()))
+                    .thenThrow(new AccountNotFound());
 
             assertThrows(AccountNotFound.class, () -> {
                 accountService.update(accountEntity.getId(), updateDTO);
             });
 
-            verify(accountRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
-                    accountEntity.getId(),
-                    userId
-            );
+            verify(accountSelector, times(1)).getAccountByIdAndUserId(accountEntity.getId());
         }
 
         @Test
@@ -391,10 +361,8 @@ public class AccountServiceTest {
 
             UpdateAccountDTO dto = new UpdateAccountDTO("Conta Nubank", TypeEnum.INVESTMENT);
 
-            when(accountRepository.findByIdAndUserIdAndDeletedFalse(
-                    id,
-                    userId
-            )).thenReturn(Optional.of(account));
+            when(accountSelector.getAccountByIdAndUserId(id))
+                    .thenReturn(account);
             when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             ResponseAccountDTO result = accountService.update(id, dto);
@@ -413,19 +381,14 @@ public class AccountServiceTest {
         void shouldThrowAccountNotFoundWhenIdDoesNotExist() {
             UUID nonExistentId = UUID.randomUUID();
 
-            when(accountRepository.findByIdAndUserIdAndDeletedFalse(
-                    nonExistentId,
-                    userId
-            )).thenReturn(Optional.empty());
+            when(accountSelector.getAccountByIdAndUserId(nonExistentId))
+                    .thenThrow(new AccountNotFound());
 
             assertThrows(AccountNotFound.class, () -> {
                 accountService.delete(nonExistentId);
             });
 
-            verify(accountRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
-                    nonExistentId,
-                    userId
-            );
+            verify(accountSelector, times(1)).getAccountByIdAndUserId(nonExistentId);
             verify(accountRepository, never()).deleteById(any());
         }
 
@@ -438,19 +401,14 @@ public class AccountServiceTest {
                     true
             );
 
-            when(accountRepository.findByIdAndUserIdAndDeletedFalse(
-                    accountEntity.getId(),
-                    userId
-            )).thenReturn(Optional.empty());
+            when(accountSelector.getAccountByIdAndUserId(accountEntity.getId()))
+                    .thenThrow(new AccountNotFound());
 
             assertThrows(AccountNotFound.class, () -> {
                 accountService.delete(accountEntity.getId());
             });
 
-            verify(accountRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
-                    accountEntity.getId(),
-                    userId
-            );
+            verify(accountSelector, times(1)).getAccountByIdAndUserId(accountEntity.getId());
         }
 
         @Test
@@ -466,17 +424,12 @@ public class AccountServiceTest {
             account.setInitialBalance(BigDecimal.ZERO);
             account.setCurrentBalance(BigDecimal.ZERO);
 
-            when(accountRepository.findByIdAndUserIdAndDeletedFalse(
-                    accountId,
-                    userId
-            )).thenReturn(Optional.of(account));
+            when(accountSelector.getAccountByIdAndUserId(accountId))
+                    .thenReturn(account);
 
             assertDoesNotThrow(() -> accountService.delete(accountId));
 
-            verify(accountRepository, times(1)).findByIdAndUserIdAndDeletedFalse(
-                    accountId,
-                    userId
-            );
+            verify(accountSelector, times(1)).getAccountByIdAndUserId(accountId);
             verify(accountRepository, times(1)).delete(account);
             verify(accountEventPublisher, times(1)).publishAccount(any(AccountEventDTO.class));
         }
@@ -495,19 +448,14 @@ public class AccountServiceTest {
                     false
             );
 
-            when(accountRepository.findByIdAndUserIdIncludingDeleted(
-                    accountEntity.getId(),
-                    userId
-            )).thenReturn(Optional.of(accountEntity));
+            when(accountSelector.getAccountByIdIncludingDeleted(accountEntity.getId()))
+                    .thenReturn(accountEntity);
 
             assertThrows(RestoreAccountError.class, () -> {
                 accountService.restore(accountEntity.getId());
             });
 
-            verify(accountRepository, times(1)).findByIdAndUserIdIncludingDeleted(
-                    accountEntity.getId(),
-                    userId
-            );
+            verify(accountSelector, times(1)).getAccountByIdIncludingDeleted(accountEntity.getId());
             verify(accountEventPublisher, never()).publishAccount(any(AccountEventDTO.class));
         }
 
@@ -520,17 +468,12 @@ public class AccountServiceTest {
                     true
             );
 
-            when(accountRepository.findByIdAndUserIdIncludingDeleted(
-                    accountEntity.getId(),
-                    userId
-            )).thenReturn(Optional.of(accountEntity));
+            when(accountSelector.getAccountByIdIncludingDeleted(accountEntity.getId()))
+                    .thenReturn(accountEntity);
 
             accountService.restore(accountEntity.getId());
 
-            verify(accountRepository, times(1)).findByIdAndUserIdIncludingDeleted(
-                    accountEntity.getId(),
-                    userId
-            );
+            verify(accountSelector, times(1)).getAccountByIdIncludingDeleted(accountEntity.getId());
             verify(accountEventPublisher, times(1)).publishAccount(any(AccountEventDTO.class));
         }
     }

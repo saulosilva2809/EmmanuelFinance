@@ -1,0 +1,39 @@
+package com.emmanuelfinance.account.kafka;
+
+import com.emmanuelfinance.account.services.AccountBalanceService;
+import com.emmanuelfinance.shared.modules.transaction.kafka.TransactionCreatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.kafka.TransactionUpdatedEvent;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class AccountListener {
+
+    private final AccountBalanceService accountBalanceService;
+
+    @KafkaListener(topics = "transaction-created-topic", groupId = "account-service-group")
+    public void handleTransactionCreated(TransactionCreatedEvent event) {
+        log.info("Recebido evento de transação criada para a conta: {}", event.accountId());
+
+        try {
+            accountBalanceService.updateBalanceFromTransaction(event);
+        } catch (Exception e) {
+            log.error("Erro ao processar atualização de saldo para o evento de criação: {}", event, e);
+        }
+    }
+
+    @KafkaListener(topics = "transaction-updated-topic", groupId = "account-service-group")
+    public void handleTransactionUpdated(TransactionUpdatedEvent event) {
+        log.info("Recebido evento de transação atualizada (ID: {})", event.transactionId());
+
+        try {
+            accountBalanceService.updateBalanceFromUpdatedTransaction(event);
+        } catch (Exception e) {
+            log.error("Erro ao processar atualização de saldo para o evento de alteração: {}", event, e);
+        }
+    }
+}
