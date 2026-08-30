@@ -7,7 +7,7 @@ public class RestoreCreditCardError extends APIException {
     public RestoreCreditCardError() {
         super(
                 HttpStatus.CONFLICT,
-                "It's not possible to restore an credit card that isn't deleted."
+                "It's not possible to restore the card whose account is deleted."
         );
     }
 }
