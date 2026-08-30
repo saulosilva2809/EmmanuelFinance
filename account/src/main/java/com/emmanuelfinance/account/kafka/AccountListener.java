@@ -1,8 +1,9 @@
 package com.emmanuelfinance.account.kafka;
 
 import com.emmanuelfinance.account.services.AccountBalanceService;
-import com.emmanuelfinance.shared.modules.transaction.kafka.TransactionCreatedEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.TransactionUpdatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
+import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionUpdatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -32,6 +33,28 @@ public class AccountListener {
 
         try {
             accountBalanceService.updateBalanceFromUpdatedTransaction(event);
+        } catch (Exception e) {
+            log.error("Erro ao processar atualização de saldo para o evento de alteração: {}", event, e);
+        }
+    }
+
+    @KafkaListener(topics = "transaction-deleted-topic", groupId = "account-service-group")
+    public void handleTransactionDeleted(TransactionDeletedAndRestoreEvent event) {
+        log.info("Recebido evento de transação recuperada (ID: {})", event.transactionId());
+
+        try {
+            accountBalanceService.updateBalanceFromDeletedTransaction(event);
+        } catch (Exception e) {
+            log.error("Erro ao processar atualização de saldo para o evento de alteração: {}", event, e);
+        }
+    }
+
+    @KafkaListener(topics = "transaction-restore-topic", groupId = "account-service-group")
+    public void handleTransactionRestore(TransactionDeletedAndRestoreEvent event) {
+        log.info("Recebido evento de transação recuperada (ID: {})", event.transactionId());
+
+        try {
+            accountBalanceService.updateBalanceFromRestoreTransaction(event);
         } catch (Exception e) {
             log.error("Erro ao processar atualização de saldo para o evento de alteração: {}", event, e);
         }

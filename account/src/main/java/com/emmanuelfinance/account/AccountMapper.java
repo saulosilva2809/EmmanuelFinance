@@ -1,14 +1,27 @@
 package com.emmanuelfinance.account;
 
+import com.emmanuelfinance.account.dto.CreateAccountDTO;
+import com.emmanuelfinance.account.dto.ResponseAccountDTO;
 import com.emmanuelfinance.account.dto.UpdateAccountDTO;
-import org.mapstruct.BeanMapping;
-import org.mapstruct.Mapper;
-import org.mapstruct.MappingTarget;
-import org.mapstruct.NullValuePropertyMappingStrategy;
+import org.mapstruct.*;
+import org.springframework.beans.factory.annotation.Autowired;
+
 
 @Mapper(componentModel = "spring")
-public interface AccountMapper {
+public abstract class AccountMapper {
+
+    @Autowired
+    protected UserClientCacheService userClientCacheService;
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "userId", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
+    public abstract Account toEntity(CreateAccountDTO data);
+
+    public abstract ResponseAccountDTO toResponseDTO(Account entity);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    void updateAccountFromDTO(UpdateAccountDTO data, @MappingTarget Account entity);
+    public abstract void updateAccountFromDTO(UpdateAccountDTO data, @MappingTarget Account entity);
 }

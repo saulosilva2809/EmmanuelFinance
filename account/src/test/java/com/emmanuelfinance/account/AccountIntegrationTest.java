@@ -68,10 +68,6 @@ public class AccountIntegrationTest {
         userId = UUID.randomUUID();
 
         when(securityUtils.getCurrentUserId()).thenReturn(userId);
-
-        UserSummaryDTO mockUser = AccountTestDataBuilder.createUserMock(userId);
-        when(userClientCacheService.getUserById(any()))
-                .thenReturn(mockUser);
     }
 
     @Nested

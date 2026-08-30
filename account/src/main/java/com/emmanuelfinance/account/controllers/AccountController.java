@@ -36,12 +36,6 @@ public class AccountController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
-    @GetMapping("summary/{id}")
-    public ResponseEntity<AccountSummaryDTO> summaryAccount(@PathVariable UUID id) {
-        AccountSummaryDTO response = accountService.getAccountSummary(id);
-        return ResponseEntity.ok().body(response);
-    }
-
     @GetMapping()
     public ResponseEntity<PageResponseDTO<ResponseAccountDTO>> list(
             AccountFiltersDTO filters,
