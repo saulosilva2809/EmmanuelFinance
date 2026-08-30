@@ -5,6 +5,7 @@ import com.emmanuelfinance.account.dto.ResponseAccountDTO;
 import com.emmanuelfinance.account.enums.TypeEnum;
 import com.emmanuelfinance.shared.dto.UserSummaryDTO;
 import com.emmanuelfinance.shared.enums.BanksEnum;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -35,31 +36,5 @@ public class AccountTestDataBuilder {
         account.setUpdatedAt(null);
         account.setDeleted(isDeleted);
         return account;
-    }
-
-    public static ResponseAccountDTO responseAccountDTO(Account account) {
-        UserSummaryDTO userSummary = createUserMock(account.getId());
-
-        return new ResponseAccountDTO(
-                account.getId(),
-                userSummary,
-                account.getName(),
-                account.getType(),
-                account.getBank(),
-                account.getInitialBalance(),
-                account.getCurrentBalance(),
-                account.getCreatedAt(),
-                account.getUpdatedAt(),
-                account.isDeleted()
-        );
-    }
-
-    public static UserSummaryDTO createUserMock(UUID accountId) {
-        UserSummaryDTO userSummary = new UserSummaryDTO(
-                accountId,
-                "saulocomercial7@gmail.com"
-        );
-
-        return userSummary;
     }
 }

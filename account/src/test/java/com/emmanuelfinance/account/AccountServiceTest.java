@@ -8,6 +8,7 @@ import com.emmanuelfinance.account.enums.TypeEnum;
 import com.emmanuelfinance.account.exceptions.AccountNotFound;
 import com.emmanuelfinance.account.exceptions.RestoreAccountError;
 import com.emmanuelfinance.account.kafka.AccountEventPublisher;
+import com.emmanuelfinance.account.services.AccountInternalService;
 import com.emmanuelfinance.account.services.AccountService;
 import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.modules.account.AccountCache;
@@ -64,6 +65,9 @@ public class AccountServiceTest {
     @Mock
     private AccountSelector accountSelector;
 
+    @InjectMocks
+    private AccountInternalService accountInternalService;
+
     @Spy
     private AccountMapper accountMapper = Mappers.getMapper(AccountMapper.class);
 
@@ -83,9 +87,6 @@ public class AccountServiceTest {
         void shouldCreateAccountSuccessfully() {
             // preparação
             UUID generatedAccountId = UUID.randomUUID();
-
-            UserSummaryDTO mockUser = new UserSummaryDTO(userId, "saulocomercial7@gmail.com");
-            when(userClientCacheService.getUserById(userId)).thenReturn(mockUser);
 
             CreateAccountDTO createDTO = new CreateAccountDTO(
                     "Conta Itaú",
@@ -117,7 +118,6 @@ public class AccountServiceTest {
                             account.getName().equals("Conta Itaú") &&
                             account.getInitialBalance().equals(new BigDecimal("1000.00"))
             ));
-            verify(userClientCacheService, times(1)).getUserById(userId);
             verify(accountEventPublisher, times(1)).publishAccount(any(AccountEventDTO.class));
         }
     }
@@ -180,12 +180,9 @@ public class AccountServiceTest {
             mockAccount.setInitialBalance(new BigDecimal("1000.00"));
             mockAccount.setCurrentBalance(new BigDecimal("1000.00"));
 
-            UserSummaryDTO mockUser = new UserSummaryDTO(userId, "saulocomercial7@gmail.com");
-
             // ensinando os mocks
             when(accountSelector.getAccountByIdAndUserId(accountId))
                     .thenReturn(mockAccount);
-            when(userClientCacheService.getUserById(userId)).thenReturn(mockUser);
 
             // when
             ResponseAccountDTO result = accountService.view(accountId);
@@ -199,7 +196,6 @@ public class AccountServiceTest {
 
             // verificaões de chamada
             verify(accountSelector, times(1)).getAccountByIdAndUserId(accountId);
-            verify(userClientCacheService, times(1)).getUserById(userId);
         }
     }
 
@@ -219,10 +215,12 @@ public class AccountServiceTest {
             when(accountSelector.getAccountByIdIncludingDeleted(accountEntity.getId()))
                     .thenReturn(accountEntity);
 
-            AccountSummaryDTO result = accountService.getAccountSummary(accountEntity.getId());
+            AccountSummaryDTO result = accountInternalService.getAccountSummary(accountEntity.getId());
 
+            assertNotNull(result);
             assertEquals(accountEntity.getId(), result.id());
             assertEquals(accountEntity.getName(), result.name());
+            assertEquals(accountEntity.isDeleted(), result.deleted());
 
             verify(accountSelector, times(1)).getAccountByIdIncludingDeleted(accountEntity.getId());
         }
@@ -235,7 +233,7 @@ public class AccountServiceTest {
                     .thenThrow(new AccountNotFound());
 
             assertThrows(AccountNotFound.class, () -> {
-                accountService.getAccountSummary(nonExistentId);
+                accountInternalService.getAccountSummary(nonExistentId);
             });
 
             verify(accountSelector, times(1)).getAccountByIdIncludingDeleted(nonExistentId);
@@ -275,8 +273,6 @@ public class AccountServiceTest {
                     userId,
                     false
             );
-            UserSummaryDTO mockUser = AccountTestDataBuilder.createUserMock(accountEntity.getId());
-
             // dtos de filtro e user
             AccountFiltersDTO filters = new AccountFiltersDTO("C6", TypeEnum.CHECKING);
             Pageable pageable = PageRequest.of(0, 10); // page 0, size 10
@@ -287,7 +283,6 @@ public class AccountServiceTest {
 
             // ensinando os mocks
             when(accountRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(accountPage);
-            when(userClientCacheService.getUserById(userId)).thenReturn(mockUser);
 
             // when
             PageResponseDTO<ResponseAccountDTO> result = accountService.list(filters, pageable);
@@ -301,7 +296,6 @@ public class AccountServiceTest {
 
             // verificações
             verify(accountRepository, times(1)).findAll(any(Specification.class), eq(pageable));
-            verify(userClientCacheService, times(1)).getUserById(userId);
         }
     }
 
