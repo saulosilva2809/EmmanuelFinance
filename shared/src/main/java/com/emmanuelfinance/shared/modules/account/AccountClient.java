@@ -10,14 +10,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.UUID;
 
-@FeignClient(name = "account-server", url = "${application.config.account-service-url}")
+@FeignClient(
+        name = "account-server",
+        url = "${application.config.account-service-url}",
+        configuration = AccountErrorDecoder.class
+)
 @ConditionalOnProperty(name = "application.config.account-service-url")
 public interface AccountClient {
 
-    @GetMapping("/accounts/summary/{id}")
+    @GetMapping("internal/accounts/summary/{id}")
     AccountSummaryDTO getAccountSummary(@PathVariable UUID id);
 
-    @GetMapping("/internal/accounts/summary/{id}")
+    @GetMapping("/internal/accounts/internal-summary/{id}")
     AccountSummaryInternalDTO getAccountSummaryInternal(@PathVariable UUID id);
 
     @GetMapping("/internal/accounts/{accountId}/ownership")
