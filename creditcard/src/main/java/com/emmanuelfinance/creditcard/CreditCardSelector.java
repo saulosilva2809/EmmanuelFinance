@@ -5,6 +5,7 @@ import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.UUID;
 
 @Component
@@ -28,5 +29,13 @@ public class CreditCardSelector {
                 .orElseThrow(() -> new CreditCardNotFound());
 
         return creditCard;
+    }
+
+    public List<CreditCard> findByAccountId(UUID accountId) {
+        List<CreditCard> cards = creditCardRepository.findByAccountId(
+                accountId
+        );
+
+        return cards;
     }
 }
