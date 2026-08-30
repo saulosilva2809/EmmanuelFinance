@@ -5,6 +5,7 @@ import com.emmanuelfinance.transaction.dtos.CreateTransactionDTO;
 import com.emmanuelfinance.transaction.dtos.ResponseTransactionDTO;
 import com.emmanuelfinance.transaction.dtos.TransactionFiltersDTO;
 import com.emmanuelfinance.transaction.dtos.UpdateTransactionDTO;
+import com.emmanuelfinance.transaction.services.TransactionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -72,5 +73,17 @@ public class TransactionController {
     ) {
         ResponseTransactionDTO response = transactionService.update(id, data);
         return ResponseEntity.ok().body(response);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        transactionService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/restore/{id}")
+    public ResponseEntity<Void> restore(@PathVariable UUID id) {
+        transactionService.restore(id);
+        return ResponseEntity.noContent().build();
     }
 }
