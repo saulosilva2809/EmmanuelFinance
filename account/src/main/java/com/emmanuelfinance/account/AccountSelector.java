@@ -31,4 +31,11 @@ public class AccountSelector {
 
         return account;
     }
+
+    public Account getAccountByIdInternal(UUID accountId) {
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new AccountNotFound());
+
+        return account;
+    }
 }
