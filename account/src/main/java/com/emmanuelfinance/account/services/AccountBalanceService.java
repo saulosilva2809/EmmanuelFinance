@@ -4,8 +4,9 @@ import com.emmanuelfinance.account.Account;
 import com.emmanuelfinance.account.AccountRepository;
 import com.emmanuelfinance.account.AccountSelector;
 import com.emmanuelfinance.shared.enums.TypeEnum;
-import com.emmanuelfinance.shared.modules.transaction.kafka.TransactionCreatedEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.TransactionUpdatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
+import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionUpdatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,22 @@ public class AccountBalanceService {
 
         applyBalance(newAccount, event.newAmount(), event.newType(), false);
         accountRepository.saveAndFlush(newAccount);
+    }
+
+    @Transactional
+    public void updateBalanceFromDeletedTransaction(TransactionDeletedAndRestoreEvent event) {
+        Account account = accountSelector.getAccountByIdInternal(event.accountId());
+
+        applyBalance(account, event.amount(), event.type(), true);
+        accountRepository.saveAndFlush(account);
+    }
+
+    @Transactional
+    public void updateBalanceFromRestoreTransaction(TransactionDeletedAndRestoreEvent event) {
+        Account account = accountSelector.getAccountByIdInternal(event.accountId());
+
+        applyBalance(account, event.amount(), event.type(), false);
+        accountRepository.saveAndFlush(account);
     }
 
     private void applyBalance(Account account, BigDecimal amount, TypeEnum type, boolean isReversal) {
