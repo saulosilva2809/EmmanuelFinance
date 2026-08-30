@@ -1,4 +1,4 @@
-package com.emmanuelfinance.shared.modules.transaction.kafka;
+package com.emmanuelfinance.shared.modules.transaction.kafka.dto;
 
 import com.emmanuelfinance.shared.enums.TypeEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
