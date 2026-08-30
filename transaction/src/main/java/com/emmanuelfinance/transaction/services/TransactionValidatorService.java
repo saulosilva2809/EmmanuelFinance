@@ -1,4 +1,4 @@
-package com.emmanuelfinance.transaction;
+package com.emmanuelfinance.transaction.services;
 
 import com.emmanuelfinance.shared.enums.TypeEnum;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
@@ -7,20 +7,22 @@ import com.emmanuelfinance.shared.modules.category.dtos.CategoryInternalSummaryD
 import com.emmanuelfinance.shared.modules.creditcard.CreditCardClientCacheService;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardInternalSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.exceptions.CreditCardNotFound;
+import com.emmanuelfinance.transaction.Transaction;
 import com.emmanuelfinance.transaction.dtos.CreateTransactionDTO;
 import com.emmanuelfinance.transaction.dtos.UpdateTransactionDTO;
 import com.emmanuelfinance.transaction.exceptions.CategoryTypeMismatch;
+import com.emmanuelfinance.transaction.exceptions.RestoreItemNotDeletedException;
 import com.emmanuelfinance.transaction.exceptions.ScheduledTransactionDateRequired;
 import com.emmanuelfinance.transaction.exceptions.UnscheduledTransactionDateNotAllowed;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Component
+@Service
 @RequiredArgsConstructor
-public class TransactionValidator {
+public class TransactionValidatorService {
 
     private final AccountOwnershipValidator accountOwnershipValidator;
     private final CategoryClientCacheService categoryClientCacheService;
@@ -28,18 +30,6 @@ public class TransactionValidator {
 
     public final CreateValidations create = new CreateValidations();
     public final UpdateValidations update = new UpdateValidations();
-
-    public void validateCreditCardAccount(UUID accountId, UUID cardId) {
-        if (cardId == null) {
-            return;
-        }
-
-        CreditCardInternalSummaryDTO creditCard = creditCardClientCacheService.getCreditCardInternalSummaryDTO(cardId);
-
-        if (creditCard == null || !creditCard.accountId().equals(accountId)) {
-            throw new CreditCardNotFound();
-        }
-    }
 
     private void checkCategoryAndTransactionType(UUID categoryId, TypeEnum transactionType) {
         CategoryInternalSummaryDTO categoryDTO = categoryClientCacheService.getCategoryInternalSummaryDTO(categoryId);
@@ -57,6 +47,24 @@ public class TransactionValidator {
             throw new ScheduledTransactionDateRequired();
         } else if (!isScheduled && hasDate) {
             throw new UnscheduledTransactionDateNotAllowed();
+        }
+    }
+
+    public void validateCreditCardAccount(UUID accountId, UUID cardId) {
+        if (cardId == null) {
+            return;
+        }
+
+        CreditCardInternalSummaryDTO creditCard = creditCardClientCacheService.getCreditCardInternalSummaryDTO(cardId);
+
+        if (creditCard == null || !creditCard.accountId().equals(accountId)) {
+            throw new CreditCardNotFound();
+        }
+    }
+
+    public void checkIfTransactionIsDeleted(Transaction transaction) {
+        if (!transaction.isDeleted()) {
+            throw new RestoreItemNotDeletedException();
         }
     }
 
