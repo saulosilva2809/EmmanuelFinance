@@ -1,17 +1,15 @@
-package com.emmanuelfinance.transaction;
+package com.emmanuelfinance.transaction.services;
 
 import com.emmanuelfinance.shared.annotation.WithDeletedFilter;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.enums.TypeEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.kafka.TransactionCreatedEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.TransactionUpdatedEvent;
 import com.emmanuelfinance.shared.security.SecurityUtils;
+import com.emmanuelfinance.transaction.*;
 import com.emmanuelfinance.transaction.dtos.CreateTransactionDTO;
 import com.emmanuelfinance.transaction.dtos.ResponseTransactionDTO;
 import com.emmanuelfinance.transaction.dtos.TransactionFiltersDTO;
 import com.emmanuelfinance.transaction.dtos.UpdateTransactionDTO;
-import com.emmanuelfinance.transaction.kafka.TransactionProducer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -35,27 +33,8 @@ public class TransactionService {
     private final TransactionMapper transactionMapper;
     private final TransactionSelector transactionSelector;
     private final IdempotencyService idempotencyService;
-    private final TransactionProducer transactionProducer;
-    private final TransactionValidator transactionValidator;
-
-    private String generateIdempotencyKey(UUID userId, CreateTransactionDTO data) {
-        String rawData = String.format(
-                "%s:%s:%s:%s:%s",
-                userId,
-                data.accountId(),
-                data.amount(),
-                data.date() != null ? data.date().toString() : "",
-                data.description() != null ? data.description().trim().toLowerCase() : ""
-        );
-
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(rawData.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Erro ao gerar chave de idempotência", e);
-        }
-    }
+    private final TransactionValidatorService transactionValidatorService;
+    private final TransactionEventsService transactionEventsService;
 
     private void setTransactionStatus(Transaction transaction) {
         if (Boolean.TRUE.equals(transaction.isScheduled())) {
@@ -65,42 +44,15 @@ public class TransactionService {
         }
     }
 
-    private void publishTransactionCreatedEvent(Transaction transaction) {
-        if (transaction.getStatus() == StatusTransactionEnum.PAID) {
-            transactionProducer.publishTransactionCreated(new TransactionCreatedEvent(
-                    transaction.getId(),
-                    transaction.getAccountId(),
-                    transaction.getAmount(),
-                    transaction.getType(),
-                    transaction.getStatus()
-            ));
-        }
-    }
-
-    private void publishTransactionUpdatedEvent(Transaction transaction, UUID oldAccountId, BigDecimal oldAmount, TypeEnum oldType) {
-        if (transaction.getStatus() == StatusTransactionEnum.PAID) {
-            transactionProducer.publishTransactionUpdated(new TransactionUpdatedEvent(
-                    transaction.getId(),
-                    oldAccountId,
-                    transaction.getAccountId(),
-                    oldAmount,
-                    transaction.getAmount(),
-                    oldType,
-                    transaction.getType(),
-                    transaction.getStatus()
-            ));
-        }
-    }
-
     @Transactional
     public ResponseTransactionDTO create(CreateTransactionDTO data) {
         // TODO: nova regra de negócio, garantir que a account seja o mesmo do credit card
 
         UUID userId = securityUtils.getCurrentUserId();
 
-        transactionValidator.create.validate(data);
+        transactionValidatorService.create.validate(data);
 
-        String idempotencyKey = generateIdempotencyKey(userId, data);
+        String idempotencyKey = idempotencyService.generateIdempotencyKey(userId, data);
         idempotencyService.validateAndLock(idempotencyKey);
 
         Transaction transaction = transactionMapper.toEntity(data);
@@ -108,10 +60,10 @@ public class TransactionService {
         transaction.setIdempotencyKey(idempotencyKey);
         setTransactionStatus(transaction);
 
-        transactionValidator.validateCreditCardAccount(transaction.getAccountId(), transaction.getCreditCardId());
+        transactionValidatorService.validateCreditCardAccount(transaction.getAccountId(), transaction.getCreditCardId());
 
         Transaction savedTransaction = transactionRepository.save(transaction);
-        publishTransactionCreatedEvent(transaction);
+        transactionEventsService.publishTransactionCreatedEvent(transaction);
 
         // TODO: tratar quando a compra for feita no cartão
 
@@ -167,14 +119,33 @@ public class TransactionService {
         BigDecimal oldAmount = transaction.getAmount();
         TypeEnum oldType = transaction.getType();
 
-        transactionValidator.update.validate(transaction, data);
+        transactionValidatorService.update.validate(transaction, data);
 
         transactionMapper.updateEntityFromDTO(data, transaction);
-        transactionValidator.validateCreditCardAccount(transaction.getAccountId(), transaction.getCreditCardId());
+        transactionValidatorService.validateCreditCardAccount(transaction.getAccountId(), transaction.getCreditCardId());
 
         Transaction updatedTransaction = transactionRepository.save(transaction);
-        publishTransactionUpdatedEvent(updatedTransaction, oldAccountId, oldAmount, oldType);
+        transactionEventsService.publishTransactionUpdatedEvent(updatedTransaction, oldAccountId, oldAmount, oldType);
 
         return transactionMapper.toResponseDTO(updatedTransaction);
+    }
+
+    @Transactional
+    public void delete(UUID transactionId) {
+        Transaction transaction = transactionSelector.getTransactionById(transactionId);
+        transactionRepository.delete(transaction);
+
+        transactionEventsService.publishTransactionDeletedEvent(transaction);
+    }
+
+    @Transactional
+    public void restore(UUID transactionId) {
+        Transaction transaction = transactionSelector.getTransactionByIdIncluingDeleted(transactionId);
+        transactionValidatorService.checkIfTransactionIsDeleted(transaction);
+
+        transaction.setDeleted(false);
+        transactionRepository.save(transaction);
+
+        transactionEventsService.publishTransactionRestoreEvent(transaction);
     }
 }
