@@ -29,49 +29,23 @@ public class CategoryService {
     private final CategoryRepository categoryRepository;
     private final CategoryMapper categoryMapper;
     private final SecurityUtils securityUtils;
-    private final AccountOwnershipValidator accountOwnershipValidator;
     private final CategorySelector categorySelector;
-
-    private ResponseCategoryDTO categoryAsDTO(Category data) {
-        return new ResponseCategoryDTO(
-                data.getId(),
-                data.getName(),
-                data.getType(),
-                data.getCreatedAt(),
-                data.getUpdatedAt(),
-                data.isDeleted()
-        );
-    }
-
-    private void checkCategoryExists(CreateCategoryDTO data) {
-        UUID userId = securityUtils.getCurrentUserId();
-        boolean exists = categoryRepository.existsByNameIgnoreCaseAndTypeAndUserId(
-                data.name(),
-                data.type(),
-                userId
-        );
-        if (exists) {
-            throw new CategoryAlreadyExists();
-        }
-    }
+    private final CategoryValidatorService categoryValidatorService;
 
     public ResponseCategoryDTO create(CreateCategoryDTO data) {
         UUID userId = securityUtils.getCurrentUserId();
-        checkCategoryExists(data);
+        categoryValidatorService.checkCategoryExists(data);
 
-        Category category = new Category();
-
+        Category category = categoryMapper.toEntity(data);
         category.setUserId(userId);
-        category.setName(data.name());
-        category.setType(data.type());
 
         Category savedCategory = categoryRepository.save(category);
-        return categoryAsDTO(savedCategory);
+        return categoryMapper.toResponseDTO(savedCategory);
     }
 
     public ResponseCategoryDTO view(UUID id) {
         Category category = categorySelector.getCategoryById(id);
-        return categoryAsDTO(category);
+        return categoryMapper.toResponseDTO(category);
     }
 
     @Transactional(readOnly = true)
@@ -85,7 +59,7 @@ public class CategoryService {
                 pageable
         );
 
-        Page<ResponseCategoryDTO> dtoPage = page.map(this::categoryAsDTO);
+        Page<ResponseCategoryDTO> dtoPage = page.map(categoryMapper::toResponseDTO);
 
         return PageResponseDTO.from(dtoPage);
     }
@@ -100,7 +74,7 @@ public class CategoryService {
                 pageable
         );
 
-        Page<ResponseCategoryDTO> dtoPage = page.map(this::categoryAsDTO);
+        Page<ResponseCategoryDTO> dtoPage = page.map(categoryMapper::toResponseDTO);
 
         return PageResponseDTO.from(dtoPage);
     }
@@ -112,7 +86,7 @@ public class CategoryService {
         categoryMapper.updateCategoryFromDTO(data, category);
 
         Category savedCategory = categoryRepository.save(category);
-        return categoryAsDTO(savedCategory);
+        return categoryMapper.toResponseDTO(savedCategory);
     }
 
     @Transactional()
@@ -125,9 +99,7 @@ public class CategoryService {
     public void restore(UUID id) {
         Category category = categorySelector.getCategoryByIdIncludingDeleted(id);
 
-        if (!category.isDeleted()) {
-            throw new RestoreCategoryError();
-        }
+        categoryValidatorService.verifyIsDeleted(category);
 
         category.setDeleted(false);
         categoryRepository.save(category);

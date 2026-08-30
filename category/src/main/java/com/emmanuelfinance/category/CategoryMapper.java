@@ -1,14 +1,22 @@
 package com.emmanuelfinance.category;
 
+import com.emmanuelfinance.category.dto.CreateCategoryDTO;
+import com.emmanuelfinance.category.dto.ResponseCategoryDTO;
 import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
-import org.mapstruct.BeanMapping;
-import org.mapstruct.Mapper;
-import org.mapstruct.MappingTarget;
-import org.mapstruct.NullValuePropertyMappingStrategy;
+import org.mapstruct.*;
 
 @Mapper(componentModel = "spring")
-public interface CategoryMapper {
+public abstract class CategoryMapper {
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "userId", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
+    public abstract Category toEntity(CreateCategoryDTO data);
+
+    public abstract ResponseCategoryDTO toResponseDTO(Category entity);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    void updateCategoryFromDTO(UpdateCategoryDTO data, @MappingTarget Category entity);
+    public abstract void updateCategoryFromDTO(UpdateCategoryDTO data, @MappingTarget Category entity);
 }
