@@ -33,13 +33,18 @@ spring:
         jwt:
           jwk-set-uri: ${KC_AUTH_SERVER_URL}/realms/${KC_REALM}/protocol/openid-connect/certs
 
-    kafka:
-      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVER}
-      consumer:
-        key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-        value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-        properties:
-          spring.json.trusted.packages: "*"
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVER}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: credit-card-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
 
 application:
     config:
