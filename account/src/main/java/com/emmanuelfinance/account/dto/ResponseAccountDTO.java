@@ -10,7 +10,6 @@ import java.util.UUID;
 
 public record ResponseAccountDTO (
         UUID id,
-        UserSummaryDTO user,
         String name,
         TypeEnum type,
         BanksEnum bank,
