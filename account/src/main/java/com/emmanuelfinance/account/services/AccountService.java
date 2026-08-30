@@ -28,7 +28,6 @@ import java.util.UUID;
 public class AccountService {
 
     private final AccountRepository accountRepository;
-    private final UserClientCacheService userClientCacheService;
     private final AccountMapper accountMapper;
     private final AccountEventPublisher accountEventPublisher;
     private final SecurityUtils securityUtils;
@@ -39,47 +38,25 @@ public class AccountService {
     public ResponseAccountDTO create(CreateAccountDTO data) {
         UUID userId = securityUtils.getCurrentUserId();
 
-        Account newAccount = new Account();
+        Account account = accountMapper.toEntity(data);
+        account.setUserId(userId);
+        account.setCurrentBalance(data.initialBalance());
 
-        newAccount.setUserId(userId);
-        newAccount.setName(data.name());
-        newAccount.setType(data.type());
-        newAccount.setBank(data.bank());
-        newAccount.setInitialBalance(data.initialBalance());
-        newAccount.setCurrentBalance(data.initialBalance());
-
-        Account savedAccount = accountRepository.save(newAccount);
+        Account savedAccount = accountRepository.save(account);
         accountEventPublisher.publishAccount(new AccountEventDTO(
-                newAccount.getId(),
-                newAccount.getUserId(),
+                account.getId(),
+                account.getUserId(),
                 StatusEventEnum.CREATED
         ));
-        accountCache.saveAccountOwner(newAccount.getId(), newAccount.getUserId());
+        accountCache.saveAccountOwner(account.getId(), account.getUserId());
 
-        return accountAsDTO(savedAccount);
+        return accountMapper.toResponseDTO(savedAccount);
     }
 
     public ResponseAccountDTO view(UUID uuid) {
         Account account = accountSelector.getAccountByIdAndUserId(uuid);
 
-        return accountAsDTO(account);
-    }
-
-    public AccountSummaryDTO getAccountSummary(UUID id) {
-        Account account = accountSelector.getAccountByIdIncludingDeleted(id);
-
-        return new AccountSummaryDTO(account.getId(), account.getName(), account.isDeleted());
-    }
-
-    public AccountSummaryInternalDTO getAccountSummaryInternal(UUID id) {
-        Account account = accountSelector.getAccountByIdIncludingDeleted(id);
-
-        return new AccountSummaryInternalDTO(
-                account.getId(),
-                account.getName(),
-                account.getBank(),
-                account.isDeleted()
-        );
+        return accountMapper.toResponseDTO(account);
     }
 
     @WithDeletedFilter(enabled = true)
@@ -92,7 +69,7 @@ public class AccountService {
                 pageable
         );
 
-        Page<ResponseAccountDTO> dtoPage = page.map(this::accountAsDTO);
+        Page<ResponseAccountDTO> dtoPage = page.map(accountMapper::toResponseDTO);
         return PageResponseDTO.from(dtoPage);
     }
 
@@ -103,7 +80,7 @@ public class AccountService {
         Specification<Account> specification = AccountSpecification.withFilter(filters, userId, true);
 
         Page<Account> page = accountRepository.findAll(specification, pageable);
-        Page<ResponseAccountDTO> dtoPage = page.map(this::accountAsDTO);
+        Page<ResponseAccountDTO> dtoPage = page.map(accountMapper::toResponseDTO);
 
         return PageResponseDTO.from(dtoPage);
     }
@@ -117,7 +94,7 @@ public class AccountService {
 
         Account savedAccount = accountRepository.save(account);
 
-        return accountAsDTO(savedAccount);
+        return accountMapper.toResponseDTO(savedAccount);
     }
 
     @Transactional
@@ -150,27 +127,5 @@ public class AccountService {
                 account.getUserId(),
                 StatusEventEnum.RESTORE
         ));
-    }
-
-    @Transactional(readOnly = true)
-    public boolean checkAccountOwner(UUID accountId, UUID userId) {
-        return accountRepository.existsByIdAndUserIdAndDeletedFalse(accountId, userId);
-    }
-
-    private ResponseAccountDTO accountAsDTO(Account data) {
-        UserSummaryDTO userData = userClientCacheService.getUserById(data.getUserId());
-
-        return new ResponseAccountDTO(
-                data.getId(),
-                userData,
-                data.getName(),
-                data.getType(),
-                data.getBank(),
-                data.getInitialBalance(),
-                data.getCurrentBalance(),
-                data.getCreatedAt(),
-                data.getUpdatedAt(),
-                data.isDeleted()
-        );
     }
 }
