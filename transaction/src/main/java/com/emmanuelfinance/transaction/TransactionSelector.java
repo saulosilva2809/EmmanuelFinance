@@ -24,4 +24,14 @@ public class TransactionSelector {
 
         return transaction;
     }
+
+    public Transaction getTransactionByIdIncluingDeleted(UUID id) {
+        UUID userId = securityUtils.getCurrentUserId();
+        Transaction transaction = transactionRepository.findByIdAndUserId(
+                id,
+                userId
+        ).orElseThrow(() -> new TransactionNotFound());
+
+        return transaction;
+    }
 }
