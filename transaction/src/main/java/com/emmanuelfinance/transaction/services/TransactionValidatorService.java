@@ -10,10 +10,7 @@ import com.emmanuelfinance.shared.modules.creditcard.exceptions.CreditCardNotFou
 import com.emmanuelfinance.transaction.Transaction;
 import com.emmanuelfinance.transaction.dtos.CreateTransactionDTO;
 import com.emmanuelfinance.transaction.dtos.UpdateTransactionDTO;
-import com.emmanuelfinance.transaction.exceptions.CategoryTypeMismatch;
-import com.emmanuelfinance.transaction.exceptions.RestoreItemNotDeletedException;
-import com.emmanuelfinance.transaction.exceptions.ScheduledTransactionDateRequired;
-import com.emmanuelfinance.transaction.exceptions.UnscheduledTransactionDateNotAllowed;
+import com.emmanuelfinance.transaction.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -43,10 +40,18 @@ public class TransactionValidatorService {
         boolean isScheduled = Boolean.TRUE.equals(scheduled);
         boolean hasDate = date != null;
 
-        if (isScheduled && !hasDate) {
-            throw new ScheduledTransactionDateRequired();
-        } else if (!isScheduled && hasDate) {
-            throw new UnscheduledTransactionDateNotAllowed();
+        if (isScheduled) {
+            if (!hasDate) {
+                throw new ScheduledTransactionDateRequired();
+            }
+
+            if (date.isBefore(LocalDateTime.now().minusMinutes(1))) {
+                throw new ScheduledTransactionDateInPastException();
+            }
+        } else {
+            if (hasDate) {
+                throw new UnscheduledTransactionDateNotAllowed();
+            }
         }
     }
 
@@ -72,6 +77,7 @@ public class TransactionValidatorService {
         public void validate(CreateTransactionDTO data) {
             accountOwnershipValidator.validate(data.accountId());
             checkCategoryAndTransactionType(data.categoryId(), data.type());
+            validateCreditCardAccount(data.accountId(), data.creditCardId());
             validateScheduledDate(data.scheduled(), data.date());
         }
     }
@@ -90,6 +96,10 @@ public class TransactionValidatorService {
 
             if (data.creditCardId() != null && !data.creditCardId().equals(existingTransaction.getCreditCardId())) {
                 creditCardClientCacheService.getCreditCardInternalSummaryDTO(data.creditCardId());
+            }
+
+            if (!existingTransaction.isScheduled() && Boolean.TRUE.equals(data.scheduled())) {
+                throw new CannotScheduleUnscheduledTransactionException();
             }
 
             if (Boolean.FALSE.equals(data.scheduled()) && data.date() != null) {

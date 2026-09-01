@@ -31,7 +31,13 @@ public class TransactionEventsService {
         }
     }
 
-    public void publishTransactionUpdatedEvent(Transaction transaction, UUID oldAccountId, BigDecimal oldAmount, TypeEnum oldType) {
+    public void publishTransactionUpdatedEvent(
+            Transaction transaction,
+            UUID oldAccountId,
+            BigDecimal oldAmount,
+            TypeEnum oldType,
+            StatusTransactionEnum oldStatus
+    ) {
         if (transaction.getStatus() == StatusTransactionEnum.PAID) {
             transactionProducer.publishTransactionUpdated(new TransactionUpdatedEvent(
                     transaction.getId(),
@@ -41,6 +47,7 @@ public class TransactionEventsService {
                     transaction.getAmount(),
                     oldType,
                     transaction.getType(),
+                    oldStatus,
                     transaction.getStatus()
             ));
         }

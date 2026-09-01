@@ -4,6 +4,7 @@ import com.emmanuelfinance.account.Account;
 import com.emmanuelfinance.account.AccountRepository;
 import com.emmanuelfinance.account.AccountSelector;
 import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionUpdatedEvent;
@@ -33,15 +34,19 @@ public class AccountBalanceService {
     public void updateBalanceFromUpdatedTransaction(TransactionUpdatedEvent event) {
         Account oldAccount = accountSelector.getAccountByIdInternal(event.oldAccountId());
 
-        applyBalance(oldAccount, event.oldAmount(), event.oldType(), true);
-        accountRepository.saveAndFlush(oldAccount);
+        if (StatusTransactionEnum.PAID.equals(event.oldStatus())) {
+            applyBalance(oldAccount, event.oldAmount(), event.oldType(), true);
+            accountRepository.saveAndFlush(oldAccount);
+        }
 
         Account newAccount = event.oldAccountId().equals(event.newAccountId())
                 ? oldAccount
                 : accountSelector.getAccountByIdInternal(event.newAccountId());
 
-        applyBalance(newAccount, event.newAmount(), event.newType(), false);
-        accountRepository.saveAndFlush(newAccount);
+        if (StatusTransactionEnum.PAID.equals(event.newStatus())) {
+            applyBalance(newAccount, event.newAmount(), event.newType(), false);
+            accountRepository.saveAndFlush(newAccount);
+        }
     }
 
     @Transactional
