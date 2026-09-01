@@ -10,6 +10,7 @@ import com.emmanuelfinance.transaction.dtos.CreateTransactionDTO;
 import com.emmanuelfinance.transaction.dtos.ResponseTransactionDTO;
 import com.emmanuelfinance.transaction.dtos.TransactionFiltersDTO;
 import com.emmanuelfinance.transaction.dtos.UpdateTransactionDTO;
+import com.emmanuelfinance.transaction.services.scheduler.TransactionSchedulerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,10 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -35,6 +33,7 @@ public class TransactionService {
     private final IdempotencyService idempotencyService;
     private final TransactionValidatorService transactionValidatorService;
     private final TransactionEventsService transactionEventsService;
+    private final TransactionSchedulerService transactionSchedulerService;
 
     private void setTransactionStatus(Transaction transaction) {
         if (Boolean.TRUE.equals(transaction.isScheduled())) {
@@ -46,8 +45,6 @@ public class TransactionService {
 
     @Transactional
     public ResponseTransactionDTO create(CreateTransactionDTO data) {
-        // TODO: nova regra de negócio, garantir que a account seja o mesmo do credit card
-
         UUID userId = securityUtils.getCurrentUserId();
 
         transactionValidatorService.create.validate(data);
@@ -60,10 +57,13 @@ public class TransactionService {
         transaction.setIdempotencyKey(idempotencyKey);
         setTransactionStatus(transaction);
 
-        transactionValidatorService.validateCreditCardAccount(transaction.getAccountId(), transaction.getCreditCardId());
-
         Transaction savedTransaction = transactionRepository.save(transaction);
-        transactionEventsService.publishTransactionCreatedEvent(transaction);
+
+        if (savedTransaction.isScheduled()) {
+            transactionSchedulerService.schedule(savedTransaction.getId(), savedTransaction.getDate());
+        }
+
+        transactionEventsService.publishTransactionCreatedEvent(savedTransaction);
 
         // TODO: tratar quando a compra for feita no cartão
 
@@ -118,14 +118,36 @@ public class TransactionService {
         UUID oldAccountId = transaction.getAccountId();
         BigDecimal oldAmount = transaction.getAmount();
         TypeEnum oldType = transaction.getType();
+        StatusTransactionEnum oldStatus = transaction.getStatus();
 
         transactionValidatorService.update.validate(transaction, data);
 
         transactionMapper.updateEntityFromDTO(data, transaction);
+
+        // valida se desativou o agendamento
+        if (!transaction.isScheduled()) {
+            transaction.setDate(null);
+            transaction.setStatus(StatusTransactionEnum.PAID);
+
+            transactionSchedulerService.cancel(transaction.getId());
+        }
+
         transactionValidatorService.validateCreditCardAccount(transaction.getAccountId(), transaction.getCreditCardId());
 
         Transaction updatedTransaction = transactionRepository.save(transaction);
-        transactionEventsService.publishTransactionUpdatedEvent(updatedTransaction, oldAccountId, oldAmount, oldType);
+
+        // valida se está agendado e continua pendente
+        if (StatusTransactionEnum.PENDING.equals(transaction.getStatus()) && updatedTransaction.isScheduled()) {
+            transactionSchedulerService.schedule(updatedTransaction.getId(), updatedTransaction.getDate());
+        }
+
+        transactionEventsService.publishTransactionUpdatedEvent(
+                updatedTransaction,
+                oldAccountId,
+                oldAmount,
+                oldType,
+                oldStatus
+        );
 
         return transactionMapper.toResponseDTO(updatedTransaction);
     }

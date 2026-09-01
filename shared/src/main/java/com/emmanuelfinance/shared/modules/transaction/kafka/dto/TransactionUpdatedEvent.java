@@ -14,6 +14,7 @@ public record TransactionUpdatedEvent(
         BigDecimal newAmount,
         TypeEnum oldType,
         TypeEnum newType,
-        StatusTransactionEnum status
+        StatusTransactionEnum oldStatus,
+        StatusTransactionEnum newStatus
 ) {
 }
