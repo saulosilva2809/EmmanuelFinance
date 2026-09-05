@@ -4,5 +4,7 @@ import java.util.UUID;
 
 public record CreditCardInternalSummaryDTO(
         UUID id,
-        UUID accountId
+        UUID accountId,
+        Integer dueDate,
+        Integer closingDate
 ) {}

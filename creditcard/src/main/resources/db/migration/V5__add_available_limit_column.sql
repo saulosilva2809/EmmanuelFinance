@@ -1,0 +1,1 @@
+ALTER TABLE credit_card ADD COLUMN available_limit NUMERIC(15, 2);

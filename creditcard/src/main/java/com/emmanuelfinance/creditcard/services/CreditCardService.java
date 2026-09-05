@@ -39,6 +39,8 @@ public class CreditCardService {
         creditCard.setUserId(userId);
         Optional.ofNullable(data.creditLimit())
                 .ifPresent(creditLimit -> creditCard.setCreditLimit(creditLimit));
+        Optional.ofNullable(data.creditLimit())
+                .ifPresent(creditLimit -> creditCard.setAvailableLimit(creditLimit));
 
         CreditCard savedCreditCard = creditCardRepository.save(creditCard);
 

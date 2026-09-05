@@ -35,6 +35,9 @@ public class CreditCard extends BaseEntity {
     @Column(nullable = false)
     private BanksEnum bank;
 
+    @Column(name = "available_limit")
+    private BigDecimal availableLimit;
+
     @Column(name = "credit_limit")
     private BigDecimal creditLimit;
 

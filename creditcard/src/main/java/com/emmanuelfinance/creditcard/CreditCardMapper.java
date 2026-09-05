@@ -19,6 +19,7 @@ public abstract class CreditCardMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "userId", ignore = true)
+    @Mapping(target = "availableLimit", ignore = true)
     @Mapping(target = "creditLimit", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)

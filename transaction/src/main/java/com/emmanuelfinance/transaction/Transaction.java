@@ -47,6 +47,9 @@ public class Transaction extends BaseEntity {
     @Column(name = "amount", nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
 
+    @Column(name = "installments_count")
+    private Integer installmentsCount = 1;
+
     @Column(name = "scheduled", nullable = false)
     private boolean scheduled = false;
 

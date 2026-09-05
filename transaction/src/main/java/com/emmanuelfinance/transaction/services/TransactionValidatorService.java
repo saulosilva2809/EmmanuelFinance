@@ -75,9 +75,21 @@ public class TransactionValidatorService {
 
     public class CreateValidations {
         public void validate(CreateTransactionDTO data) {
+            if (data.creditCardId() == null && data.installmentsCount() != null && data.installmentsCount() > 1) {
+                throw new TransactionDomainException(TransactionErrorCode.INSTALLMENTS_IN_TRANSACTION_ACCOUNT);
+            }
+
+            if (data.creditCardId() != null && !TypeEnum.EXPENSE.equals(data.type())) {
+                throw new TransactionDomainException(TransactionErrorCode.CARD_TRANSACTION_TYPE);
+            }
+
+            if (data.installmentsCount() != null && data.installmentsCount() < 1) {
+                throw new TransactionDomainException(TransactionErrorCode.NUMBER_OF_INSTALLMENTS);
+            }
+
             accountOwnershipValidator.validate(data.accountId());
-            checkCategoryAndTransactionType(data.categoryId(), data.type());
             validateCreditCardAccount(data.accountId(), data.creditCardId());
+            checkCategoryAndTransactionType(data.categoryId(), data.type());
             validateScheduledDate(data.scheduled(), data.date());
         }
     }

@@ -33,7 +33,9 @@ public class CreditCardInternalService {
 
         return new CreditCardInternalSummaryDTO(
                 creditCard.getId(),
-                creditCard.getAccountId()
+                creditCard.getAccountId(),
+                creditCard.getDueDay(),
+                creditCard.getClosingDay()
         );
     }
 

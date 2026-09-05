@@ -47,6 +47,7 @@ public class CreditCardTestDataBuilder {
                 creditCard.getName(),
                 creditCard.getBank(),
                 creditCard.getCreditLimit(),
+                creditCard.getCreditLimit(),
                 creditCard.getClosingDay(),
                 creditCard.getDueDay(),
                 creditCard.getCreatedAt(),

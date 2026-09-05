@@ -20,6 +20,10 @@ public class AccountListener {
     public void handleTransactionCreated(TransactionCreatedEvent event) {
         log.info("Recebido evento de transação criada para a conta: {}", event.accountId());
 
+        if (event.creditCardId() != null) {
+            return;
+        }
+
         try {
             accountBalanceService.updateBalanceFromTransaction(event);
         } catch (Exception e) {
