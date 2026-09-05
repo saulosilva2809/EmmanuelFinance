@@ -2,13 +2,12 @@ package com.emmanuelfinance.transaction;
 
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.shared.security.SecurityUtils;
-import com.emmanuelfinance.transaction.exceptions.TransactionNotFound;
+import com.emmanuelfinance.shared.modules.transaction.exceptions.TransactionNotFound;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Component

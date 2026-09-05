@@ -10,6 +10,7 @@ public record TransactionUpdatedEvent(
         UUID transactionId,
         UUID oldAccountId,
         UUID newAccountId,
+        UUID userId,
         BigDecimal oldAmount,
         BigDecimal newAmount,
         TypeEnum oldType,

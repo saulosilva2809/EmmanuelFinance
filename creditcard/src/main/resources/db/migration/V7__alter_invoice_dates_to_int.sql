@@ -1,0 +1,3 @@
+ALTER TABLE invoice
+    ALTER COLUMN due_date TYPE INT USING 0,
+    ALTER COLUMN closing_date TYPE INT USING 0;

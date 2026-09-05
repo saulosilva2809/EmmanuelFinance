@@ -12,6 +12,7 @@ public record ResponseCreditCardDTO(
         String name,
         BanksEnum bank,
         BigDecimal creditLimit,
+        BigDecimal availableLimit,
         Integer closingDay,
         Integer dueDay,
         LocalDateTime createdAt,

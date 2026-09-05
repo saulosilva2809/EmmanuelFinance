@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -24,9 +25,13 @@ public class TransactionEventsService {
             transactionProducer.publishTransactionCreated(new TransactionCreatedEvent(
                     transaction.getId(),
                     transaction.getAccountId(),
+                    transaction.getCreditCardId(),
+                    transaction.getUserId(),
                     transaction.getAmount(),
+                    transaction.getInstallmentsCount(),
                     transaction.getType(),
-                    transaction.getStatus()
+                    transaction.getStatus(),
+                    transaction.getDate() != null ? transaction.getDate() : LocalDateTime.now()
             ));
         }
     }
@@ -43,6 +48,7 @@ public class TransactionEventsService {
                     transaction.getId(),
                     oldAccountId,
                     transaction.getAccountId(),
+                    transaction.getUserId(),
                     oldAmount,
                     transaction.getAmount(),
                     oldType,
@@ -58,8 +64,13 @@ public class TransactionEventsService {
             transactionProducer.publishTransactionDeleted(new TransactionDeletedAndRestoreEvent(
                     transaction.getId(),
                     transaction.getAccountId(),
+                    transaction.getCreditCardId(),
+                    transaction.getUserId(),
                     transaction.getAmount(),
-                    transaction.getType()
+                    transaction.getInstallmentsCount(),
+                    transaction.getType(),
+                    transaction.getStatus(),
+                    transaction.getDate() != null ? transaction.getDate() : LocalDateTime.now()
             ));
         }
     }
@@ -69,8 +80,13 @@ public class TransactionEventsService {
             transactionProducer.publishTransactionRestore(new TransactionDeletedAndRestoreEvent(
                     transaction.getId(),
                     transaction.getAccountId(),
+                    transaction.getCreditCardId(),
+                    transaction.getUserId(),
                     transaction.getAmount(),
-                    transaction.getType()
+                    transaction.getInstallmentsCount(),
+                    transaction.getType(),
+                    transaction.getStatus(),
+                    transaction.getDate() != null ? transaction.getDate() : LocalDateTime.now()
             ));
         }
     }

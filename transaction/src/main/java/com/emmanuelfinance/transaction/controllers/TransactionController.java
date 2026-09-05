@@ -1,4 +1,4 @@
-package com.emmanuelfinance.transaction;
+package com.emmanuelfinance.transaction.controllers;
 
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.transaction.dtos.CreateTransactionDTO;

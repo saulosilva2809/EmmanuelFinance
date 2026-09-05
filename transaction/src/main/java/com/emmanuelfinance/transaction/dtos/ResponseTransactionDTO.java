@@ -18,6 +18,7 @@ public record ResponseTransactionDTO(
         UUID recurringId,
         String description,
         BigDecimal amount,
+        Integer installmentsCount,
         boolean scheduled,
         LocalDateTime date,
         StatusTransactionEnum status,

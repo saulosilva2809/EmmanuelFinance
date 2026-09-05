@@ -21,10 +21,18 @@ public record CreateTransactionDTO(
         @NotNull(message = "The amount is required")
         BigDecimal amount,
 
+        Integer installmentsCount,
+
         boolean scheduled,
 
         LocalDateTime date,
 
         @NotNull(message = "The type is required")
         TypeEnum type
-) {}
+) {
+        public CreateTransactionDTO{
+                if (installmentsCount == null) {
+                        installmentsCount = 1;
+                }
+        }
+}
