@@ -16,6 +16,10 @@ public enum TransactionErrorCode {
     CARD_TRANSACTION_TYPE(
             HttpStatus.CONFLICT,
             "Credit card purchases should be the Expense type."
+    ),
+    CARD_TRANSACTIONS_CANNOT_BE_CHANGED(
+            HttpStatus.CONFLICT,
+            "You can't update a transaction made with the card."
     );
 
     private final HttpStatus status;

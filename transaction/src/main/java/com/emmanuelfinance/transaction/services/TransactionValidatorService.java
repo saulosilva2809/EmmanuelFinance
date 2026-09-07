@@ -106,10 +106,6 @@ public class TransactionValidatorService {
                 checkCategoryAndTransactionType(data.categoryId(), targetType);
             }
 
-            if (data.creditCardId() != null && !data.creditCardId().equals(existingTransaction.getCreditCardId())) {
-                creditCardClientCacheService.getCreditCardInternalSummaryDTO(data.creditCardId());
-            }
-
             if (!existingTransaction.isScheduled() && Boolean.TRUE.equals(data.scheduled())) {
                 throw new CannotScheduleUnscheduledTransactionException();
             }

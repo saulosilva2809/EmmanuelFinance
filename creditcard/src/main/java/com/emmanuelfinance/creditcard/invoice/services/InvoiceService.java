@@ -1,14 +1,17 @@
 package com.emmanuelfinance.creditcard.invoice.services;
 
 import com.emmanuelfinance.creditcard.invoice.Invoice;
+import com.emmanuelfinance.creditcard.invoice.InvoiceItem;
 import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceDTO;
 import com.emmanuelfinance.creditcard.invoice.repositories.InvoiceRepository;
+import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceItemSelector;
 import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceSelector;
 import com.emmanuelfinance.shared.modules.creditcard.CreditCardClientCacheService;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardInternalSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.enums.InvoiceStatusEnum;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -29,6 +33,7 @@ public class InvoiceService {
     private final CreditCardClientCacheService creditCardClientCacheService;
     private final InvoiceRepository invoiceRepository;
     private final InvoiceItemService invoiceItemService;
+    private final InvoiceItemSelector invoiceItemSelector;
 
     private CreditCardInternalSummaryDTO getCreditCardInternal(UUID creditCardId) {
         return creditCardClientCacheService.getCreditCardInternalSummaryDTO(creditCardId);
@@ -113,6 +118,44 @@ public class InvoiceService {
             Invoice invoice = processInvoiceForDate(event, installmentDate, installmentAmount);
             // cria o item da fatura
             invoiceItemService.createInvoiceItem(event, invoice.getId(), i+1, installmentAmount);
+        }
+    }
+
+    @Transactional
+    public void delete(TransactionDeletedAndRestoreEvent event) {
+        log.info("Deletando invoices da transação: {}", event.transactionId());
+
+        List<InvoiceItem> invoiceItems = invoiceItemSelector.getByTransactionId(event.transactionId());
+
+        List<UUID> invoiceIds = invoiceItems.stream()
+                .map(InvoiceItem::getInvoiceId)
+                .distinct()
+                .toList();
+
+        invoiceItemService.delete(event.transactionId());
+
+        if (!invoiceIds.isEmpty()) {
+            invoiceRepository.deleteAllById(invoiceIds);
+        }
+    }
+
+    @Transactional
+    public void restore(TransactionDeletedAndRestoreEvent event) {
+        log.info("Restaurando invoices da transação: {}", event.transactionId());
+
+        List<InvoiceItem> invoiceItems = invoiceItemSelector.getByTransactionId(event.transactionId());
+
+        List<UUID> invoiceIds = invoiceItems.stream()
+                .map(InvoiceItem::getInvoiceId)
+                .distinct()
+                .toList();
+
+        invoiceItemService.restore(event.transactionId());
+
+        if (!invoiceIds.isEmpty()) {
+            List<Invoice> invoiceList = invoiceRepository.findAllById(invoiceIds);
+
+            invoiceList.forEach(invoice -> invoice.setDeleted(false));
         }
     }
 }

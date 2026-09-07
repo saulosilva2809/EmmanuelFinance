@@ -10,6 +10,8 @@ import com.emmanuelfinance.transaction.dtos.CreateTransactionDTO;
 import com.emmanuelfinance.transaction.dtos.ResponseTransactionDTO;
 import com.emmanuelfinance.transaction.dtos.TransactionFiltersDTO;
 import com.emmanuelfinance.transaction.dtos.UpdateTransactionDTO;
+import com.emmanuelfinance.transaction.exceptions.TransactionDomainException;
+import com.emmanuelfinance.transaction.exceptions.TransactionErrorCode;
 import com.emmanuelfinance.transaction.services.scheduler.TransactionSchedulerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -114,6 +116,10 @@ public class TransactionService {
     public ResponseTransactionDTO update(UUID transactionId, UpdateTransactionDTO data) {
         Transaction transaction = transactionSelector.getTransactionById(transactionId);
 
+        if (transaction.getCreditCardId() != null) {
+            throw new TransactionDomainException(TransactionErrorCode.CARD_TRANSACTIONS_CANNOT_BE_CHANGED);
+        }
+
         UUID oldAccountId = transaction.getAccountId();
         BigDecimal oldAmount = transaction.getAmount();
         TypeEnum oldType = transaction.getType();
@@ -130,8 +136,6 @@ public class TransactionService {
 
             transactionSchedulerService.cancel(transaction.getId());
         }
-
-        transactionValidatorService.validateCreditCardAccount(transaction.getAccountId(), transaction.getCreditCardId());
 
         Transaction updatedTransaction = transactionRepository.save(transaction);
 
