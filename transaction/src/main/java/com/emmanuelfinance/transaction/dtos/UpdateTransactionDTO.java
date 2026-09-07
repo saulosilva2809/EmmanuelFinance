@@ -9,7 +9,6 @@ import java.util.UUID;
 public record UpdateTransactionDTO(
         UUID accountId,
         UUID categoryId,
-        UUID creditCardId,
         String description,
         BigDecimal amount,
         Boolean scheduled,

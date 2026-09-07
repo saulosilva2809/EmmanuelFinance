@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class CreditCardBalanceService {
 
     private final CreditCardSelector creditCardSelector;
-    private final CreditCardRepository creditCardRepository;
     private final InvoiceService invoiceService;
 
     @Transactional
@@ -29,8 +28,6 @@ public class CreditCardBalanceService {
             throw new CreditCardDomainException(CreditCardErrorCode.INSUFFICIENT_LIMIT);
         }
         creditCard.setAvailableLimit(creditCard.getAvailableLimit().subtract(event.amount()));
-        creditCardRepository.save(creditCard);
-
         invoiceService.findOrCreate(event);
     }
 
@@ -39,7 +36,7 @@ public class CreditCardBalanceService {
         CreditCard creditCard = creditCardSelector.getCreditCardByIdInternal(event.creditCardId());
 
         creditCard.setAvailableLimit(creditCard.getAvailableLimit().add(event.amount()));
-        creditCardRepository.save(creditCard);
+        invoiceService.delete(event);
     }
 
     @Transactional
@@ -50,7 +47,7 @@ public class CreditCardBalanceService {
             throw new CreditCardDomainException(CreditCardErrorCode.INSUFFICIENT_LIMIT);
         }
 
-        creditCard.setAvailableLimit(creditCard.getAvailableLimit().subtract(event.amount()));
-        creditCardRepository.save(creditCard);
+        creditCard.setAvailableLimit(creditCard.getAvailableLimit().add(event.amount()));
+        invoiceService.restore(event);
     }
 }
