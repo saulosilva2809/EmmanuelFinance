@@ -1,15 +1,17 @@
-package com.emmanuelfinance.creditcard.invoice;
+package com.emmanuelfinance.creditcard.invoice.services;
 
+import com.emmanuelfinance.creditcard.invoice.Invoice;
 import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceSummaryDTO;
 import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceSelector;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
-@Component
+@Service
 @RequiredArgsConstructor
-public class InvoiceClient {
+public class InvoiceServiceInternal {
 
     private final InvoiceSelector invoiceSelector;
 

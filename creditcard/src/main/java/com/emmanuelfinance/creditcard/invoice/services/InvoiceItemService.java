@@ -1,6 +1,5 @@
 package com.emmanuelfinance.creditcard.invoice.services;
 
-import com.emmanuelfinance.creditcard.invoice.InvoiceClient;
 import com.emmanuelfinance.creditcard.invoice.InvoiceItem;
 import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceItemDTO;
 import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceSummaryDTO;
@@ -20,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,11 +29,11 @@ public class InvoiceItemService {
 
     private final InvoiceItemRepository invoiceItemRepository;
     private final SecurityUtils securityUtils;
-    private final InvoiceClient invoiceClient;
+    private final InvoiceServiceInternal invoiceServiceInternal;
     private final TransactionClientCacheService transactionClientCacheService;
 
     private ResponseInvoiceItemDTO invoiceItemAsDTO(InvoiceItem invoiceItem) {
-        ResponseInvoiceSummaryDTO invoiceSummaryDTO = invoiceClient.invoiceSummaryDTO(
+        ResponseInvoiceSummaryDTO invoiceSummaryDTO = invoiceServiceInternal.invoiceSummaryDTO(
                 invoiceItem.getInvoiceId()
         );
 
