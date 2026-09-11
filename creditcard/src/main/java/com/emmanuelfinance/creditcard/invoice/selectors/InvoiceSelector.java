@@ -28,4 +28,8 @@ public class InvoiceSelector {
 
         return invoice;
     }
+
+    public Invoice getById(UUID invoiceId) {
+        return invoiceRepository.getById(invoiceId);
+    }
 }

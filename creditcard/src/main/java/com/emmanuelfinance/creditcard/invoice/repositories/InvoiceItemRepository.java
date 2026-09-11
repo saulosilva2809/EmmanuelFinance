@@ -1,7 +1,9 @@
 package com.emmanuelfinance.creditcard.invoice.repositories;
 
+import com.emmanuelfinance.creditcard.invoice.Invoice;
 import com.emmanuelfinance.creditcard.invoice.InvoiceItem;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,7 +13,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface InvoiceItemRepository extends JpaRepository<InvoiceItem, UUID> {
+public interface InvoiceItemRepository extends JpaRepository<InvoiceItem, UUID>, JpaSpecificationExecutor<InvoiceItem> {
     List<InvoiceItem> findByTransactionId(UUID transactionId);
     @Modifying(clearAutomatically = true)
     @Query("""

@@ -1,0 +1,1 @@
+CREATE INDEX idx_invoice_card_year_month ON invoice(credit_card_id, year DESC, month DESC);

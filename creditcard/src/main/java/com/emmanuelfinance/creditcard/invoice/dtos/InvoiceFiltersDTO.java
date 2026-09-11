@@ -2,14 +2,11 @@ package com.emmanuelfinance.creditcard.invoice.dtos;
 
 import com.emmanuelfinance.shared.modules.creditcard.enums.InvoiceStatusEnum;
 
-import java.math.BigDecimal;
 import java.util.UUID;
 
-public record ResponseInvoiceSummaryDTO(
-        UUID id,
+public record InvoiceFiltersDTO(
+        UUID creditCardId,
         Integer month,
         Integer year,
-        BigDecimal totalAmount,
         InvoiceStatusEnum status
-) {
-}
+) {}

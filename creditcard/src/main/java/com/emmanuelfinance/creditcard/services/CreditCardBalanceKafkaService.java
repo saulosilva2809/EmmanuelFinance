@@ -1,11 +1,8 @@
 package com.emmanuelfinance.creditcard.services;
 
 import com.emmanuelfinance.creditcard.CreditCard;
-import com.emmanuelfinance.creditcard.CreditCardRepository;
 import com.emmanuelfinance.creditcard.CreditCardSelector;
 import com.emmanuelfinance.creditcard.dto.UpdateCreditCardDTO;
-import com.emmanuelfinance.creditcard.exceptions.CreditCardDomainException;
-import com.emmanuelfinance.creditcard.exceptions.CreditCardErrorCode;
 import com.emmanuelfinance.creditcard.invoice.services.InvoiceService;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
@@ -18,7 +15,7 @@ import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
-public class CreditCardBalanceService {
+public class CreditCardBalanceKafkaService {
 
     private final CreditCardSelector creditCardSelector;
     private final InvoiceService invoiceService;
@@ -45,14 +42,5 @@ public class CreditCardBalanceService {
         creditCard.setAvailableLimit(creditCard.getAvailableLimit().add(event.amount()));
 
         invoiceService.restore(event);
-    }
-
-    @Transactional
-    public void updateAvailableLimit(CreditCard creditCard, UpdateCreditCardDTO data) {
-        BigDecimal oldLimit = creditCard.getCreditLimit();
-        BigDecimal newLimit = data.creditLimit();
-        BigDecimal difference = newLimit.subtract(oldLimit);
-
-        
     }
 }
