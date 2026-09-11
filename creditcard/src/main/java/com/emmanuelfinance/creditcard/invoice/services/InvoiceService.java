@@ -2,18 +2,25 @@ package com.emmanuelfinance.creditcard.invoice.services;
 
 import com.emmanuelfinance.creditcard.invoice.Invoice;
 import com.emmanuelfinance.creditcard.invoice.InvoiceItem;
+import com.emmanuelfinance.creditcard.invoice.dtos.InvoiceFiltersDTO;
 import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceDTO;
 import com.emmanuelfinance.creditcard.invoice.repositories.InvoiceRepository;
 import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceItemSelector;
 import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceSelector;
+import com.emmanuelfinance.creditcard.invoice.specifications.InvoiceSpecification;
+import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.modules.creditcard.CreditCardClientCacheService;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardInternalSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.enums.InvoiceStatusEnum;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
+import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +41,7 @@ public class InvoiceService {
     private final InvoiceRepository invoiceRepository;
     private final InvoiceItemService invoiceItemService;
     private final InvoiceItemSelector invoiceItemSelector;
+    private final SecurityUtils securityUtils;
 
     private CreditCardInternalSummaryDTO getCreditCardInternal(UUID creditCardId) {
         return creditCardClientCacheService.getCreditCardInternalSummaryDTO(creditCardId);
@@ -45,6 +53,7 @@ public class InvoiceService {
         );
 
         return new ResponseInvoiceDTO(
+                invoice.getId(),
                 cardSummaryDTO,
                 invoice.getMonth(),
                 invoice.getYear(),
@@ -119,6 +128,19 @@ public class InvoiceService {
             // cria o item da fatura
             invoiceItemService.createInvoiceItem(event, invoice.getId(), i+1, installmentAmount);
         }
+    }
+
+    public PageResponseDTO<ResponseInvoiceDTO> list(InvoiceFiltersDTO filters, Pageable pageable) {
+        UUID userId = securityUtils.getCurrentUserId();
+
+        Specification<Invoice> specification = InvoiceSpecification.withFilter(filters, userId);
+        Page<Invoice> page = invoiceRepository.findAll(
+                specification,
+                pageable
+        );
+
+        Page<ResponseInvoiceDTO> dtoPage = page.map(this::invoiceAsDTO);
+        return PageResponseDTO.from(dtoPage);
     }
 
     @Transactional

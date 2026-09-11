@@ -65,9 +65,6 @@ public class TransactionService {
         }
 
         transactionEventsService.publishTransactionCreatedEvent(savedTransaction);
-
-        // TODO: tratar quando a compra for feita no cartão
-
         return transactionMapper.toResponseDTO(savedTransaction);
     }
 
@@ -166,7 +163,7 @@ public class TransactionService {
     @Transactional
     public void restore(UUID transactionId) {
         Transaction transaction = transactionSelector.getTransactionByIdIncluingDeleted(transactionId);
-        transactionValidatorService.checkIfTransactionIsDeleted(transaction);
+        transactionValidatorService.restore.validate(transaction);
 
         transaction.setDeleted(false);
         transactionRepository.save(transaction);

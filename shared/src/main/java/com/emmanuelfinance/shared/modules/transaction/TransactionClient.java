@@ -16,6 +16,6 @@ import java.util.UUID;
 @ConditionalOnProperty(name = "{application.config.transaction-service-url}")
 public interface TransactionClient {
 
-    @GetMapping("internal/transaction/summary/{id}")
+    @GetMapping("internal/transactions/summary/{id}")
     TransactionSummaryDTO getTransactionSummary(@PathVariable UUID id);
 }

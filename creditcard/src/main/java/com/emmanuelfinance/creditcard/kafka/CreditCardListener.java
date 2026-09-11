@@ -1,18 +1,14 @@
 package com.emmanuelfinance.creditcard.kafka;
 
-import com.emmanuelfinance.creditcard.services.CreditCardBalanceService;
+import com.emmanuelfinance.creditcard.services.CreditCardBalanceKafkaService;
 import com.emmanuelfinance.creditcard.services.CreditCardInternalService;
-import com.emmanuelfinance.shared.enums.TypeEnum;
 import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
-import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-
-import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -20,7 +16,7 @@ import java.util.UUID;
 public class CreditCardListener {
 
     private final CreditCardInternalService creditCardInternalService;
-    private final CreditCardBalanceService creditCardBalanceService;
+    private final CreditCardBalanceKafkaService creditCardBalanceKafkaService;
     private final CreditCardProducer creditCardProducer;
 
     @KafkaListener(topics = "account-events", groupId = "credit-card-service-group")
@@ -43,7 +39,7 @@ public class CreditCardListener {
         }
 
         try {
-            creditCardBalanceService.processTransactionCreate(event);
+            creditCardBalanceKafkaService.processTransactionCreate(event);
         } catch (Exception e) {
             creditCardProducer.publishTransactionFailed(event.transactionId());
             log.error("Erro ao processar atualização de saldo e limite para o evento de criação: {}", event, e);
@@ -59,7 +55,7 @@ public class CreditCardListener {
         );
 
         try {
-            creditCardBalanceService.processTransactionDeletion(event);
+            creditCardBalanceKafkaService.processTransactionDeletion(event);
         } catch (Exception e) {
             creditCardProducer.publishTransactionFailed(event.transactionId());
             log.error("Erro ao processar exclusão de transação no cartão: {}", event, e);
@@ -75,7 +71,7 @@ public class CreditCardListener {
         );
 
         try {
-            creditCardBalanceService.processTransactionRestore(event);
+            creditCardBalanceKafkaService.processTransactionRestore(event);
         } catch (Exception e) {
             log.error("Erro ao processar atualização de saldo no cartão para o evento de recuperação: {}", event, e);
         }

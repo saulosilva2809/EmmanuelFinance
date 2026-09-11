@@ -53,3 +53,4 @@ application:
     config:
       account-service-url: ${ACCOUNT_SERVICE_URL}
       credit-card-service-url: ${CREDIT_CARD_SERVICE_URL}
+      transaction-service-url: ${TRANSACTION_SERVICE_URL}

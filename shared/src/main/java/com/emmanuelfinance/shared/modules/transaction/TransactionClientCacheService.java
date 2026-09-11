@@ -12,7 +12,7 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "application.transaction-card-service-url")
+@ConditionalOnProperty(name = "application.config.transaction-service-url")
 public class TransactionClientCacheService {
 
     private final TransactionClient transactionClient;

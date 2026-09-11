@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -28,7 +29,9 @@ public class CreditCardService {
     private final CreditCardMapper cardMapper;
     private final CreditCardSelector cardSelector;
     private final CreditCardValidatorService creditCardValidatorService;
+    private final CreditCardBalanceService creditCardBalanceService;
 
+    @Transactional
     public ResponseCreditCardDTO create(CreateCreditCardDTO data) {
         UUID userId = securityUtils.getCurrentUserId();
 
@@ -82,6 +85,7 @@ public class CreditCardService {
         return PageResponseDTO.from(dtoPage);
     }
 
+    @Transactional
     public ResponseCreditCardDTO update(UUID cardId, UpdateCreditCardDTO data) {
         CreditCard creditCard = cardSelector.getCreditCardById(cardId);
 
@@ -89,17 +93,20 @@ public class CreditCardService {
             accountOwnershipValidator.validate(data.accountId());
         }
 
+        creditCardBalanceService.updateAvailableLimit(creditCard, data);
         cardMapper.updateCreditCardFromDTO(data, creditCard);
         CreditCard updatedCard = creditCardRepository.save(creditCard);
 
         return cardMapper.toResponseDTO(updatedCard);
     }
 
+    @Transactional
     public void delete(UUID cardId) {
         CreditCard creditCard = cardSelector.getCreditCardById(cardId);
         creditCardRepository.delete(creditCard);
     }
 
+    @Transactional
     public void restore(UUID cardId) {
         CreditCard creditCard = cardSelector.getCreditCardByIdIncludingDeleted(cardId);
 

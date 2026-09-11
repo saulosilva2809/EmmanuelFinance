@@ -14,6 +14,7 @@ import com.emmanuelfinance.transaction.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -27,6 +28,7 @@ public class TransactionValidatorService {
 
     public final CreateValidations create = new CreateValidations();
     public final UpdateValidations update = new UpdateValidations();
+    public final RestoreValidations restore = new RestoreValidations();
 
     private void checkCategoryAndTransactionType(UUID categoryId, TypeEnum transactionType) {
         CategoryInternalSummaryDTO categoryDTO = categoryClientCacheService.getCategoryInternalSummaryDTO(categoryId);
@@ -67,6 +69,18 @@ public class TransactionValidatorService {
         }
     }
 
+    public void validateCreditCardLimit(UUID creditCardId, BigDecimal amount) {
+        if (creditCardId == null) {
+            return;
+        }
+
+        CreditCardInternalSummaryDTO creditCard = creditCardClientCacheService.getCreditCardInternalSummaryDTO(creditCardId);
+
+        if (amount.compareTo(creditCard.availableLimit()) > 0) {
+            throw new InsufficientLimitOnCardException();
+        }
+    }
+
     public void checkIfTransactionIsDeleted(Transaction transaction) {
         if (!transaction.isDeleted()) {
             throw new RestoreItemNotDeletedException();
@@ -75,12 +89,17 @@ public class TransactionValidatorService {
 
     public class CreateValidations {
         public void validate(CreateTransactionDTO data) {
+
             if (data.creditCardId() == null && data.installmentsCount() != null && data.installmentsCount() > 1) {
                 throw new TransactionDomainException(TransactionErrorCode.INSTALLMENTS_IN_TRANSACTION_ACCOUNT);
             }
 
-            if (data.creditCardId() != null && !TypeEnum.EXPENSE.equals(data.type())) {
-                throw new TransactionDomainException(TransactionErrorCode.CARD_TRANSACTION_TYPE);
+            if (data.creditCardId() != null) {
+                if (!TypeEnum.EXPENSE.equals(data.type())) {
+                    throw new TransactionDomainException(TransactionErrorCode.CARD_TRANSACTION_TYPE);
+                }
+
+                validateCreditCardLimit(data.creditCardId(), data.amount());
             }
 
             if (data.installmentsCount() != null && data.installmentsCount() < 1) {
@@ -114,6 +133,16 @@ public class TransactionValidatorService {
                 throw new UnscheduledTransactionDateNotAllowed();
             } else if (Boolean.TRUE.equals(data.scheduled())) {
                 validateScheduledDate(data.scheduled(), data.date());
+            }
+        }
+    }
+
+    public class RestoreValidations {
+        public void validate(Transaction transaction) {
+            checkIfTransactionIsDeleted(transaction);
+
+            if (transaction.getCreditCardId() != null) {
+                validateCreditCardLimit(transaction.getCreditCardId(), transaction.getAmount());
             }
         }
     }
