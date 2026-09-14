@@ -64,7 +64,7 @@ public class UserController {
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(map, headers);
 
         try {
-            ResponseEntity<String> response = restTemplate.postForEntity(url                                                                                            , request, String.class);
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
             return ResponseEntity.ok(response.getBody());
         } catch (Exception e) {
             log.warn("Falha ao autenticar usuário no Keycloak: {}", e.getMessage());

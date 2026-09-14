@@ -3,9 +3,7 @@ package com.emmanuelfinance.auth.user;
 import com.emmanuelfinance.auth.keycloak.exceptions.ErrorCreatingKeycloakUser;
 import com.emmanuelfinance.auth.user.dto.CreateUserDTO;
 import com.emmanuelfinance.auth.user.dto.ResponseUserDTO;
-import com.emmanuelfinance.auth.user.exceptions.PasswordsDoNotMatch;
-import com.emmanuelfinance.auth.user.exceptions.UserAlreadyExists;
-import com.emmanuelfinance.auth.user.exceptions.UserNotFound;
+import com.emmanuelfinance.auth.user.exceptions.*;
 import com.emmanuelfinance.shared.dto.UserSummaryDTO;
 import jakarta.ws.rs.core.Response;
 import lombok.RequiredArgsConstructor;
@@ -47,13 +45,13 @@ public class UserService {
 
     private void verifyPassword(String password, String confirmPassword) {
         if (!password.equals(confirmPassword)) {
-            throw new PasswordsDoNotMatch();
+            throw new AuthDomainException(AuthErrorCode.PASSWORDS_DO_NOT_MATCH);
         }
     }
 
     private void verifyUserByEmail(String email) {
         if (userRepository.existsByEmail(email)) {
-            throw new UserAlreadyExists();
+            throw new AuthDomainException(AuthErrorCode.USER_ALREADY_EXISTS);
         }
     }
 
@@ -123,7 +121,7 @@ public class UserService {
     
     public UserSummaryDTO findById(UUID id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new UserNotFound());
+                .orElseThrow(() -> new AuthDomainException(AuthErrorCode.USER_NOT_FOUND));
 
         return new UserSummaryDTO(user.getId(), user.getEmail());
     }

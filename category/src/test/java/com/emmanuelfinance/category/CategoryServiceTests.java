@@ -4,11 +4,11 @@ import com.emmanuelfinance.category.dto.CategoryFiltersDTO;
 import com.emmanuelfinance.category.dto.CreateCategoryDTO;
 import com.emmanuelfinance.category.dto.ResponseCategoryDTO;
 import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
+import com.emmanuelfinance.category.exceptions.CategoryDomainException;
+import com.emmanuelfinance.category.exceptions.CategoryErrorCode;
 import com.emmanuelfinance.category.services.CategoryService;
 import com.emmanuelfinance.shared.enums.TypeEnum;
-import com.emmanuelfinance.category.exceptions.CategoryAlreadyExists;
 import com.emmanuelfinance.shared.modules.category.exceptions.CategoryNotFound;
-import com.emmanuelfinance.category.exceptions.RestoreCategoryError;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.security.SecurityUtils;
@@ -80,9 +80,11 @@ class CategoryServiceTests {
                     userId
             )).thenReturn(true);
 
-            assertThrows(CategoryAlreadyExists.class, () -> {
+            CategoryDomainException exception = assertThrows(CategoryDomainException.class, () -> {
                 categoryService.create(inputDto);
             });
+
+            assertEquals(CategoryErrorCode.CATEGORY_ALREADY_EXISTS, exception.getErrorCode());
 
             verify(categoryRepository, times(1)).existsByNameIgnoreCaseAndTypeAndUserId(
                     "Salário",
@@ -365,9 +367,11 @@ class CategoryServiceTests {
             when(categorySelector.getCategoryByIdIncludingDeleted(categoryEntity.getId()))
                     .thenReturn(categoryEntity);
 
-            assertThrows(RestoreCategoryError.class, () -> {
+            CategoryDomainException exception = assertThrows(CategoryDomainException.class, () -> {
                 categoryService.restore(categoryEntity.getId());
             });
+
+            assertEquals(CategoryErrorCode.RESTORE_CATEGORY_NOT_DELETED, exception.getErrorCode());
 
             verify(categorySelector, times(1)).getCategoryByIdIncludingDeleted(categoryEntity.getId());
             verify(categoryRepository, never()).save(any(Category.class));

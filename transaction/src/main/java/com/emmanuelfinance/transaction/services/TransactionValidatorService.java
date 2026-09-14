@@ -34,7 +34,7 @@ public class TransactionValidatorService {
         CategoryInternalSummaryDTO categoryDTO = categoryClientCacheService.getCategoryInternalSummaryDTO(categoryId);
 
         if (categoryDTO.type() != transactionType) {
-            throw new CategoryTypeMismatch();
+            throw new TransactionDomainException(TransactionErrorCode.INCOMPATIBLE_CATEGORY_TYPE);
         }
     }
 
@@ -44,15 +44,15 @@ public class TransactionValidatorService {
 
         if (isScheduled) {
             if (!hasDate) {
-                throw new ScheduledTransactionDateRequired();
+                throw new TransactionDomainException(TransactionErrorCode.SCHEDULED_TRANSACTION_DATE_REQUIRED);
             }
 
             if (date.isBefore(LocalDateTime.now().minusMinutes(1))) {
-                throw new ScheduledTransactionDateInPastException();
+                throw new TransactionDomainException(TransactionErrorCode.TRANSACTION_SCHEDULED_IN_THE_PAST);
             }
         } else {
             if (hasDate) {
-                throw new UnscheduledTransactionDateNotAllowed();
+                throw new TransactionDomainException(TransactionErrorCode.UNSCHEDULED_TRANSACTION_DATE_NOT_ALLOWED);
             }
         }
     }
@@ -77,13 +77,13 @@ public class TransactionValidatorService {
         CreditCardInternalSummaryDTO creditCard = creditCardClientCacheService.getCreditCardInternalSummaryDTO(creditCardId);
 
         if (amount.compareTo(creditCard.availableLimit()) > 0) {
-            throw new InsufficientLimitOnCardException();
+            throw new TransactionDomainException(TransactionErrorCode.INSUFFICIENT_LIMIT_ON_THE_CARD);
         }
     }
 
     public void checkIfTransactionIsDeleted(Transaction transaction) {
         if (!transaction.isDeleted()) {
-            throw new RestoreItemNotDeletedException();
+            throw new TransactionDomainException(TransactionErrorCode.RESTORE_TRANSACTION_NOT_DELETED);
         }
     }
 
@@ -126,11 +126,11 @@ public class TransactionValidatorService {
             }
 
             if (!existingTransaction.isScheduled() && Boolean.TRUE.equals(data.scheduled())) {
-                throw new CannotScheduleUnscheduledTransactionException();
+                throw new TransactionDomainException(TransactionErrorCode.CANNOT_SCHEDULE_UNSCHEDULED_TRANSACTION);
             }
 
             if (Boolean.FALSE.equals(data.scheduled()) && data.date() != null) {
-                throw new UnscheduledTransactionDateNotAllowed();
+                throw new TransactionDomainException(TransactionErrorCode.UNSCHEDULED_TRANSACTION_DATE_NOT_ALLOWED);
             } else if (Boolean.TRUE.equals(data.scheduled())) {
                 validateScheduledDate(data.scheduled(), data.date());
             }
