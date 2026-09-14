@@ -2,9 +2,7 @@ package com.emmanuelfinance.creditcard.services;
 
 import com.emmanuelfinance.creditcard.CreditCard;
 import com.emmanuelfinance.creditcard.dto.CreateCreditCardDTO;
-import com.emmanuelfinance.creditcard.exceptions.CheckCardAndAccountBankError;
-import com.emmanuelfinance.creditcard.exceptions.RestoreCreditCardError;
-import com.emmanuelfinance.creditcard.exceptions.RestoreItemNotDeletedException;
+import com.emmanuelfinance.creditcard.exceptions.*;
 import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
@@ -29,13 +27,13 @@ public class CreditCardValidatorService {
         AccountSummaryInternalDTO account = accountClientCacheService.getInternalAccountById(accountId);
 
         if (!cardBank.equals(account.bank())) {
-            throw new CheckCardAndAccountBankError();
+            throw new CreditCardDomainException(CreditCardErrorCode.BANK_OF_CARD_AND_ACCOUNT_DIFFERENT);
         }
     }
 
     public void validateIsCardDeleted(CreditCard creditCard) {
         if (!creditCard.isDeleted()) {
-            throw new RestoreItemNotDeletedException();
+            throw new CreditCardDomainException(CreditCardErrorCode.RESTORE_CARD_NOT_DELETED);
         }
     }
 
@@ -43,7 +41,7 @@ public class CreditCardValidatorService {
         AccountSummaryInternalDTO account = accountClientCacheService.getInternalAccountById(accountId);
 
         if (Boolean.TRUE.equals(account.deleted())) {
-            throw new RestoreCreditCardError();
+            throw new CreditCardDomainException(CreditCardErrorCode.RESTORE_CARD_WITH_DELETED_ACCOUNT);
         }
     }
 

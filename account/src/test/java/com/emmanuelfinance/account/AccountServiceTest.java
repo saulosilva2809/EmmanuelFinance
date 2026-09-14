@@ -5,16 +5,15 @@ import com.emmanuelfinance.account.dto.CreateAccountDTO;
 import com.emmanuelfinance.account.dto.ResponseAccountDTO;
 import com.emmanuelfinance.account.dto.UpdateAccountDTO;
 import com.emmanuelfinance.account.enums.TypeEnum;
-import com.emmanuelfinance.account.exceptions.AccountNotFound;
-import com.emmanuelfinance.account.exceptions.RestoreAccountError;
+import com.emmanuelfinance.account.exceptions.AccountDomainException;
+import com.emmanuelfinance.account.exceptions.AccountErrorCode;
 import com.emmanuelfinance.account.kafka.AccountEventPublisher;
 import com.emmanuelfinance.account.services.AccountInternalService;
 import com.emmanuelfinance.account.services.AccountService;
+import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.modules.account.AccountCache;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
-import com.emmanuelfinance.shared.dto.PageResponseDTO;
-import com.emmanuelfinance.shared.dto.UserSummaryDTO;
 import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -133,13 +132,15 @@ public class AccountServiceTest {
 
             // ensinando o selector a lançar a exceção
             when(accountSelector.getAccountByIdAndUserId(nonExistentAccountId))
-                    .thenThrow(new AccountNotFound());
+                    .thenThrow(new AccountDomainException(AccountErrorCode.ACCOUNT_NOT_FOUND));
 
             // when e then
             // valida a chamada do method e lança a exeção
-            assertThrows(AccountNotFound.class, () -> {
+            AccountDomainException exception = assertThrows(AccountDomainException.class, () -> {
                 accountService.view(nonExistentAccountId);
             });
+
+            assertEquals(AccountErrorCode.ACCOUNT_NOT_FOUND, exception.getErrorCode());
 
             // garante que o selector foi chamado
             verify(accountSelector, times(1)).getAccountByIdAndUserId(nonExistentAccountId);
@@ -158,11 +159,13 @@ public class AccountServiceTest {
             );
 
             when(accountSelector.getAccountByIdAndUserId(accountEntity.getId()))
-                    .thenThrow(new AccountNotFound());
+                    .thenThrow(new AccountDomainException(AccountErrorCode.ACCOUNT_NOT_FOUND));
 
-            assertThrows(AccountNotFound.class, () -> {
+            AccountDomainException exception = assertThrows(AccountDomainException.class, () -> {
                 accountService.view(accountEntity.getId());
             });
+
+            assertEquals(AccountErrorCode.ACCOUNT_NOT_FOUND, exception.getErrorCode());
 
             verify(accountSelector, times(1)).getAccountByIdAndUserId(accountEntity.getId());
         }
@@ -230,11 +233,13 @@ public class AccountServiceTest {
             UUID nonExistentId = UUID.randomUUID();
 
             when(accountSelector.getAccountByIdIncludingDeleted(nonExistentId))
-                    .thenThrow(new AccountNotFound());
+                    .thenThrow(new AccountDomainException(AccountErrorCode.ACCOUNT_NOT_FOUND));
 
-            assertThrows(AccountNotFound.class, () -> {
+            AccountDomainException exception = assertThrows(AccountDomainException.class, () -> {
                 accountInternalService.getAccountSummary(nonExistentId);
             });
+
+            assertEquals(AccountErrorCode.ACCOUNT_NOT_FOUND, exception.getErrorCode());
 
             verify(accountSelector, times(1)).getAccountByIdIncludingDeleted(nonExistentId);
         }
@@ -309,11 +314,13 @@ public class AccountServiceTest {
             UpdateAccountDTO updateDTO = new UpdateAccountDTO("Conta Inexsistente", TypeEnum.CASH);
 
             when(accountSelector.getAccountByIdAndUserId(nonExistentAccountId))
-                    .thenThrow(new AccountNotFound());
+                    .thenThrow(new AccountDomainException(AccountErrorCode.ACCOUNT_NOT_FOUND));
 
-            assertThrows(AccountNotFound.class, () -> {
+            AccountDomainException exception = assertThrows(AccountDomainException.class, () -> {
                 accountService.update(nonExistentAccountId, updateDTO);
             });
+
+            assertEquals(AccountErrorCode.ACCOUNT_NOT_FOUND, exception.getErrorCode());
 
             verify(accountSelector, times(1)).getAccountByIdAndUserId(nonExistentAccountId);
             verify(accountMapper, never()).updateAccountFromDTO(any(), any());
@@ -331,11 +338,13 @@ public class AccountServiceTest {
             UpdateAccountDTO updateDTO = new UpdateAccountDTO("Conta Atualizada", null);
 
             when(accountSelector.getAccountByIdAndUserId(accountEntity.getId()))
-                    .thenThrow(new AccountNotFound());
+                    .thenThrow(new AccountDomainException(AccountErrorCode.ACCOUNT_NOT_FOUND));
 
-            assertThrows(AccountNotFound.class, () -> {
+            AccountDomainException exception = assertThrows(AccountDomainException.class, () -> {
                 accountService.update(accountEntity.getId(), updateDTO);
             });
+
+            assertEquals(AccountErrorCode.ACCOUNT_NOT_FOUND, exception.getErrorCode());
 
             verify(accountSelector, times(1)).getAccountByIdAndUserId(accountEntity.getId());
         }
@@ -376,11 +385,13 @@ public class AccountServiceTest {
             UUID nonExistentId = UUID.randomUUID();
 
             when(accountSelector.getAccountByIdAndUserId(nonExistentId))
-                    .thenThrow(new AccountNotFound());
+                    .thenThrow(new AccountDomainException(AccountErrorCode.ACCOUNT_NOT_FOUND));
 
-            assertThrows(AccountNotFound.class, () -> {
+            AccountDomainException exception = assertThrows(AccountDomainException.class, () -> {
                 accountService.delete(nonExistentId);
             });
+
+            assertEquals(AccountErrorCode.ACCOUNT_NOT_FOUND, exception.getErrorCode());
 
             verify(accountSelector, times(1)).getAccountByIdAndUserId(nonExistentId);
             verify(accountRepository, never()).deleteById(any());
@@ -396,11 +407,13 @@ public class AccountServiceTest {
             );
 
             when(accountSelector.getAccountByIdAndUserId(accountEntity.getId()))
-                    .thenThrow(new AccountNotFound());
+                    .thenThrow(new AccountDomainException(AccountErrorCode.ACCOUNT_NOT_FOUND));
 
-            assertThrows(AccountNotFound.class, () -> {
+            AccountDomainException exception = assertThrows(AccountDomainException.class, () -> {
                 accountService.delete(accountEntity.getId());
             });
+
+            assertEquals(AccountErrorCode.ACCOUNT_NOT_FOUND, exception.getErrorCode());
 
             verify(accountSelector, times(1)).getAccountByIdAndUserId(accountEntity.getId());
         }
@@ -445,9 +458,11 @@ public class AccountServiceTest {
             when(accountSelector.getAccountByIdIncludingDeleted(accountEntity.getId()))
                     .thenReturn(accountEntity);
 
-            assertThrows(RestoreAccountError.class, () -> {
+            AccountDomainException exception = assertThrows(AccountDomainException.class, () -> {
                 accountService.restore(accountEntity.getId());
             });
+
+            assertEquals(AccountErrorCode.RESTORE_ACCOUNT_NOT_DELETED, exception.getErrorCode());
 
             verify(accountSelector, times(1)).getAccountByIdIncludingDeleted(accountEntity.getId());
             verify(accountEventPublisher, never()).publishAccount(any(AccountEventDTO.class));

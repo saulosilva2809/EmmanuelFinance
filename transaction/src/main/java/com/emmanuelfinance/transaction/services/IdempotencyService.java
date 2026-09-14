@@ -1,7 +1,8 @@
 package com.emmanuelfinance.transaction.services;
 
 import com.emmanuelfinance.transaction.dtos.CreateTransactionDTO;
-import com.emmanuelfinance.transaction.exceptions.TransactionAlreadyExists;
+import com.emmanuelfinance.transaction.exceptions.TransactionDomainException;
+import com.emmanuelfinance.transaction.exceptions.TransactionErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -47,7 +48,7 @@ public class IdempotencyService {
                 .setIfAbsent(key, "LOCKED", IDEMPOTENCY_TTL);
 
         if (!Boolean.TRUE.equals(isFirstRequest)) {
-            throw new TransactionAlreadyExists();
+            throw new TransactionDomainException(TransactionErrorCode.TRANSACTION_ALREADY_EXISTS);
         }
     }
 }

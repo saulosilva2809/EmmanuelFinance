@@ -4,8 +4,8 @@ import com.emmanuelfinance.creditcard.dto.CreateCreditCardDTO;
 import com.emmanuelfinance.creditcard.dto.CreditCardFiltersDTO;
 import com.emmanuelfinance.creditcard.dto.ResponseCreditCardDTO;
 import com.emmanuelfinance.creditcard.dto.UpdateCreditCardDTO;
-import com.emmanuelfinance.creditcard.exceptions.CheckCardAndAccountBankError;
-import com.emmanuelfinance.creditcard.exceptions.RestoreCreditCardError;
+import com.emmanuelfinance.creditcard.exceptions.CreditCardDomainException;
+import com.emmanuelfinance.creditcard.exceptions.CreditCardErrorCode;
 import com.emmanuelfinance.creditcard.services.CreditCardService;
 import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.modules.creditcard.exceptions.CreditCardNotFound;
@@ -108,9 +108,11 @@ public class CreditCardServiceTests {
                     .validate(creditCardDTO.accountId());
             when(accountClientCacheService.getInternalAccountById(creditCardDTO.accountId())).thenReturn(mockAccountInternal);
 
-            assertThrows(CheckCardAndAccountBankError.class, () -> {
+            CreditCardDomainException exception = assertThrows(CreditCardDomainException.class, () -> {
                 creditCardService.create(creditCardDTO);
             });
+
+            assertEquals(CreditCardErrorCode.BANK_OF_CARD_AND_ACCOUNT_DIFFERENT, exception.getErrorCode());
 
             verify(accountOwnershipValidator, times(1)).validate(
                     creditCardDTO.accountId()
@@ -520,9 +522,11 @@ public class CreditCardServiceTests {
                     userId
             )).thenReturn(Optional.of(cardEntity));
 
-            assertThrows(RestoreCreditCardError.class, () -> {
+            CreditCardDomainException exception = assertThrows(CreditCardDomainException.class, () -> {
                 creditCardService.restore(cardEntity.getId());
             });
+
+            assertEquals(CreditCardErrorCode.RESTORE_CARD_WITH_DELETED_ACCOUNT, exception.getErrorCode());
 
             verify(creditCardRepository, times(1)).findByIdAndUserId(
                     cardEntity.getId(),

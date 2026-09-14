@@ -1,6 +1,7 @@
 package com.emmanuelfinance.account;
 
-import com.emmanuelfinance.account.exceptions.AccountNotFound;
+import com.emmanuelfinance.account.exceptions.AccountDomainException;
+import com.emmanuelfinance.account.exceptions.AccountErrorCode;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -17,24 +18,22 @@ public class AccountSelector {
     public Account getAccountByIdAndUserId(UUID id) {
         UUID userId = securityUtils.getCurrentUserId();
 
-        Account account = accountRepository.findByIdAndUserIdAndDeletedFalse(id, userId)
-                .orElseThrow(() -> new AccountNotFound());
-
-        return account;
+        return accountRepository.findByIdAndUserIdAndDeletedFalse(id, userId)
+                .orElseThrow(() -> new AccountDomainException(AccountErrorCode.ACCOUNT_NOT_FOUND));
     }
 
     public Account getAccountByIdIncludingDeleted(UUID accountId) {
         UUID userId = securityUtils.getCurrentUserId();
 
         Account account = accountRepository.findByIdAndUserIdIncludingDeleted(accountId, userId)
-                .orElseThrow(() -> new AccountNotFound());
+                .orElseThrow(() -> new AccountDomainException(AccountErrorCode.ACCOUNT_NOT_FOUND));
 
         return account;
     }
 
     public Account getAccountByIdInternal(UUID accountId) {
         Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new AccountNotFound());
+                .orElseThrow(() -> new AccountDomainException(AccountErrorCode.ACCOUNT_NOT_FOUND));
 
         return account;
     }

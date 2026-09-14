@@ -6,8 +6,8 @@ import com.emmanuelfinance.auth.user.UserRepository;
 import com.emmanuelfinance.auth.user.UserService;
 import com.emmanuelfinance.auth.user.dto.CreateUserDTO;
 import com.emmanuelfinance.auth.user.dto.ResponseUserDTO;
-import com.emmanuelfinance.auth.user.exceptions.PasswordsDoNotMatch;
-import com.emmanuelfinance.auth.user.exceptions.UserAlreadyExists;
+import com.emmanuelfinance.auth.user.exceptions.AuthDomainException;
+import com.emmanuelfinance.auth.user.exceptions.AuthErrorCode;
 import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -70,9 +70,11 @@ class UserServiceTest {
                 "Camila017."
         );
 
-        assertThrows(PasswordsDoNotMatch.class, () -> {
+        AuthDomainException exception = assertThrows(AuthDomainException.class, () -> {
             userService.create(userDTO);
         });
+
+        assertEquals(AuthErrorCode.PASSWORDS_DO_NOT_MATCH, exception.getErrorCode());
 
         verifyNoInteractions(keycloak);
         verify(userRepository, never()).save(any());
@@ -87,13 +89,13 @@ class UserServiceTest {
                 "Camila017.",
                 "Camila017."
         );
-        String userId = UUID.randomUUID().toString();
-
         when(userRepository.existsByEmail(userDTO.email())).thenReturn(true);
 
-        assertThrows(UserAlreadyExists.class, () -> {
+        AuthDomainException exception = assertThrows(AuthDomainException.class, () -> {
             userService.create(userDTO);
         });
+
+        assertEquals(AuthErrorCode.USER_ALREADY_EXISTS, exception.getErrorCode());
 
         verifyNoInteractions(keycloak);
         verify(userRepository, never()).save(any());

@@ -2,16 +2,14 @@ package com.emmanuelfinance.account.services;
 
 import com.emmanuelfinance.account.*;
 import com.emmanuelfinance.account.dto.*;
-import com.emmanuelfinance.account.exceptions.RestoreAccountError;
+import com.emmanuelfinance.account.exceptions.AccountDomainException;
+import com.emmanuelfinance.account.exceptions.AccountErrorCode;
 import com.emmanuelfinance.shared.annotation.WithDeletedFilter;
 import com.emmanuelfinance.shared.modules.account.AccountCache;
-import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
 import com.emmanuelfinance.account.kafka.AccountEventPublisher;
 import com.emmanuelfinance.shared.modules.account.kafka.account.enums.StatusEventEnum;
-import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
-import com.emmanuelfinance.shared.dto.UserSummaryDTO;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -116,7 +114,7 @@ public class AccountService {
         Account account = accountSelector.getAccountByIdIncludingDeleted(id);
 
         if (!account.isDeleted()) {
-            throw new RestoreAccountError();
+            throw new AccountDomainException(AccountErrorCode.RESTORE_ACCOUNT_NOT_DELETED);
         }
 
         account.setDeleted(false);
