@@ -3,6 +3,7 @@ package com.emmanuelfinance.creditcard.kafka;
 import com.emmanuelfinance.creditcard.services.CreditCardBalanceKafkaService;
 import com.emmanuelfinance.creditcard.services.CreditCardInternalService;
 import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
+import com.emmanuelfinance.shared.modules.account.kafka.account.enums.StatusEventEnum;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +22,11 @@ public class CreditCardListener {
 
     @KafkaListener(topics = "account-events", groupId = "credit-card-service-group")
     public void handleAccountDeleted(AccountEventDTO event) {
-        log.info("Recebido evento de conta deletada: {}", event.accountId());
+        log.info("Recebido evento de conta: {}", event.accountId());
+
+        if (event.status() != StatusEventEnum.DELETED) {
+            return;
+        }
 
         try {
             creditCardInternalService.deactivateCardsByAccountId(event.accountId());
