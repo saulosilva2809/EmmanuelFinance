@@ -1,2 +1,1 @@
-ALTER TABLE category
-DROP COLUMN account_id;
+ALTER TABLE category DROP COLUMN IF EXISTS account_id;

@@ -5,6 +5,9 @@ spring:
   application:
     name: category
 
+  flyway:
+    out-of-order: true
+
   devtools:
     restart:
       enabled: true

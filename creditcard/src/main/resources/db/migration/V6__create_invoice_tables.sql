@@ -1,4 +1,4 @@
-CREATE TABLE invoice (
+CREATE TABLE IF NOT EXISTS invoice (
                          id UUID PRIMARY KEY,
                          credit_card_id UUID NOT NULL,
                          user_id UUID NOT NULL,
@@ -16,10 +16,10 @@ CREATE TABLE invoice (
                          CONSTRAINT chk_invoice_month CHECK (month BETWEEN 1 AND 12)
     );
 
-CREATE INDEX idx_invoice_credit_card_id ON invoice(credit_card_id);
-CREATE INDEX idx_invoice_lookup ON invoice(credit_card_id, month, year) WHERE deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_invoice_credit_card_id ON invoice(credit_card_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_lookup ON invoice(credit_card_id, month, year) WHERE deleted = FALSE;
 
-CREATE TABLE invoice_item (
+CREATE TABLE IF NOT EXISTS invoice_item (
                               id UUID PRIMARY KEY,
                               invoice_id UUID NOT NULL,
                               user_id UUID NOT NULL,
@@ -35,5 +35,5 @@ CREATE TABLE invoice_item (
                                   REFERENCES invoice(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_invoice_item_invoice_id ON invoice_item(invoice_id);
-CREATE INDEX idx_invoice_item_transaction_id ON invoice_item(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_item_invoice_id ON invoice_item(invoice_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_item_transaction_id ON invoice_item(transaction_id);
