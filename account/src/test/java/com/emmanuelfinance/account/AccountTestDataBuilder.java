@@ -35,6 +35,21 @@ public class AccountTestDataBuilder {
         account.setCreatedAt(LocalDateTime.now());
         account.setUpdatedAt(null);
         account.setDeleted(isDeleted);
+        account.setVersion(0L);
         return account;
+    }
+
+    public static ResponseAccountDTO responseAccountDTO(Account account) {
+        return new ResponseAccountDTO(
+                account.getId(),
+                account.getName(),
+                account.getType(),
+                account.getBank(),
+                account.getInitialBalance(),
+                account.getCurrentBalance(),
+                account.getCreatedAt(),
+                account.getUpdatedAt(),
+                account.isDeleted()
+        );
     }
 }
