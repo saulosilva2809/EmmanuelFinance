@@ -4,6 +4,7 @@ import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -27,6 +28,6 @@ public interface AccountClient {
     @GetMapping("/internal/accounts/{accountId}/ownership")
     boolean checkAccountOwner(
             @PathVariable UUID accountId,
-            @RequestParam UUID userId
+            @RequestParam Jwt jwt
     );
 }

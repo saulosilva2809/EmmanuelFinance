@@ -5,6 +5,7 @@ import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
@@ -30,7 +31,12 @@ public class AccountOwnershipValidator {
             throw new AccountNotFound();
         }
 
-        boolean isOwnerInDB = accountClient.checkAccountOwner(accountId, userId);
+        Jwt jwt = Jwt.withTokenValue("mock-token")
+                .header("alg", "HS256")
+                .claim("sub", userId)
+                .build();
+
+        boolean isOwnerInDB = accountClient.checkAccountOwner(accountId, jwt);
 
         if (!isOwnerInDB) {
             throw new AccountNotFound();
