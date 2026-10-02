@@ -101,7 +101,7 @@ public class InvoiceService {
         } else {
             Invoice invoice = invoiceOptional.get();
             BigDecimal currentAmount = invoice.getTotalAmount() != null ? invoice.getTotalAmount() : BigDecimal.ZERO;
-            invoice.setTotalAmount(currentAmount.add(event.amount()));
+            invoice.setTotalAmount(currentAmount.add(installmentAmount));
 
             invoiceRepository.save(invoice);
             log.info("INVOICE já existe para {}/{}. Valor atualizado.", targetDate.getMonthValue(), targetDate.getYear());
