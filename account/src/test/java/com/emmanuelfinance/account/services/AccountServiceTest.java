@@ -1,5 +1,6 @@
-package com.emmanuelfinance.account;
+package com.emmanuelfinance.account.services;
 
+import com.emmanuelfinance.account.*;
 import com.emmanuelfinance.account.dto.AccountFiltersDTO;
 import com.emmanuelfinance.account.dto.CreateAccountDTO;
 import com.emmanuelfinance.account.dto.ResponseAccountDTO;
@@ -8,8 +9,6 @@ import com.emmanuelfinance.account.enums.TypeEnum;
 import com.emmanuelfinance.account.exceptions.AccountDomainException;
 import com.emmanuelfinance.account.exceptions.AccountErrorCode;
 import com.emmanuelfinance.account.kafka.AccountEventPublisher;
-import com.emmanuelfinance.account.services.AccountInternalService;
-import com.emmanuelfinance.account.services.AccountService;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.modules.account.AccountCache;
@@ -50,7 +49,7 @@ public class AccountServiceTest {
     private AccountService accountService;
 
     @Mock
-    private UserClientCacheService userClientCacheService;
+    private com.emmanuelfinance.shared.modules.user.UserClientCacheService userClientCacheService;
 
     @Mock
     private SecurityUtils securityUtils;

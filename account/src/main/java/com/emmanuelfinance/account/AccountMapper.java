@@ -11,7 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 public abstract class AccountMapper {
 
     @Autowired
-    protected UserClientCacheService userClientCacheService;
+    protected com.emmanuelfinance.shared.modules.user.UserClientCacheService userClientCacheService;
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "userId", ignore = true)
