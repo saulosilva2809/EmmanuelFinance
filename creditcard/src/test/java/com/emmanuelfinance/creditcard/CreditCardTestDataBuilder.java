@@ -8,6 +8,7 @@ import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 public class CreditCardTestDataBuilder {
@@ -23,10 +24,22 @@ public class CreditCardTestDataBuilder {
         );
     }
 
-    public static CreditCard createEntity(CreateCreditCardDTO inputDto, boolean deleted) {
+    public static CreateCreditCardDTO createCardDTO(UUID accountId) {
+        return new CreateCreditCardDTO(
+                accountId,
+                "Cartão de Crédito C6",
+                BanksEnum.C6_BANK,
+                new BigDecimal(10000),
+                17,
+                24
+        );
+    }
+
+    public static CreditCard createEntity(CreateCreditCardDTO inputDto, UUID userId, boolean deleted) {
         CreditCard creditCard = new CreditCard();
         creditCard.setId(UUID.randomUUID());
         creditCard.setAccountId(inputDto.accountId());
+        creditCard.setUserId(userId);
         creditCard.setName(inputDto.name());
         creditCard.setBank(inputDto.bank());
         creditCard.setCreditLimit(inputDto.creditLimit());
