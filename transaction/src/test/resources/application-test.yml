@@ -1,0 +1,39 @@
+spring:
+  datasource:
+    # DB_CLOSE_DELAY=-1 e DB_CLOSE_ON_EXIT=FALSE mantêm o H2 vivo entre as operações dos testes
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        auto_quote_keyword: true
+
+  flyway:
+    enabled: false
+
+  cache:
+    type: simple
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    listener:
+      auto-startup: false
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:8080/dummy-url
+
+application:
+  config:
+    account-service-url: localhost:8002
+    credit-card-service-url: localhost:8005
+    category-service-url: localhost:8003
