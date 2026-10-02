@@ -16,6 +16,13 @@ public class CategoryTestDataBuilder {
         );
     }
 
+    public static CreateCategoryDTO createCategoryDTO2() {
+        return new CreateCategoryDTO(
+                "Compras",
+                TypeEnum.EXPENSE
+        );
+    }
+
     public static Category categoryEntity(CreateCategoryDTO inputDto, UUID userId, boolean isDeleted) {
         Category category = new Category();
         category.setId(UUID.randomUUID());

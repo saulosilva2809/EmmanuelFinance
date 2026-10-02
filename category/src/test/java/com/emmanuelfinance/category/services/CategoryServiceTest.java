@@ -1,15 +1,14 @@
-package com.emmanuelfinance.category;
+package com.emmanuelfinance.category.services;
 
+import com.emmanuelfinance.category.*;
 import com.emmanuelfinance.category.dto.CategoryFiltersDTO;
 import com.emmanuelfinance.category.dto.CreateCategoryDTO;
 import com.emmanuelfinance.category.dto.ResponseCategoryDTO;
 import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
 import com.emmanuelfinance.category.exceptions.CategoryDomainException;
 import com.emmanuelfinance.category.exceptions.CategoryErrorCode;
-import com.emmanuelfinance.category.services.CategoryService;
 import com.emmanuelfinance.shared.enums.TypeEnum;
 import com.emmanuelfinance.shared.modules.category.exceptions.CategoryNotFound;
-import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,7 +29,6 @@ import org.springframework.data.jpa.domain.Specification;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -38,7 +36,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class CategoryServiceTests {
+class CategoryServiceTest {
 
     @Mock
     private CategoryRepository categoryRepository;
@@ -50,10 +48,10 @@ class CategoryServiceTests {
     private SecurityUtils securityUtils;
 
     @Mock
-    private AccountOwnershipValidator accountOwnershipValidator;
+    private CategorySelector categorySelector;
 
     @Mock
-    private CategorySelector categorySelector;
+    private CategoryValidatorService categoryValidatorService;
 
     @InjectMocks
     private CategoryService categoryService;
@@ -74,11 +72,8 @@ class CategoryServiceTests {
         void shouldGiveErrorWhenCreatingTwoEqualCategories() {
             CreateCategoryDTO inputDto = CategoryTestDataBuilder.createCategoryDTO();
 
-            when(categoryRepository.existsByNameIgnoreCaseAndTypeAndUserId(
-                    "Salário",
-                    TypeEnum.INCOME,
-                    userId
-            )).thenReturn(true);
+            doThrow(new CategoryDomainException(CategoryErrorCode.CATEGORY_ALREADY_EXISTS))
+                    .when(categoryValidatorService).checkCategoryExists(inputDto);
 
             CategoryDomainException exception = assertThrows(CategoryDomainException.class, () -> {
                 categoryService.create(inputDto);
@@ -86,11 +81,7 @@ class CategoryServiceTests {
 
             assertEquals(CategoryErrorCode.CATEGORY_ALREADY_EXISTS, exception.getErrorCode());
 
-            verify(categoryRepository, times(1)).existsByNameIgnoreCaseAndTypeAndUserId(
-                    "Salário",
-                    TypeEnum.INCOME,
-                    userId
-            );
+            verify(categoryValidatorService, times(1)).checkCategoryExists(inputDto);
             verify(categoryRepository, never()).save(any(Category.class));
         }
 
@@ -109,6 +100,7 @@ class CategoryServiceTests {
             assertEquals(expectedResponse.id(), response.id());
             assertEquals(expectedResponse.name(), response.name());
 
+            verify(categoryValidatorService, times(1)).checkCategoryExists(inputDto);
             verify(categoryRepository, times(1)).save(any(Category.class));
         }
     }
@@ -366,6 +358,8 @@ class CategoryServiceTests {
 
             when(categorySelector.getCategoryByIdIncludingDeleted(categoryEntity.getId()))
                     .thenReturn(categoryEntity);
+            doThrow(new CategoryDomainException(CategoryErrorCode.RESTORE_CATEGORY_NOT_DELETED))
+                    .when(categoryValidatorService).verifyIsDeleted(categoryEntity);
 
             CategoryDomainException exception = assertThrows(CategoryDomainException.class, () -> {
                 categoryService.restore(categoryEntity.getId());
@@ -391,6 +385,8 @@ class CategoryServiceTests {
 
             categoryService.restore(categoryEntity.getId());
 
+            assertFalse(categoryEntity.isDeleted());
+            verify(categoryValidatorService, times(1)).verifyIsDeleted(categoryEntity);
             verify(categorySelector, times(1)).getCategoryByIdIncludingDeleted(categoryEntity.getId());
             verify(categoryRepository, times(1)).save(any(Category.class));
         }
