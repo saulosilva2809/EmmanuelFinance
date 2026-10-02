@@ -20,6 +20,14 @@ public enum CreditCardErrorCode {
     RESTORE_CARD_NOT_DELETED(
             HttpStatus.CONFLICT,
             "It's not possible to restore an credit card that isn't deleted."
+    ),
+    THE_CARD_LIMIT_CANNOT_BE_NEGATIVE(
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            "The new limit can't be negative."
+    ),
+    THE_AVAILABLE_LIMIT_CANT_BE_NEGATIVE(
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            "The available limit can't be negative. Try again after the bill is closed."
     );
 
     private final HttpStatus status;

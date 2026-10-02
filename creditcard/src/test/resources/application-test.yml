@@ -9,11 +9,14 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
-      ddl-auto: validate
+      ddl-auto: create-drop
     show-sql: true
+    properties:
+      hibernate:
+        auto_quote_keyword: true
 
   flyway:
-    enabled: true
+    enabled: false
 
   cache:
     type: simple
@@ -23,3 +26,9 @@ spring:
       resourceserver:
         jwt:
           jwk-set-uri: http://localhost:8080/dummy-url
+
+application:
+  config:
+    account-service-url: localhost:8002
+    credit-card-service-url: localhost:8005
+    transaction-service-url: localhost:8006
