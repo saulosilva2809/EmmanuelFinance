@@ -15,10 +15,10 @@ public class AccountSelector {
     private final AccountRepository accountRepository;
     private final SecurityUtils securityUtils;
 
-    public Account getAccountByIdAndUserId(UUID id) {
+    public Account getAccountByIdAndUserId(UUID accountId) {
         UUID userId = securityUtils.getCurrentUserId();
 
-        return accountRepository.findByIdAndUserIdAndDeletedFalse(id, userId)
+        return accountRepository.findByIdAndUserIdAndDeletedFalse(accountId, userId)
                 .orElseThrow(() -> new AccountDomainException(AccountErrorCode.ACCOUNT_NOT_FOUND));
     }
 

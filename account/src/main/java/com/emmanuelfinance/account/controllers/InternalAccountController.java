@@ -7,6 +7,10 @@ import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -34,9 +38,9 @@ public class InternalAccountController {
     @GetMapping("/{accountId}/ownership")
     public ResponseEntity<Boolean> checkOwnership(
             @PathVariable UUID accountId,
-            @RequestParam UUID userId
+            @AuthenticationPrincipal Jwt jwt
     ) {
-        boolean isOwner = accountValidatorService.checkAccountOwner(accountId, userId);
+        boolean isOwner = accountValidatorService.checkAccountOwner(accountId, jwt);
         return ResponseEntity.ok(isOwner);
     }
 }
