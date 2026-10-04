@@ -1,14 +1,14 @@
 package com.emmanuelfinance.creditcard;
 
-import com.emmanuelfinance.creditcard.dto.CreateCreditCardDTO;
-import com.emmanuelfinance.creditcard.dto.ResponseCreditCardDTO;
+import com.emmanuelfinance.creditcard.creditcard.CreditCard;
+import com.emmanuelfinance.creditcard.creditcard.dto.CreateCreditCardDTO;
+import com.emmanuelfinance.creditcard.creditcard.dto.ResponseCreditCardDTO;
 import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.UUID;
 
 public class CreditCardTestDataBuilder {
