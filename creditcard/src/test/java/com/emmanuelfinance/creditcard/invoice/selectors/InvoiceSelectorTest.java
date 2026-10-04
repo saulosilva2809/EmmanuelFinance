@@ -3,6 +3,7 @@ package com.emmanuelfinance.creditcard.invoice.selectors;
 import com.emmanuelfinance.creditcard.invoice.Invoice;
 import com.emmanuelfinance.creditcard.invoice.InvoiceTestDataBuilder;
 import com.emmanuelfinance.creditcard.invoice.repositories.InvoiceRepository;
+import com.emmanuelfinance.shared.modules.creditcard.enums.InvoiceStatusEnum;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -61,6 +63,17 @@ public class InvoiceSelectorTest {
             assertTrue(invoiceSelector.getByCreditCardAndMonthAndYear(creditCardId, 11, 2026).isEmpty());
             assertTrue(invoiceSelector.getByCreditCardAndMonthAndYear(creditCardId, 10, 2027).isEmpty());
             assertTrue(invoiceSelector.getByCreditCardAndMonthAndYear(UUID.randomUUID(), 10, 2026).isEmpty());
+        }
+
+        @Test
+        @DisplayName("Deve retornar vazio quando a fatura estiver excluída")
+        void shouldReturnEmptyWhenInvoiceIsDeleted() {
+            UUID creditCardId = UUID.randomUUID();
+            invoiceRepository.saveAndFlush(InvoiceTestDataBuilder.invoiceEntity(
+                    UUID.randomUUID(), creditCardId, 10, 2026, new BigDecimal("100.00"), InvoiceStatusEnum.OPEN, true
+            ));
+
+            assertTrue(invoiceSelector.getByCreditCardAndMonthAndYear(creditCardId, 10, 2026).isEmpty());
         }
 
     }

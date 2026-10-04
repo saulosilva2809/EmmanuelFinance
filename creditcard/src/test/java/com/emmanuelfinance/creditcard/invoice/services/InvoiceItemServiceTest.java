@@ -5,6 +5,8 @@ import com.emmanuelfinance.creditcard.invoice.InvoiceItem;
 import com.emmanuelfinance.creditcard.invoice.InvoiceTestDataBuilder;
 import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceItemDTO;
 import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceSummaryDTO;
+import com.emmanuelfinance.creditcard.invoice.exceptions.InvoiceDomainException;
+import com.emmanuelfinance.creditcard.invoice.exceptions.InvoiceErrorCode;
 import com.emmanuelfinance.creditcard.invoice.repositories.InvoiceItemRepository;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.modules.transaction.TransactionClientCacheService;
@@ -50,6 +52,9 @@ public class InvoiceItemServiceTest {
 
     @Mock
     private TransactionClientCacheService transactionClientCacheService;
+
+    @Mock
+    private InvoiceValidatorService invoiceValidatorService;
 
     @InjectMocks
     private InvoiceItemService invoiceItemService;
@@ -112,6 +117,37 @@ public class InvoiceItemServiceTest {
                     result.content().get(0)
             );
             verify(securityUtils, times(1)).getCurrentUserId();
+            verify(invoiceValidatorService, times(1)).existsById(invoice.getId());
+        }
+
+        @Test
+        @DisplayName("Deve lançar INVOICE_NOT_FOUND e não consultar itens quando a fatura não existir")
+        void shouldThrowWhenInvoiceDoesNotExist() {
+            UUID invoiceId = UUID.randomUUID();
+            when(securityUtils.getCurrentUserId()).thenReturn(UUID.randomUUID());
+            doThrow(new InvoiceDomainException(InvoiceErrorCode.INVOICE_NOT_FOUND))
+                    .when(invoiceValidatorService).existsById(invoiceId);
+
+            InvoiceDomainException exception = assertThrows(
+                    InvoiceDomainException.class,
+                    () -> invoiceItemService.listByInvoiceId(invoiceId, PageRequest.of(0, 10))
+            );
+
+            assertEquals(InvoiceErrorCode.INVOICE_NOT_FOUND, exception.getErrorCode());
+            verifyNoInteractions(invoiceItemRepository);
+        }
+
+        @Test
+        @DisplayName("Não deve validar a fatura quando o invoiceId for nulo")
+        void shouldNotValidateInvoiceWhenInvoiceIdIsNull() {
+            Pageable pageable = PageRequest.of(0, 10);
+            when(securityUtils.getCurrentUserId()).thenReturn(UUID.randomUUID());
+            when(invoiceItemRepository.findAll(any(Specification.class), eq(pageable)))
+                    .thenReturn(Page.empty(pageable));
+
+            invoiceItemService.listByInvoiceId(null, pageable);
+
+            verifyNoInteractions(invoiceValidatorService);
         }
 
         @Test
