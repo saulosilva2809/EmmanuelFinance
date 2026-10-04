@@ -1,6 +1,9 @@
 package com.emmanuelfinance.creditcard;
 
-import com.emmanuelfinance.creditcard.dto.CreateCreditCardDTO;
+import com.emmanuelfinance.creditcard.creditcard.CreditCard;
+import com.emmanuelfinance.creditcard.creditcard.CreditCardRepository;
+import com.emmanuelfinance.creditcard.creditcard.CreditCardSelector;
+import com.emmanuelfinance.creditcard.creditcard.dto.CreateCreditCardDTO;
 import com.emmanuelfinance.shared.modules.creditcard.exceptions.CreditCardNotFound;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
