@@ -44,12 +44,12 @@ public class AccountListener {
 
     @KafkaListener(topics = "transaction-deleted-topic", groupId = "account-service-group")
     public void handleTransactionDeleted(TransactionDeletedAndRestoreEvent event) {
-        log.info("Recebido evento de transação recuperada (ID: {})", event.transactionId());
+        log.info("Recebido evento de transação excluida (ID: {})", event.transactionId());
 
         try {
             accountBalanceService.updateBalanceFromDeletedTransaction(event);
         } catch (Exception e) {
-            log.error("Erro ao processar atualização de saldo para o evento de alteração: {}", event, e);
+            log.error("Erro ao processar evento de exclusão: {}", event, e);
         }
     }
 
