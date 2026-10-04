@@ -2,6 +2,7 @@ package com.emmanuelfinance.transaction.services;
 
 import com.emmanuelfinance.config.exceptions.APIException;
 import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.modules.category.CategoryClientCacheService;
 import com.emmanuelfinance.shared.modules.creditcard.CreditCardClientCacheService;
@@ -13,6 +14,7 @@ import com.emmanuelfinance.transaction.dtos.CreateTransactionDTO;
 import com.emmanuelfinance.transaction.dtos.UpdateTransactionDTO;
 import com.emmanuelfinance.transaction.exceptions.TransactionDomainException;
 import com.emmanuelfinance.transaction.exceptions.TransactionErrorCode;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -41,6 +43,9 @@ public class TransactionValidatorServiceTest {
     @Mock
     private CreditCardClientCacheService creditCardClientCacheService;
 
+    @Mock
+    private AccountClientCacheService accountClientCacheService;
+
     @InjectMocks
     private TransactionValidatorService validator;
 
@@ -48,6 +53,18 @@ public class TransactionValidatorServiceTest {
     private final UUID accountId = UUID.randomUUID();
     private final UUID categoryId = UUID.randomUUID();
     private final UUID creditCardId = UUID.randomUUID();
+
+    @BeforeEach
+    void setUp() {
+        // por padrão a conta tem saldo suficiente; os testes de saldo sobrescrevem este stub
+        stubBalance(accountId, "1000.00");
+    }
+
+    private void stubBalance(UUID id, String balance) {
+        lenient().when(accountClientCacheService.getInternalAccountById(id)).thenReturn(
+                TransactionTestDataBuilder.accountSummaryInternalDTO(id, new BigDecimal(balance))
+        );
+    }
 
     private void assertDomainError(TransactionErrorCode expected, Executable executable) {
         APIException exception = assertThrows(TransactionDomainException.class, executable);
@@ -201,6 +218,106 @@ public class TransactionValidatorServiceTest {
             );
 
             assertDomainError(TransactionErrorCode.UNSCHEDULED_TRANSACTION_DATE_NOT_ALLOWED, () -> validator.create.validate(dto));
+        }
+    }
+
+    @Nested
+    @DisplayName("Cenários da validação de saldo")
+    class BalanceTests {
+
+        @Test
+        @DisplayName("Deve lançar erro quando a despesa for maior que o saldo da conta")
+        void shouldThrowWhenExpenseExceedsBalance() {
+            stubBalance(accountId, "50.00");
+            CreateTransactionDTO dto = TransactionTestDataBuilder.createDTO(accountId, categoryId);
+
+            assertDomainError(TransactionErrorCode.INSUFFICIENT_BALANCE, () -> validator.create.validate(dto));
+        }
+
+        @Test
+        @DisplayName("Deve aceitar despesa igual ao saldo da conta")
+        void shouldAcceptExpenseEqualToBalance() {
+            stubBalance(accountId, "100.00");
+            stubCategory(TypeEnum.EXPENSE);
+            CreateTransactionDTO dto = TransactionTestDataBuilder.createDTO(accountId, categoryId);
+
+            assertDoesNotThrow(() -> validator.create.validate(dto));
+        }
+
+        @Test
+        @DisplayName("Não deve validar saldo para receita")
+        void shouldNotValidateBalanceForIncome() {
+            stubBalance(accountId, "0.00");
+            stubCategory(TypeEnum.INCOME);
+            CreateTransactionDTO dto = TransactionTestDataBuilder.incomeDTO(accountId, categoryId);
+
+            assertDoesNotThrow(() -> validator.create.validate(dto));
+        }
+
+        @Test
+        @DisplayName("Não deve validar o saldo da conta para compra no cartão")
+        void shouldNotValidateBalanceForCardPurchase() {
+            stubCard(accountId, "1000.00");
+            stubCategory(TypeEnum.EXPENSE);
+            stubBalance(accountId, "0.00");
+            CreateTransactionDTO dto = TransactionTestDataBuilder.cardDTO(accountId, categoryId, creditCardId, 1);
+
+            assertDoesNotThrow(() -> validator.create.validate(dto));
+
+            verify(accountClientCacheService, never()).getInternalAccountById(accountId);
+        }
+
+        @Test
+        @DisplayName("Deve validar a posse da conta antes de consultar o saldo")
+        void shouldValidateOwnershipBeforeBalance() {
+            doThrow(new com.emmanuelfinance.shared.modules.account.exceptions.AccountNotFound())
+                    .when(accountOwnershipValidator).validate(accountId);
+            CreateTransactionDTO dto = TransactionTestDataBuilder.createDTO(accountId, categoryId);
+
+            assertThrows(com.emmanuelfinance.shared.modules.account.exceptions.AccountNotFound.class,
+                    () -> validator.create.validate(dto));
+
+            verifyNoInteractions(accountClientCacheService);
+        }
+
+        @Test
+        @DisplayName("Na atualização, deve lançar erro quando o novo valor for maior que o saldo")
+        void shouldThrowOnUpdateWhenNewAmountExceedsBalance() {
+            stubBalance(accountId, "50.00");
+            Transaction existing = TransactionTestDataBuilder.transactionEntity(userId);
+            existing.setAccountId(accountId);
+            UpdateTransactionDTO dto = TransactionTestDataBuilder.updateDTO(
+                    null, null, null, new BigDecimal("80.00"), null, null, null
+            );
+
+            assertDomainError(TransactionErrorCode.INSUFFICIENT_BALANCE, () -> validator.update.validate(existing, dto));
+        }
+
+        @Test
+        @DisplayName("Na atualização, deve consultar o saldo da nova conta quando a conta mudar")
+        void shouldUseNewAccountBalanceOnUpdate() {
+            UUID newAccountId = UUID.randomUUID();
+            stubBalance(newAccountId, "10.00");
+            Transaction existing = TransactionTestDataBuilder.transactionEntity(userId);
+            existing.setAccountId(accountId);
+            UpdateTransactionDTO dto = TransactionTestDataBuilder.updateDTO(
+                    newAccountId, null, null, new BigDecimal("80.00"), null, null, null
+            );
+
+            assertDomainError(TransactionErrorCode.INSUFFICIENT_BALANCE, () -> validator.update.validate(existing, dto));
+        }
+
+        @Test
+        @DisplayName("Na atualização, não deve validar saldo quando o valor não for informado")
+        void shouldNotValidateBalanceOnPartialUpdate() {
+            Transaction existing = TransactionTestDataBuilder.transactionEntity(userId);
+            UpdateTransactionDTO dto = TransactionTestDataBuilder.updateDTO(
+                    null, null, "Nova descrição", null, null, null, null
+            );
+
+            assertDoesNotThrow(() -> validator.update.validate(existing, dto));
+
+            verifyNoInteractions(accountClientCacheService);
         }
     }
 
