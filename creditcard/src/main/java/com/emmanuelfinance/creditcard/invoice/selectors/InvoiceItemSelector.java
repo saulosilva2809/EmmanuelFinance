@@ -6,7 +6,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -15,7 +14,7 @@ public class InvoiceItemSelector {
 
     private final InvoiceItemRepository invoiceItemRepository;
 
-    public List<InvoiceItem> getByTransactionId(UUID transactionId) {
+    public List<InvoiceItem> findByTransactionId(UUID transactionId) {
         List<InvoiceItem> invoiceItemList = invoiceItemRepository.findByTransactionId(
                 transactionId
         );

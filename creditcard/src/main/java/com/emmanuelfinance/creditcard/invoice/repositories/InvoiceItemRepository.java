@@ -1,6 +1,5 @@
 package com.emmanuelfinance.creditcard.invoice.repositories;
 
-import com.emmanuelfinance.creditcard.invoice.Invoice;
 import com.emmanuelfinance.creditcard.invoice.InvoiceItem;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -15,6 +14,7 @@ import java.util.UUID;
 @Repository
 public interface InvoiceItemRepository extends JpaRepository<InvoiceItem, UUID>, JpaSpecificationExecutor<InvoiceItem> {
     List<InvoiceItem> findByTransactionId(UUID transactionId);
+    List<InvoiceItem> findByTransactionIdAndDeletedFalse(UUID transactionId);
     @Modifying(clearAutomatically = true)
     @Query("""
         UPDATE InvoiceItem i

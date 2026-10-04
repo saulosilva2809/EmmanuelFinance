@@ -45,7 +45,7 @@ public class InvoiceItemSelectorTest {
         InvoiceItem other = InvoiceTestDataBuilder.invoiceItemEntity(userId, UUID.randomUUID(), UUID.randomUUID());
         invoiceItemRepository.saveAllAndFlush(List.of(item1, item2, other));
 
-        List<InvoiceItem> result = invoiceItemSelector.getByTransactionId(transactionId);
+        List<InvoiceItem> result = invoiceItemSelector.findByTransactionId(transactionId);
 
         assertEquals(2, result.size());
         assertTrue(result.stream().allMatch(i -> i.getTransactionId().equals(transactionId)));
@@ -54,7 +54,7 @@ public class InvoiceItemSelectorTest {
     @Test
     @DisplayName("Deve retornar lista vazia quando a transação não tiver itens")
     void shouldReturnEmptyListWhenNoItems() {
-        List<InvoiceItem> result = invoiceItemSelector.getByTransactionId(UUID.randomUUID());
+        List<InvoiceItem> result = invoiceItemSelector.findByTransactionId(UUID.randomUUID());
 
         assertNotNull(result);
         assertTrue(result.isEmpty());

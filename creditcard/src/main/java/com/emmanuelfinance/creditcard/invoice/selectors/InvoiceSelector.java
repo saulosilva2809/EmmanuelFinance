@@ -5,7 +5,6 @@ import com.emmanuelfinance.creditcard.invoice.repositories.InvoiceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,7 +19,7 @@ public class InvoiceSelector {
             Integer month,
             Integer year
     ) {
-        Optional<Invoice> invoice = invoiceRepository.findByCreditCardIdAndMonthAndYear(
+        Optional<Invoice> invoice = invoiceRepository.findByCreditCardIdAndMonthAndYearAndDeletedFalse(
                 creditCardId,
                 month,
                 year

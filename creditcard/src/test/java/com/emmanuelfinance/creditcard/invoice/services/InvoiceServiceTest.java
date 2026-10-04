@@ -63,6 +63,9 @@ public class InvoiceServiceTest {
     @Mock
     private SecurityUtils securityUtils;
 
+    @Mock
+    private InvoiceAmountService invoiceAmountService;
+
     @InjectMocks
     private InvoiceService invoiceService;
 
@@ -265,7 +268,7 @@ public class InvoiceServiceTest {
     class DeleteTests {
 
         @Test
-        @DisplayName("Deve deletar itens e faturas distintas da transação")
+        @DisplayName("Deve deletar os itens e descontar o valor das faturas distintas da transação")
         void shouldDeleteItemsAndDistinctInvoices() {
             UUID userId = UUID.randomUUID();
             UUID transactionId = UUID.randomUUID();
@@ -276,25 +279,31 @@ public class InvoiceServiceTest {
                     InvoiceTestDataBuilder.invoiceItemEntity(userId, invoiceA, transactionId),
                     InvoiceTestDataBuilder.invoiceItemEntity(userId, invoiceB, transactionId)
             );
-            when(invoiceItemSelector.getByTransactionId(transactionId)).thenReturn(items);
+            Invoice invoice1 = InvoiceTestDataBuilder.invoiceEntity(userId, UUID.randomUUID());
+            Invoice invoice2 = InvoiceTestDataBuilder.invoiceEntity(userId, UUID.randomUUID());
+            when(invoiceItemSelector.findByTransactionId(transactionId)).thenReturn(items);
+            when(invoiceRepository.findAllById(List.of(invoiceA, invoiceB))).thenReturn(List.of(invoice1, invoice2));
 
             TransactionDeletedAndRestoreEvent event = InvoiceTestDataBuilder.transactionDeletedAndRestoreEvent(transactionId);
             invoiceService.delete(event);
 
             verify(invoiceItemService, times(1)).delete(transactionId);
-            verify(invoiceRepository, times(1)).deleteAllById(List.of(invoiceA, invoiceB));
+            verify(invoiceAmountService, times(1))
+                    .removeBalanceAfterDeletion(List.of(invoice1, invoice2), items.get(0).getAmount());
+            verify(invoiceRepository, never()).deleteAllById(anyList());
         }
 
         @Test
         @DisplayName("Não deve deletar faturas quando a transação não tiver itens")
         void shouldNotDeleteInvoicesWhenNoItems() {
             UUID transactionId = UUID.randomUUID();
-            when(invoiceItemSelector.getByTransactionId(transactionId)).thenReturn(Collections.emptyList());
+            when(invoiceItemSelector.findByTransactionId(transactionId)).thenReturn(Collections.emptyList());
 
             invoiceService.delete(InvoiceTestDataBuilder.transactionDeletedAndRestoreEvent(transactionId));
 
             verify(invoiceItemService, times(1)).delete(transactionId);
-            verify(invoiceRepository, never()).deleteAllById(anyList());
+            verify(invoiceRepository, never()).findAllById(anyList());
+            verifyNoInteractions(invoiceAmountService);
         }
     }
 
@@ -303,7 +312,7 @@ public class InvoiceServiceTest {
     class RestoreTests {
 
         @Test
-        @DisplayName("Deve restaurar itens e marcar faturas como não excluídas")
+        @DisplayName("Deve restaurar os itens e somar o valor nas faturas da transação")
         void shouldRestoreItemsAndInvoices() {
             UUID userId = UUID.randomUUID();
             UUID transactionId = UUID.randomUUID();
@@ -312,25 +321,26 @@ public class InvoiceServiceTest {
             );
             InvoiceItem item = InvoiceTestDataBuilder.invoiceItemEntity(userId, invoice.getId(), transactionId);
 
-            when(invoiceItemSelector.getByTransactionId(transactionId)).thenReturn(List.of(item, item));
+            when(invoiceItemSelector.findByTransactionId(transactionId)).thenReturn(List.of(item, item));
             when(invoiceRepository.findAllById(List.of(invoice.getId()))).thenReturn(List.of(invoice));
 
             invoiceService.restore(InvoiceTestDataBuilder.transactionDeletedAndRestoreEvent(transactionId));
 
             verify(invoiceItemService, times(1)).restore(transactionId);
-            assertFalse(invoice.isDeleted());
+            verify(invoiceAmountService, times(1)).addBalanceAfterRestore(List.of(invoice), item.getAmount());
         }
 
         @Test
         @DisplayName("Não deve buscar faturas quando a transação não tiver itens")
         void shouldNotFindInvoicesWhenNoItems() {
             UUID transactionId = UUID.randomUUID();
-            when(invoiceItemSelector.getByTransactionId(transactionId)).thenReturn(Collections.emptyList());
+            when(invoiceItemSelector.findByTransactionId(transactionId)).thenReturn(Collections.emptyList());
 
             invoiceService.restore(InvoiceTestDataBuilder.transactionDeletedAndRestoreEvent(transactionId));
 
             verify(invoiceItemService, times(1)).restore(transactionId);
             verify(invoiceRepository, never()).findAllById(anyList());
+            verifyNoInteractions(invoiceAmountService);
         }
     }
 }

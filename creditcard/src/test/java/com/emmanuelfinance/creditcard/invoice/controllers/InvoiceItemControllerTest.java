@@ -4,6 +4,8 @@ import com.emmanuelfinance.creditcard.invoice.Invoice;
 import com.emmanuelfinance.creditcard.invoice.InvoiceItem;
 import com.emmanuelfinance.creditcard.invoice.InvoiceTestDataBuilder;
 import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceItemDTO;
+import com.emmanuelfinance.creditcard.invoice.exceptions.InvoiceDomainException;
+import com.emmanuelfinance.creditcard.invoice.exceptions.InvoiceErrorCode;
 import com.emmanuelfinance.creditcard.invoice.services.InvoiceItemService;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import org.junit.jupiter.api.DisplayName;
@@ -103,6 +105,17 @@ public class InvoiceItemControllerTest {
         Sort sort = captor.getValue().getSort();
         assertEquals(Sort.Direction.ASC, sort.getOrderFor("installmentNumber").getDirection());
         assertEquals(Sort.Direction.ASC, sort.getOrderFor("createdAt").getDirection());
+    }
+
+    @Test
+    @DisplayName("Deve retornar 404 Not Found quando a fatura não existir")
+    void shouldReturn404WhenInvoiceDoesNotExist() throws Exception {
+        UUID invoiceId = UUID.randomUUID();
+        when(invoiceItemService.listByInvoiceId(eq(invoiceId), any(Pageable.class)))
+                .thenThrow(new InvoiceDomainException(InvoiceErrorCode.INVOICE_NOT_FOUND));
+
+        mockMvc.perform(get("/credit-card/invoice-item/{invoiceId}", invoiceId))
+                .andExpect(status().isNotFound());
     }
 
     @Test

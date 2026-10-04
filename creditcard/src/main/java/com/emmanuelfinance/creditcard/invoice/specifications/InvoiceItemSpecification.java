@@ -17,6 +17,7 @@ public class InvoiceItemSpecification {
             List<Predicate> predicateList = new ArrayList<>();
             predicateList.add(builder.equal(root.get("userId"), userId));
             predicateList.add(builder.equal(root.get("invoiceId"), invoiceId));
+            predicateList.add(builder.equal(root.get("deleted"), false));
 
             return builder.and(predicateList.toArray(new Predicate[0]));
         };
