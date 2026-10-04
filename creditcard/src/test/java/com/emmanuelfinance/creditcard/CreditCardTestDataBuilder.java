@@ -82,6 +82,7 @@ public class CreditCardTestDataBuilder {
                 accountId,
                 "Conta Corrente",
                 BanksEnum.C6_BANK,
+                new BigDecimal("5000.00"),
                 false
         );
     }
