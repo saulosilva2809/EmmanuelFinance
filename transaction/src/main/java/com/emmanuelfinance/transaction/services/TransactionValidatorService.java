@@ -1,7 +1,10 @@
 package com.emmanuelfinance.transaction.services;
 
 import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 import com.emmanuelfinance.shared.modules.category.CategoryClientCacheService;
 import com.emmanuelfinance.shared.modules.category.dtos.CategoryInternalSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.CreditCardClientCacheService;
@@ -25,6 +28,7 @@ public class TransactionValidatorService {
     private final AccountOwnershipValidator accountOwnershipValidator;
     private final CategoryClientCacheService categoryClientCacheService;
     private final CreditCardClientCacheService creditCardClientCacheService;
+    private final AccountClientCacheService accountClientCacheService;
 
     public final CreateValidations create = new CreateValidations();
     public final UpdateValidations update = new UpdateValidations();
@@ -87,6 +91,14 @@ public class TransactionValidatorService {
         }
     }
 
+    public void validateAccountBalance(BigDecimal value, UUID accountId, TypeEnum type) {
+        AccountSummaryInternalDTO accountSummary = accountClientCacheService.getInternalAccountById(accountId);
+
+        if (value.compareTo(accountSummary.currentBalance()) > 0 && TypeEnum.EXPENSE.equals(type)) {
+            throw new TransactionDomainException(TransactionErrorCode.INSUFFICIENT_BALANCE);
+        }
+    }
+
     public class CreateValidations {
         public void validate(CreateTransactionDTO data) {
 
@@ -107,6 +119,11 @@ public class TransactionValidatorService {
             }
 
             accountOwnershipValidator.validate(data.accountId());
+
+            if (data.creditCardId() == null) {
+                validateAccountBalance(data.amount(), data.accountId(), data.type());
+            }
+
             validateCreditCardAccount(data.accountId(), data.creditCardId());
             checkCategoryAndTransactionType(data.categoryId(), data.type());
             validateScheduledDate(data.scheduled(), data.date());
@@ -133,6 +150,11 @@ public class TransactionValidatorService {
                 throw new TransactionDomainException(TransactionErrorCode.UNSCHEDULED_TRANSACTION_DATE_NOT_ALLOWED);
             } else if (Boolean.TRUE.equals(data.scheduled())) {
                 validateScheduledDate(data.scheduled(), data.date());
+            }
+
+            if (data.amount() != null && existingTransaction.getCreditCardId() == null) {
+                UUID accountId = data.accountId() != null ? data.accountId() : existingTransaction.getAccountId();
+                validateAccountBalance(data.amount(), accountId, targetType);
             }
         }
     }
