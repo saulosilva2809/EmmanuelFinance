@@ -38,7 +38,7 @@ public class TransactionSelector {
     }
 
     public Transaction getTransactionByIdInternal(UUID id) {
-        Transaction transaction = transactionRepository.findById(
+        Transaction transaction = transactionRepository.findByIdAndDeletedFalse(
                 id
         ).orElseThrow(TransactionNotFound::new);
 
