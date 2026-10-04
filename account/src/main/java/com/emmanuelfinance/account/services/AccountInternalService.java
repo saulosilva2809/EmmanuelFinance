@@ -28,6 +28,7 @@ public class AccountInternalService {
                 account.getId(),
                 account.getName(),
                 account.getBank(),
+                account.getCurrentBalance(),
                 account.isDeleted()
         );
     }
