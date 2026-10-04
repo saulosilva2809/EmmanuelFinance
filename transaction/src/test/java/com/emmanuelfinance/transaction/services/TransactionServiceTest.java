@@ -3,6 +3,7 @@ package com.emmanuelfinance.transaction.services;
 import com.emmanuelfinance.config.exceptions.APIException;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.modules.account.exceptions.AccountNotFound;
 import com.emmanuelfinance.shared.modules.category.CategoryClientCacheService;
@@ -84,6 +85,9 @@ public class TransactionServiceTest {
     @Mock
     private CreditCardClientCacheService creditCardClientCacheService;
 
+    @Mock
+    private AccountClientCacheService accountClientCacheService;
+
     private TransactionService transactionService;
 
     private final UUID userId = UUID.randomUUID();
@@ -91,7 +95,7 @@ public class TransactionServiceTest {
     @BeforeEach
     void setUp() {
         TransactionValidatorService validator = new TransactionValidatorService(
-                accountOwnershipValidator, categoryClientCacheService, creditCardClientCacheService
+                accountOwnershipValidator, categoryClientCacheService, creditCardClientCacheService, accountClientCacheService
         );
 
         transactionService = new TransactionService(
@@ -110,6 +114,13 @@ public class TransactionServiceTest {
         APIException exception = assertThrows(TransactionDomainException.class, executable);
         assertEquals(expected.getStatus(), exception.getStatus());
         assertEquals(expected.getMessage(), exception.getMessage());
+    }
+
+    /** Conta com saldo suficiente para os cenários que não testam saldo. */
+    private void stubAccountBalance(UUID accountId) {
+        when(accountClientCacheService.getInternalAccountById(accountId)).thenReturn(
+                TransactionTestDataBuilder.accountSummaryInternalDTO(accountId, new BigDecimal("1000.00"))
+        );
     }
 
     private void stubCategory(UUID categoryId, TypeEnum type) {
@@ -138,6 +149,7 @@ public class TransactionServiceTest {
         private void stubHappyPath(CreateTransactionDTO dto) {
             when(securityUtils.getCurrentUserId()).thenReturn(userId);
             stubCategory(categoryId, dto.type());
+            stubAccountBalance(accountId);
             when(idempotencyService.generateIdempotencyKey(userId, dto)).thenReturn("chave-123");
             when(transactionMapper.toEntity(dto)).thenReturn(TransactionTestDataBuilder.entityFromDTO(dto));
             stubSaveReturningArgument();
@@ -203,6 +215,7 @@ public class TransactionServiceTest {
             CreateTransactionDTO dto = TransactionTestDataBuilder.createDTO(accountId, categoryId);
             when(securityUtils.getCurrentUserId()).thenReturn(userId);
             stubCategory(categoryId, TypeEnum.EXPENSE);
+            stubAccountBalance(accountId);
             when(idempotencyService.generateIdempotencyKey(userId, dto)).thenReturn("chave-123");
             doThrow(new TransactionDomainException(TransactionErrorCode.TRANSACTION_ALREADY_EXISTS))
                     .when(idempotencyService).validateAndLock("chave-123");
@@ -334,6 +347,7 @@ public class TransactionServiceTest {
             );
 
             when(transactionSelector.getTransactionById(transaction.getId())).thenReturn(transaction);
+            stubAccountBalance(newAccountId);
             doAnswer(invocation -> {
                 transaction.setAccountId(newAccountId);
                 transaction.setAmount(new BigDecimal("200.00"));

@@ -96,6 +96,7 @@ public class AccountInternalServiceTest {
                     .getAccountSummaryInternal(account.getId());
 
             assertEquals(account.getId(), accountSummary.id());
+            assertEquals(account.getCurrentBalance(), accountSummary.currentBalance());
             assertEquals(account.isDeleted(), accountSummary.deleted());
         }
     }

@@ -59,6 +59,12 @@ public enum TransactionErrorCode {
     INCOMPATIBLE_CATEGORY_TYPE(
             HttpStatus.CONFLICT,
             "Category type does not match transaction type."
+    ),
+
+    // account
+    INSUFFICIENT_BALANCE(
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            "Insufficient balance in the selected account."
     );
 
 

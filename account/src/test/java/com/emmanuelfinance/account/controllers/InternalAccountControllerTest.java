@@ -21,6 +21,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.mockito.Mockito.*;
@@ -107,6 +108,7 @@ public class InternalAccountControllerTest {
                     accountId,
                     "Conta Secundária",
                     BanksEnum.NUBANK,
+                    new BigDecimal("1500.00"),
                     false
             );
 
@@ -119,6 +121,7 @@ public class InternalAccountControllerTest {
                     .andExpect(jsonPath("$.id").value(accountId.toString()))
                     .andExpect(jsonPath("$.name").value("Conta Secundária"))
                     .andExpect(jsonPath("$.bank").value("NUBANK"))
+                    .andExpect(jsonPath("$.currentBalance").value(1500.00))
                     .andExpect(jsonPath("$.deleted").value(false));
 
             verify(accountInternalService, times(1)).getAccountSummaryInternal(accountId);

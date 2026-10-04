@@ -1,7 +1,9 @@
 package com.emmanuelfinance.transaction;
 
 import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
+import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 import com.emmanuelfinance.shared.modules.category.dtos.CategoryInternalSummaryDTO;
 import com.emmanuelfinance.shared.modules.category.dtos.CategorySummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardInternalSummaryDTO;
@@ -189,6 +191,10 @@ public class TransactionTestDataBuilder {
             BigDecimal availableLimit
     ) {
         return new CreditCardInternalSummaryDTO(creditCardId, accountId, availableLimit, 24, 17);
+    }
+
+    public static AccountSummaryInternalDTO accountSummaryInternalDTO(UUID accountId, BigDecimal currentBalance) {
+        return new AccountSummaryInternalDTO(accountId, "Conta Corrente", BanksEnum.C6_BANK, currentBalance, false);
     }
 
     public static ResponseTransactionDTO responseDTO(Transaction transaction) {
