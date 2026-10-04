@@ -141,6 +141,15 @@ public class TransactionSelectorTest {
         }
 
         @Test
+        @DisplayName("Deve lançar TransactionNotFound quando a transação estiver excluída")
+        void shouldThrowWhenDeleted() {
+            Transaction saved = save(TransactionTestDataBuilder.transactionEntity(UUID.randomUUID(), true));
+
+            assertThrows(TransactionNotFound.class,
+                    () -> transactionSelector.getTransactionByIdInternal(saved.getId()));
+        }
+
+        @Test
         @DisplayName("Deve lançar TransactionNotFound quando o ID não existir")
         void shouldThrowWhenDoesNotExist() {
             assertThrows(TransactionNotFound.class,
