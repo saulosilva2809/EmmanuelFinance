@@ -78,6 +78,7 @@ public class CreditCardListener {
         try {
             creditCardBalanceKafkaService.processTransactionRestore(event);
         } catch (Exception e) {
+            creditCardProducer.publishTransactionFailed(event.transactionId());
             log.error("Erro ao processar atualização de saldo no cartão para o evento de recuperação: {}", event, e);
         }
     }
