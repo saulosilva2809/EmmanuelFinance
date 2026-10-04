@@ -31,17 +31,16 @@ public class InvoiceItemService {
     private final SecurityUtils securityUtils;
     private final InvoiceServiceInternal invoiceServiceInternal;
     private final TransactionClientCacheService transactionClientCacheService;
+    private final InvoiceValidatorService invoiceValidatorService;
 
     private ResponseInvoiceItemDTO invoiceItemAsDTO(InvoiceItem invoiceItem) {
         ResponseInvoiceSummaryDTO invoiceSummaryDTO = invoiceServiceInternal.invoiceSummaryDTO(
                 invoiceItem.getInvoiceId()
         );
 
-        log.info("TRANSACTION ID: {}", invoiceItem.getTransactionId());
         TransactionSummaryDTO transactionSummaryDTO = transactionClientCacheService.getTransactionSummaryDTO(
                 invoiceItem.getTransactionId()
         );
-
 
         return new ResponseInvoiceItemDTO(
                 invoiceSummaryDTO,
@@ -72,6 +71,10 @@ public class InvoiceItemService {
 
     public PageResponseDTO<ResponseInvoiceItemDTO> listByInvoiceId(UUID invoiceId, Pageable pageable) {
         UUID userId = securityUtils.getCurrentUserId();
+
+        if (invoiceId != null) {
+            invoiceValidatorService.existsById(invoiceId);
+        }
 
         Specification<InvoiceItem> specification = InvoiceItemSpecification.withFilter(userId, invoiceId);
         Page<InvoiceItem> page = invoiceItemRepository.findAll(

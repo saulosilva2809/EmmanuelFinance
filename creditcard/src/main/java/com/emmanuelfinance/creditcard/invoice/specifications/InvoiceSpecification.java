@@ -15,6 +15,7 @@ public class InvoiceSpecification {
         return (root, query, builder) -> {
             List<Predicate> predicateList = new ArrayList<>();
 
+            predicateList.add(builder.equal(root.get("deleted"), false));
             predicateList.add(builder.equal(root.get("userId"), userId));
 
             if (filters.creditCardId() != null) {

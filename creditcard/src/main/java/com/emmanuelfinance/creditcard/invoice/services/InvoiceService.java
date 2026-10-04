@@ -42,6 +42,7 @@ public class InvoiceService {
     private final InvoiceItemService invoiceItemService;
     private final InvoiceItemSelector invoiceItemSelector;
     private final SecurityUtils securityUtils;
+    private final InvoiceAmountService invoiceAmountService;
 
     private CreditCardInternalSummaryDTO getCreditCardInternal(UUID creditCardId) {
         return creditCardClientCacheService.getCreditCardInternalSummaryDTO(creditCardId);
@@ -147,7 +148,7 @@ public class InvoiceService {
     public void delete(TransactionDeletedAndRestoreEvent event) {
         log.info("Deletando invoices da transação: {}", event.transactionId());
 
-        List<InvoiceItem> invoiceItems = invoiceItemSelector.getByTransactionId(event.transactionId());
+        List<InvoiceItem> invoiceItems = invoiceItemSelector.findByTransactionId(event.transactionId());
 
         List<UUID> invoiceIds = invoiceItems.stream()
                 .map(InvoiceItem::getInvoiceId)
@@ -157,7 +158,9 @@ public class InvoiceService {
         invoiceItemService.delete(event.transactionId());
 
         if (!invoiceIds.isEmpty()) {
-            invoiceRepository.deleteAllById(invoiceIds);
+            List<Invoice> invoiceList = invoiceRepository.findAllById(invoiceIds);
+
+            invoiceAmountService.removeBalanceAfterDeletion(invoiceList, invoiceItems.get(0).getAmount());
         }
     }
 
@@ -165,7 +168,7 @@ public class InvoiceService {
     public void restore(TransactionDeletedAndRestoreEvent event) {
         log.info("Restaurando invoices da transação: {}", event.transactionId());
 
-        List<InvoiceItem> invoiceItems = invoiceItemSelector.getByTransactionId(event.transactionId());
+        List<InvoiceItem> invoiceItems = invoiceItemSelector.findByTransactionId(event.transactionId());
 
         List<UUID> invoiceIds = invoiceItems.stream()
                 .map(InvoiceItem::getInvoiceId)
@@ -177,7 +180,7 @@ public class InvoiceService {
         if (!invoiceIds.isEmpty()) {
             List<Invoice> invoiceList = invoiceRepository.findAllById(invoiceIds);
 
-            invoiceList.forEach(invoice -> invoice.setDeleted(false));
+            invoiceAmountService.addBalanceAfterRestore(invoiceList, invoiceItems.get(0).getAmount());
         }
     }
 }
