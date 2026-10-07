@@ -2,6 +2,8 @@ package com.emmanuelfinance.creditcard.invoice.selectors;
 
 import com.emmanuelfinance.creditcard.invoice.Invoice;
 import com.emmanuelfinance.creditcard.invoice.InvoiceTestDataBuilder;
+import com.emmanuelfinance.creditcard.invoice.exceptions.InvoiceDomainException;
+import com.emmanuelfinance.creditcard.invoice.exceptions.InvoiceErrorCode;
 import com.emmanuelfinance.creditcard.invoice.repositories.InvoiceRepository;
 import com.emmanuelfinance.shared.modules.creditcard.enums.InvoiceStatusEnum;
 import org.junit.jupiter.api.BeforeEach;
@@ -94,6 +96,41 @@ public class InvoiceSelectorTest {
             assertNotNull(result);
             assertEquals(saved.getId(), result.getId());
             assertEquals(saved.getTotalAmount(), result.getTotalAmount());
+        }
+    }
+
+    @Nested
+    @DisplayName("Cenários do getByIdExcludingDeleted")
+    class GetByIdExcludingDeletedTests {
+
+        @Test
+        @DisplayName("Deve retornar a fatura não excluída")
+        void shouldReturnActiveInvoice() {
+            Invoice saved = invoiceRepository.saveAndFlush(
+                    InvoiceTestDataBuilder.invoiceEntity(UUID.randomUUID(), UUID.randomUUID())
+            );
+
+            assertEquals(saved.getId(), invoiceSelector.getByIdExcludingDeleted(saved.getId()).getId());
+        }
+
+        @Test
+        @DisplayName("Deve lançar INVOICE_NOT_FOUND quando a fatura estiver excluída")
+        void shouldThrowWhenInvoiceIsDeleted() {
+            Invoice saved = invoiceRepository.saveAndFlush(InvoiceTestDataBuilder.invoiceEntity(
+                    UUID.randomUUID(), UUID.randomUUID(), 10, 2026, new BigDecimal("100.00"), InvoiceStatusEnum.OPEN, true
+            ));
+
+            InvoiceDomainException exception = assertThrows(InvoiceDomainException.class,
+                    () -> invoiceSelector.getByIdExcludingDeleted(saved.getId()));
+
+            assertEquals(InvoiceErrorCode.INVOICE_NOT_FOUND, exception.getErrorCode());
+        }
+
+        @Test
+        @DisplayName("Deve lançar INVOICE_NOT_FOUND quando o ID não existir")
+        void shouldThrowWhenInvoiceDoesNotExist() {
+            assertThrows(InvoiceDomainException.class,
+                    () -> invoiceSelector.getByIdExcludingDeleted(UUID.randomUUID()));
         }
     }
 }

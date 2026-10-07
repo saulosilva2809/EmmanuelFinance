@@ -15,7 +15,6 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 
-import javax.swing.undo.CannotRedoException;
 import java.util.List;
 import java.util.UUID;
 
@@ -136,10 +135,54 @@ public class CreditCardSelectorTest {
         }
 
         @Test
-        @DisplayName("Deve lançar CannotRedoException quando o cartão não for encontrado no fluxo interno")
+        @DisplayName("Deve lançar CreditCardNotFound quando o cartão não for encontrado no fluxo interno")
         void shouldThrowExceptionWhenInternalCardNotFound() {
-            assertThrows(CannotRedoException.class, () ->
+            assertThrows(CreditCardNotFound.class, () ->
                     creditCardSelector.getCreditCardByIdInternal(UUID.randomUUID())
+            );
+        }
+    }
+
+    @Nested
+    @DisplayName("Cenários do getCreditCardById(cardId, userId)")
+    class GetCreditCardByIdAndUserIdTests {
+
+        @Test
+        @DisplayName("Deve buscar o cartão do usuário informado sem consultar o usuário logado")
+        void shouldReturnCardOfTheGivenUser() {
+            UUID userId = UUID.randomUUID();
+            CreditCard card = creditCardRepository.saveAndFlush(CreditCardTestDataBuilder.createEntity(
+                    CreditCardTestDataBuilder.createCardDTO(), userId, false
+            ));
+
+            CreditCard result = creditCardSelector.getCreditCardById(card.getId(), userId);
+
+            assertEquals(card.getId(), result.getId());
+            verify(securityUtils, never()).getCurrentUserId();
+        }
+
+        @Test
+        @DisplayName("Deve lançar CreditCardNotFound quando o cartão for de outro usuário")
+        void shouldThrowWhenCardBelongsToAnotherUser() {
+            CreditCard card = creditCardRepository.saveAndFlush(CreditCardTestDataBuilder.createEntity(
+                    CreditCardTestDataBuilder.createCardDTO(), UUID.randomUUID(), false
+            ));
+
+            assertThrows(CreditCardNotFound.class, () ->
+                    creditCardSelector.getCreditCardById(card.getId(), UUID.randomUUID())
+            );
+        }
+
+        @Test
+        @DisplayName("Deve lançar CreditCardNotFound quando o cartão estiver excluído")
+        void shouldThrowWhenCardIsDeleted() {
+            UUID userId = UUID.randomUUID();
+            CreditCard card = creditCardRepository.saveAndFlush(CreditCardTestDataBuilder.createEntity(
+                    CreditCardTestDataBuilder.createCardDTO(), userId, true
+            ));
+
+            assertThrows(CreditCardNotFound.class, () ->
+                    creditCardSelector.getCreditCardById(card.getId(), userId)
             );
         }
     }
