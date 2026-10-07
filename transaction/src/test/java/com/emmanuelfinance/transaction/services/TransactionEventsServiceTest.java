@@ -190,4 +190,40 @@ public class TransactionEventsServiceTest {
             verifyNoInteractions(transactionProducer);
         }
     }
+
+    @Nested
+    @DisplayName("Cenários do publishInvoicePaymentCreatedEvent")
+    class InvoicePaymentCreatedTests {
+
+        @Test
+        @DisplayName("Deve publicar no tópico de pagamento de fatura com os dados da transação quando estiver PAID")
+        void shouldPublishInvoicePaymentWhenPaid() {
+            Transaction transaction = transaction(StatusTransactionEnum.PAID, LocalDateTime.of(2026, 10, 5, 10, 0));
+            transaction.setCreditCardId(UUID.randomUUID());
+
+            transactionEventsService.publishInvoicePaymentCreatedEvent(transaction);
+
+            ArgumentCaptor<TransactionCreatedEvent> captor = ArgumentCaptor.forClass(TransactionCreatedEvent.class);
+            verify(transactionProducer, times(1)).publishInvoicePaymentCreated(captor.capture());
+            verify(transactionProducer, never()).publishTransactionCreated(any());
+
+            TransactionCreatedEvent event = captor.getValue();
+            assertEquals(transaction.getId(), event.transactionId());
+            assertEquals(transaction.getAccountId(), event.accountId());
+            assertEquals(transaction.getCreditCardId(), event.creditCardId());
+            assertEquals(transaction.getUserId(), event.userId());
+            assertEquals(transaction.getAmount(), event.amount());
+            assertEquals(TypeEnum.EXPENSE, event.type());
+            assertEquals(StatusTransactionEnum.PAID, event.status());
+        }
+
+        @Test
+        @DisplayName("Não deve publicar quando a transação não estiver PAID")
+        void shouldNotPublishWhenNotPaid() {
+            transactionEventsService.publishInvoicePaymentCreatedEvent(transaction(StatusTransactionEnum.PENDING, null));
+            transactionEventsService.publishInvoicePaymentCreatedEvent(transaction(StatusTransactionEnum.FAILED, null));
+
+            verifyNoInteractions(transactionProducer);
+        }
+    }
 }

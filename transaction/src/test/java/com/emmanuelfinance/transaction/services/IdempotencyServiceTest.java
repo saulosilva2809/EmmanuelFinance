@@ -152,4 +152,33 @@ public class IdempotencyServiceTest {
             assertThrows(TransactionDomainException.class, () -> idempotencyService.validateAndLock("abc123"));
         }
     }
+
+    @Nested
+    @DisplayName("Cenários do generateInvoicePaymentKey")
+    class InvoicePaymentKeyTests {
+
+        @Test
+        @DisplayName("Deve gerar sempre a mesma chave para o mesmo usuário e a mesma fatura")
+        void shouldBeStablePerInvoice() {
+            UUID userId = UUID.randomUUID();
+            UUID invoiceId = UUID.randomUUID();
+
+            String key1 = idempotencyService.generateInvoicePaymentKey(userId, invoiceId);
+            String key2 = idempotencyService.generateInvoicePaymentKey(userId, invoiceId);
+
+            assertEquals(key1, key2);
+            assertTrue(key1.matches("[0-9a-f]{64}"));
+        }
+
+        @Test
+        @DisplayName("Deve gerar chaves diferentes para faturas ou usuários diferentes")
+        void shouldDifferPerInvoiceAndUser() {
+            UUID userId = UUID.randomUUID();
+            UUID invoiceId = UUID.randomUUID();
+            String base = idempotencyService.generateInvoicePaymentKey(userId, invoiceId);
+
+            assertNotEquals(base, idempotencyService.generateInvoicePaymentKey(userId, UUID.randomUUID()));
+            assertNotEquals(base, idempotencyService.generateInvoicePaymentKey(UUID.randomUUID(), invoiceId));
+        }
+    }
 }
