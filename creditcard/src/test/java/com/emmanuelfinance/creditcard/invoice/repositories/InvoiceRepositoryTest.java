@@ -96,4 +96,35 @@ public class InvoiceRepositoryTest {
             assertEquals(active.getId(), result.orElseThrow().getId());
         }
     }
+
+    @Nested
+    @DisplayName("Cenários do findByIdAndDeletedFalse")
+    class FindByIdAndDeletedFalseTests {
+
+        @Test
+        @DisplayName("Deve encontrar a fatura ativa")
+        void shouldFindActiveInvoice() {
+            Invoice saved = save(UUID.randomUUID(), 10, 2026, false);
+
+            assertEquals(saved.getId(), invoiceRepository.findByIdAndDeletedFalse(saved.getId()).orElseThrow().getId());
+        }
+
+        @Test
+        @DisplayName("Deve ignorar a fatura excluída")
+        void shouldIgnoreDeletedInvoice() {
+            Invoice saved = save(UUID.randomUUID(), 10, 2026, true);
+
+            assertTrue(invoiceRepository.findByIdAndDeletedFalse(saved.getId()).isEmpty());
+        }
+
+        @Test
+        @DisplayName("Deve persistir o valor pago com padrão zero")
+        void shouldPersistAmountPaidWithZeroDefault() {
+            Invoice saved = save(UUID.randomUUID(), 10, 2026, false);
+
+            assertEquals(0, BigDecimal.ZERO.compareTo(
+                    invoiceRepository.findById(saved.getId()).orElseThrow().getAmountPaid()
+            ));
+        }
+    }
 }
