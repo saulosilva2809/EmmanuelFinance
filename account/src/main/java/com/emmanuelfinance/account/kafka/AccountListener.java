@@ -31,6 +31,17 @@ public class AccountListener {
         }
     }
 
+    @KafkaListener(topics = "invoice-payment-created-topic", groupId = "account-service-group")
+    public void handleInvoicePaymentCreated(TransactionCreatedEvent event) {
+        log.info("Recebido evento de transação (pagamento da fatura) criada para a conta: {}", event.accountId());
+
+        try {
+            accountBalanceService.updateBalanceFromTransaction(event);
+        } catch (Exception e) {
+            log.error("Erro ao processar atualização de saldo para o evento de criação: {}", event, e);
+        }
+    }
+
     @KafkaListener(topics = "transaction-updated-topic", groupId = "account-service-group")
     public void handleTransactionUpdated(TransactionUpdatedEvent event) {
         log.info("Recebido evento de transação atualizada (ID: {})", event.transactionId());
