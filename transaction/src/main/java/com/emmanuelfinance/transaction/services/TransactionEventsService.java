@@ -36,6 +36,22 @@ public class TransactionEventsService {
         }
     }
 
+    public void publishInvoicePaymentCreatedEvent(Transaction transaction) {
+        if (transaction.getStatus() == StatusTransactionEnum.PAID) {
+            transactionProducer.publishInvoicePaymentCreated(new TransactionCreatedEvent(
+                    transaction.getId(),
+                    transaction.getAccountId(),
+                    transaction.getCreditCardId(),
+                    transaction.getUserId(),
+                    transaction.getAmount(),
+                    transaction.getInstallmentsCount(),
+                    transaction.getType(),
+                    transaction.getStatus(),
+                    transaction.getDate() != null ? transaction.getDate() : LocalDateTime.now()
+            ));
+        }
+    }
+
     public void publishTransactionUpdatedEvent(
             Transaction transaction,
             UUID oldAccountId,

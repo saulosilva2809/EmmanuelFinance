@@ -13,6 +13,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
     Optional<Transaction> findByIdAndUserIdAndDeletedFalse(UUID id, UUID userId);
     Optional<Transaction> findByIdAndDeletedFalse(UUID id);
     Optional<Transaction> findByIdAndUserId(UUID id, UUID userId);
+    boolean existsByIdempotencyKey(String idempotencyKey);
     List<Transaction> findByStatusAndDateAfter(
             StatusTransactionEnum status,
             LocalDateTime date

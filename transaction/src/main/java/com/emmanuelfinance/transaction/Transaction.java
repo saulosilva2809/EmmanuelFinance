@@ -32,7 +32,7 @@ public class Transaction extends BaseEntity {
     @Column(name = "account_id", nullable = false)
     private UUID accountId;
 
-    @Column(name = "category_id", nullable = false)
+    @Column(name = "category_id")
     private UUID categoryId;
 
     @Column(name = "credit_card_id")

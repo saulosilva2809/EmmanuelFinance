@@ -16,6 +16,7 @@ public class TransactionProducer {
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
     private static final String TRANSACTION_CREATED_TOPIC = "transaction-created-topic";
+    private static final String INVOICE_PAYMENT_CREATED_TOPIC = "invoice-payment-created-topic";
     private static final String TRANSACTION_UPDATED_TOPIC = "transaction-updated-topic";
     private static final String TRANSACTION_DELETED_TOPIC = "transaction-deleted-topic";
     private static final String TRANSACTION_RESTORE_TOPIC = "transaction-restore-topic";
@@ -23,6 +24,11 @@ public class TransactionProducer {
     public void publishTransactionCreated(TransactionCreatedEvent event) {
         log.info("Publicando evento de criacao de transacao no Kafka ID: {}", event.transactionId());
         kafkaTemplate.send(TRANSACTION_CREATED_TOPIC, event.transactionId().toString(), event);
+    }
+
+    public void publishInvoicePaymentCreated(TransactionCreatedEvent event) {
+        log.info("Publicando evento de criacao de transacao (pagamento de fatura) no Kafka ID: {}", event.transactionId());
+        kafkaTemplate.send(INVOICE_PAYMENT_CREATED_TOPIC, event.transactionId().toString(), event);
     }
 
     public void publishTransactionUpdated(TransactionUpdatedEvent event) {

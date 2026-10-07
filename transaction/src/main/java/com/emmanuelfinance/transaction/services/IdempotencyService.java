@@ -32,6 +32,17 @@ public class IdempotencyService {
                 data.description() != null ? data.description().trim().toLowerCase() : ""
         );
 
+        return sha256(rawData);
+    }
+
+    /**
+     * Chave estável por fatura: a reentrega do evento de pagamento gera sempre a mesma chave.
+     */
+    public String generateInvoicePaymentKey(UUID userId, UUID invoiceId) {
+        return sha256(String.format("invoice-payment:%s:%s", userId, invoiceId));
+    }
+
+    private String sha256(String rawData) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(rawData.getBytes(StandardCharsets.UTF_8));
