@@ -24,9 +24,16 @@ public class CreditCardSelector {
         return creditCard;
     }
 
+    public CreditCard getCreditCardById(UUID cardId, UUID userId) {
+        CreditCard creditCard = creditCardRepository.findByIdAndUserIdAndDeletedFalse(cardId, userId)
+                .orElseThrow(() -> new CreditCardNotFound());
+
+        return creditCard;
+    }
+
     public CreditCard getCreditCardByIdInternal(UUID cardId) {
         CreditCard creditCard = creditCardRepository.findById(cardId)
-                .orElseThrow(CannotRedoException::new);
+                .orElseThrow(CreditCardNotFound::new);
 
         return creditCard;
     }

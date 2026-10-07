@@ -14,7 +14,6 @@ import java.util.UUID;
 @Repository
 public interface InvoiceItemRepository extends JpaRepository<InvoiceItem, UUID>, JpaSpecificationExecutor<InvoiceItem> {
     List<InvoiceItem> findByTransactionId(UUID transactionId);
-    List<InvoiceItem> findByTransactionIdAndDeletedFalse(UUID transactionId);
     @Modifying(clearAutomatically = true)
     @Query("""
         UPDATE InvoiceItem i
