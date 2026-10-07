@@ -113,6 +113,22 @@ public class TransactionControllerTest {
         }
 
         @Test
+        @DisplayName("Deve retornar 400 Bad Request quando a categoria não for informada")
+        void shouldReturn400WhenCategoryIsMissing() throws Exception {
+            CreateTransactionDTO dto = TransactionTestDataBuilder.createDTO(
+                    UUID.randomUUID(), null, null, new BigDecimal("100.00"), 1, false, null, TypeEnum.EXPENSE
+            );
+
+            mockMvc.perform(post("/transactions")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(dto)))
+                    .andExpect(status().isBadRequest());
+
+            verifyNoInteractions(transactionService);
+        }
+
+        @Test
         @DisplayName("Deve retornar 400 Bad Request quando o tipo for inválido")
         void shouldReturn400WhenTypeIsInvalid() throws Exception {
             String body = "{\"accountId\":\"" + UUID.randomUUID() + "\",\"categoryId\":\"" + UUID.randomUUID()
