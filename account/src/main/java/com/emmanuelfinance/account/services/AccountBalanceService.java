@@ -3,7 +3,7 @@ package com.emmanuelfinance.account.services;
 import com.emmanuelfinance.account.Account;
 import com.emmanuelfinance.account.AccountRepository;
 import com.emmanuelfinance.account.AccountSelector;
-import com.emmanuelfinance.account.dto.events.AccountChangedEventDTO;
+import com.emmanuelfinance.account.outbox.OutboxService;
 import com.emmanuelfinance.shared.enums.TypeEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
@@ -11,7 +11,6 @@ import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDelet
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionUpdatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,13 +23,13 @@ public class AccountBalanceService {
 
     private final AccountRepository accountRepository;
     private final AccountSelector accountSelector;
-    private final ApplicationEventPublisher applicationEventPublisher;
+    private final OutboxService outboxService;
 
     @Transactional
     public void updateBalanceFromTransaction(TransactionCreatedEvent event) {
         Account account = accountSelector.getAccountByIdInternal(event.accountId());
         applyBalance(account, event.amount(), event.type(), false);
-        saveAndNotify(account);
+        saveAndRecordChange(account);
     }
 
     @Transactional
@@ -39,7 +38,7 @@ public class AccountBalanceService {
 
         if (StatusTransactionEnum.PAID.equals(event.oldStatus())) {
             applyBalance(oldAccount, event.oldAmount(), event.oldType(), true);
-            saveAndNotify(oldAccount);
+            saveAndRecordChange(oldAccount);
         }
 
         Account newAccount = event.oldAccountId().equals(event.newAccountId())
@@ -48,7 +47,7 @@ public class AccountBalanceService {
 
         if (StatusTransactionEnum.PAID.equals(event.newStatus())) {
             applyBalance(newAccount, event.newAmount(), event.newType(), false);
-            saveAndNotify(newAccount);
+            saveAndRecordChange(newAccount);
         }
     }
 
@@ -57,7 +56,7 @@ public class AccountBalanceService {
         Account account = accountSelector.getAccountByIdInternal(event.accountId());
 
         applyBalance(account, event.amount(), event.type(), true);
-        saveAndNotify(account);
+        saveAndRecordChange(account);
     }
 
     @Transactional
@@ -65,13 +64,13 @@ public class AccountBalanceService {
         Account account = accountSelector.getAccountByIdInternal(event.accountId());
 
         applyBalance(account, event.amount(), event.type(), false);
-        saveAndNotify(account);
+        saveAndRecordChange(account);
     }
 
-    // salva no Postgres e cria uma transaction interna para o Mongo
-    private void saveAndNotify(Account account) {
+    // salva no Postgres e registra no Outbox, para o Mongo refletir o novo saldo
+    private void saveAndRecordChange(Account account) {
         accountRepository.saveAndFlush(account);
-        applicationEventPublisher.publishEvent(new AccountChangedEventDTO(account));
+        outboxService.accountBalanceChanged(account);
     }
 
     private void applyBalance(Account account, BigDecimal amount, TypeEnum type, boolean isReversal) {

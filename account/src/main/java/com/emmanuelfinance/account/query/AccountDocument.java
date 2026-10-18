@@ -2,6 +2,7 @@ package com.emmanuelfinance.account.query;
 
 import com.emmanuelfinance.account.enums.TypeEnum;
 import com.emmanuelfinance.shared.enums.BanksEnum;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -27,7 +28,9 @@ public class AccountDocument {
     private String name;
     private TypeEnum type;
     private BanksEnum bank;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal initialBalance;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal currentBalance;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

@@ -12,15 +12,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.regex.Pattern;
 
-// Lado de LEITURA: só consulta o Mongo, nunca o Postgres.
 @Service
 @RequiredArgsConstructor
 public class AccountQueryService {
@@ -50,17 +47,7 @@ public class AccountQueryService {
     private PageResponseDTO<ResponseAccountDTO> search(AccountFiltersDTO filters, Pageable pageable, boolean deleted) {
         UUID userId = securityUtils.getCurrentUserId();
 
-        Query query = new Query();
-        query.addCriteria(Criteria.where("userId").is(userId));
-        query.addCriteria(Criteria.where("deleted").is(deleted));
-
-        if (filters.name() != null && !filters.name().isBlank()) {
-            // "contém", sem diferenciar maiúsculas de minúsculas (Pattern.quote evita regex vinda do usuário)
-            query.addCriteria(Criteria.where("name").regex(Pattern.quote(filters.name()), "i"));
-        }
-        if (filters.type() != null) {
-            query.addCriteria(Criteria.where("type").is(filters.type()));
-        }
+        Query query = AccountSpecification.withFilter(filters, userId, deleted);
 
         // o count precisa vir antes do with(pageable), que adiciona skip/limit na query
         long total = mongoTemplate.count(query, AccountDocument.class);
