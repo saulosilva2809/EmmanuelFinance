@@ -1,5 +1,6 @@
 package com.emmanuelfinance.account.controllers;
 
+import com.emmanuelfinance.account.query.AccountQueryService;
 import com.emmanuelfinance.account.services.AccountService;
 import com.emmanuelfinance.account.dto.*;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
@@ -21,6 +22,7 @@ import java.util.UUID;
 public class AccountController {
 
     private final AccountService accountService;
+    private final AccountQueryService accountQueryService;
 
     @PostMapping()
     public ResponseEntity<ResponseAccountDTO> create(
@@ -32,7 +34,7 @@ public class AccountController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ResponseAccountDTO> view(@PathVariable UUID id) {
-        ResponseAccountDTO response = accountService.view(id);
+        ResponseAccountDTO response = accountQueryService.view(id);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -45,7 +47,7 @@ public class AccountController {
             )
             Pageable pageable
     ) {
-        PageResponseDTO<ResponseAccountDTO> response = accountService.list(filters, pageable);
+        PageResponseDTO<ResponseAccountDTO> response = accountQueryService.list(filters, pageable);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -58,7 +60,7 @@ public class AccountController {
             )
             Pageable pageable
     ) {
-        PageResponseDTO<ResponseAccountDTO> response = accountService.listDeleted(filters, pageable);
+        PageResponseDTO<ResponseAccountDTO> response = accountQueryService.listDeleted(filters, pageable);
         return ResponseEntity.ok().body(response);
     }
 

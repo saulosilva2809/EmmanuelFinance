@@ -3,6 +3,7 @@ package com.emmanuelfinance.account;
 import com.emmanuelfinance.account.dto.CreateAccountDTO;
 import com.emmanuelfinance.account.dto.ResponseAccountDTO;
 import com.emmanuelfinance.account.dto.UpdateAccountDTO;
+import com.emmanuelfinance.account.query.AccountDocument;
 import org.mapstruct.*;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -21,6 +22,10 @@ public abstract class AccountMapper {
     public abstract Account toEntity(CreateAccountDTO data);
 
     public abstract ResponseAccountDTO toResponseDTO(Account entity);
+
+    public abstract ResponseAccountDTO toResponseDTO(AccountDocument document);
+
+    public abstract AccountDocument toDocument(Account entity);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     public abstract void updateAccountFromDTO(UpdateAccountDTO data, @MappingTarget Account entity);

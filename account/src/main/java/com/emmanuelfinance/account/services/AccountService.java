@@ -1,21 +1,24 @@
 package com.emmanuelfinance.account.services;
 
-import com.emmanuelfinance.account.*;
-import com.emmanuelfinance.account.dto.*;
+import com.emmanuelfinance.account.Account;
+import com.emmanuelfinance.account.AccountMapper;
+import com.emmanuelfinance.account.AccountRepository;
+import com.emmanuelfinance.account.AccountSelector;
+import com.emmanuelfinance.account.dto.CreateAccountDTO;
+import com.emmanuelfinance.account.dto.ResponseAccountDTO;
+import com.emmanuelfinance.account.dto.UpdateAccountDTO;
+import com.emmanuelfinance.account.dto.events.AccountChangedEventDTO;
+import com.emmanuelfinance.account.dto.events.AccountDeletedEventDTO;
 import com.emmanuelfinance.account.exceptions.AccountDomainException;
 import com.emmanuelfinance.account.exceptions.AccountErrorCode;
-import com.emmanuelfinance.shared.annotation.WithDeletedFilter;
 import com.emmanuelfinance.shared.modules.account.AccountCache;
 import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
 import com.emmanuelfinance.account.kafka.AccountEventPublisher;
 import com.emmanuelfinance.shared.modules.account.kafka.account.enums.StatusEventEnum;
-import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +34,7 @@ public class AccountService {
     private final SecurityUtils securityUtils;
     private final AccountCache accountCache;
     private final AccountSelector accountSelector;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Transactional
     public ResponseAccountDTO create(CreateAccountDTO data) {
@@ -47,40 +51,9 @@ public class AccountService {
                 StatusEventEnum.CREATED
         ));
         accountCache.saveAccountOwner(account.getId(), account.getUserId());
+        applicationEventPublisher.publishEvent(new AccountChangedEventDTO(savedAccount));
 
         return accountMapper.toResponseDTO(savedAccount);
-    }
-
-    public ResponseAccountDTO view(UUID uuid) {
-        Account account = accountSelector.getAccountByIdAndUserId(uuid);
-
-        return accountMapper.toResponseDTO(account);
-    }
-
-    @WithDeletedFilter(enabled = true)
-    public PageResponseDTO<ResponseAccountDTO> list(AccountFiltersDTO filters, Pageable pageable) {
-        UUID userId = securityUtils.getCurrentUserId();
-
-        Specification<Account> specification = AccountSpecification.withFilter(filters, userId, false);
-        Page<Account> page = accountRepository.findAll(
-                specification,
-                pageable
-        );
-
-        Page<ResponseAccountDTO> dtoPage = page.map(accountMapper::toResponseDTO);
-        return PageResponseDTO.from(dtoPage);
-    }
-
-    @WithDeletedFilter(enabled = false)
-    public PageResponseDTO<ResponseAccountDTO> listDeleted(AccountFiltersDTO filters, Pageable pageable) {
-        UUID userId = securityUtils.getCurrentUserId();
-
-        Specification<Account> specification = AccountSpecification.withFilter(filters, userId, true);
-
-        Page<Account> page = accountRepository.findAll(specification, pageable);
-        Page<ResponseAccountDTO> dtoPage = page.map(accountMapper::toResponseDTO);
-
-        return PageResponseDTO.from(dtoPage);
     }
 
     @Transactional
@@ -91,6 +64,7 @@ public class AccountService {
         accountMapper.updateAccountFromDTO(data, account);
 
         Account savedAccount = accountRepository.save(account);
+        applicationEventPublisher.publishEvent(new AccountChangedEventDTO(savedAccount));
 
         return accountMapper.toResponseDTO(savedAccount);
     }
@@ -106,6 +80,7 @@ public class AccountService {
                 account.getUserId(),
                 StatusEventEnum.DELETED
         ));
+        applicationEventPublisher.publishEvent(new AccountDeletedEventDTO(account.getId()));
     }
 
     @Transactional
@@ -125,5 +100,6 @@ public class AccountService {
                 account.getUserId(),
                 StatusEventEnum.RESTORE
         ));
+        applicationEventPublisher.publishEvent(new AccountChangedEventDTO(account));
     }
 }
