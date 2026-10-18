@@ -13,7 +13,7 @@ import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceSelector;
 import com.emmanuelfinance.creditcard.payment.dto.PaymentTotalDTO;
 import com.emmanuelfinance.creditcard.payment.exceptions.PaymentDomainException;
 import com.emmanuelfinance.creditcard.payment.exceptions.PaymentErrorCode;
-import com.emmanuelfinance.creditcard.payment.kafka.PaymentProducer;
+import com.emmanuelfinance.creditcard.payment.outbox.OutboxService;
 import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
@@ -66,7 +66,7 @@ public class PaymentServiceTest {
     private CreditCardRepository creditCardRepository;
 
     @Mock
-    private PaymentProducer paymentProducer;
+    private OutboxService outboxService;
 
     @InjectMocks
     private PaymentService paymentService;
@@ -103,7 +103,7 @@ public class PaymentServiceTest {
     private void assertNothingWasChargedOrPublished() {
         verify(invoiceRepository, never()).save(any(Invoice.class));
         verify(creditCardRepository, never()).save(any(CreditCard.class));
-        verifyNoInteractions(paymentProducer);
+        verifyNoInteractions(outboxService);
     }
 
     @Nested
@@ -124,9 +124,9 @@ public class PaymentServiceTest {
             assertEquals(new BigDecimal("5300.00"), card.getAvailableLimit());
 
             ArgumentCaptor<InvoicePaymentDTO> captor = ArgumentCaptor.forClass(InvoicePaymentDTO.class);
-            InOrder inOrder = inOrder(invoiceRepository, paymentProducer);
+            InOrder inOrder = inOrder(invoiceRepository, outboxService);
             inOrder.verify(invoiceRepository).save(invoice);
-            inOrder.verify(paymentProducer).publishInvoicePaymentCreated(captor.capture());
+            inOrder.verify(outboxService).invoicePayment(captor.capture());
 
             InvoicePaymentDTO event = captor.getValue();
             assertEquals(accountId, event.accountId());
@@ -263,7 +263,7 @@ public class PaymentServiceTest {
             assertThrows(CreditCardNotFound.class,
                     () -> paymentService.totalInvoicePayment(cardId, UUID.randomUUID(), paymentDTO));
 
-            verifyNoInteractions(invoiceSelector, accountClientCacheService, paymentProducer);
+            verifyNoInteractions(invoiceSelector, accountClientCacheService, outboxService);
         }
     }
 }
