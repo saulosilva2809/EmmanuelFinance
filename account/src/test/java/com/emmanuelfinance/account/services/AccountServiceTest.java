@@ -4,16 +4,12 @@ import com.emmanuelfinance.account.*;
 import com.emmanuelfinance.account.dto.CreateAccountDTO;
 import com.emmanuelfinance.account.dto.ResponseAccountDTO;
 import com.emmanuelfinance.account.dto.UpdateAccountDTO;
-import com.emmanuelfinance.account.dto.events.AccountChangedEventDTO;
-import com.emmanuelfinance.account.dto.events.AccountDeletedEventDTO;
 import com.emmanuelfinance.account.enums.TypeEnum;
 import com.emmanuelfinance.account.exceptions.AccountDomainException;
 import com.emmanuelfinance.account.exceptions.AccountErrorCode;
-import com.emmanuelfinance.account.kafka.AccountEventPublisher;
+import com.emmanuelfinance.account.outbox.OutboxService;
 import com.emmanuelfinance.shared.enums.BanksEnum;
-import com.emmanuelfinance.shared.modules.account.AccountCache;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
-import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,7 +22,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -51,16 +46,10 @@ public class AccountServiceTest {
     private SecurityUtils securityUtils;
 
     @Mock
-    private AccountEventPublisher accountEventPublisher;
-
-    @Mock
-    private AccountCache accountCache;
+    private OutboxService outboxService;
 
     @Mock
     private AccountSelector accountSelector;
-
-    @Mock
-    private ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     private AccountInternalService accountInternalService;
@@ -115,8 +104,7 @@ public class AccountServiceTest {
                             account.getName().equals("Conta Itaú") &&
                             account.getInitialBalance().equals(new BigDecimal("1000.00"))
             ));
-            verify(accountEventPublisher, times(1)).publishAccount(any(AccountEventDTO.class));
-            verify(applicationEventPublisher, times(1)).publishEvent(any(AccountChangedEventDTO.class));
+            verify(outboxService, times(1)).accountCreated(any(Account.class));
         }
     }
 
@@ -225,13 +213,14 @@ public class AccountServiceTest {
 
             when(accountSelector.getAccountByIdAndUserId(id))
                     .thenReturn(account);
-            when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            when(accountRepository.saveAndFlush(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             ResponseAccountDTO result = accountService.update(id, dto);
 
             assertNotNull(result);
             assertEquals("Conta Nubank", result.name());
             assertEquals(TypeEnum.INVESTMENT, result.type());
+            verify(outboxService, times(1)).accountUpdated(account);
         }
     }
 
@@ -297,8 +286,7 @@ public class AccountServiceTest {
 
             verify(accountSelector, times(1)).getAccountByIdAndUserId(accountId);
             verify(accountRepository, times(1)).delete(account);
-            verify(accountEventPublisher, times(1)).publishAccount(any(AccountEventDTO.class));
-            verify(applicationEventPublisher, times(1)).publishEvent(any(AccountDeletedEventDTO.class));
+            verify(outboxService, times(1)).accountDeleted(any(Account.class));
         }
     }
 
@@ -325,8 +313,7 @@ public class AccountServiceTest {
             assertEquals(AccountErrorCode.RESTORE_ACCOUNT_NOT_DELETED, exception.getErrorCode());
 
             verify(accountSelector, times(1)).getAccountByIdIncludingDeleted(accountEntity.getId());
-            verify(applicationEventPublisher, never()).publishEvent(any(AccountChangedEventDTO.class));
-            verify(accountEventPublisher, never()).publishAccount(any(AccountEventDTO.class));
+            verify(outboxService, never()).accountRestored(any(Account.class));
         }
 
         @Test
@@ -344,8 +331,7 @@ public class AccountServiceTest {
             accountService.restore(accountEntity.getId());
 
             verify(accountSelector, times(1)).getAccountByIdIncludingDeleted(accountEntity.getId());
-            verify(applicationEventPublisher, times(1)).publishEvent(any(AccountChangedEventDTO.class));
-            verify(accountEventPublisher, times(1)).publishAccount(any(AccountEventDTO.class));
+            verify(outboxService, times(1)).accountRestored(any(Account.class));
         }
     }
 }

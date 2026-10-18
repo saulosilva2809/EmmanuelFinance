@@ -7,18 +7,12 @@ import com.emmanuelfinance.account.AccountSelector;
 import com.emmanuelfinance.account.dto.CreateAccountDTO;
 import com.emmanuelfinance.account.dto.ResponseAccountDTO;
 import com.emmanuelfinance.account.dto.UpdateAccountDTO;
-import com.emmanuelfinance.account.dto.events.AccountChangedEventDTO;
-import com.emmanuelfinance.account.dto.events.AccountDeletedEventDTO;
 import com.emmanuelfinance.account.exceptions.AccountDomainException;
 import com.emmanuelfinance.account.exceptions.AccountErrorCode;
-import com.emmanuelfinance.shared.modules.account.AccountCache;
-import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
-import com.emmanuelfinance.account.kafka.AccountEventPublisher;
-import com.emmanuelfinance.shared.modules.account.kafka.account.enums.StatusEventEnum;
+import com.emmanuelfinance.account.outbox.OutboxService;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,11 +24,9 @@ public class AccountService {
 
     private final AccountRepository accountRepository;
     private final AccountMapper accountMapper;
-    private final AccountEventPublisher accountEventPublisher;
+    private final OutboxService outboxService;
     private final SecurityUtils securityUtils;
-    private final AccountCache accountCache;
     private final AccountSelector accountSelector;
-    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Transactional
     public ResponseAccountDTO create(CreateAccountDTO data) {
@@ -45,13 +37,7 @@ public class AccountService {
         account.setCurrentBalance(data.initialBalance());
 
         Account savedAccount = accountRepository.save(account);
-        accountEventPublisher.publishAccount(new AccountEventDTO(
-                account.getId(),
-                account.getUserId(),
-                StatusEventEnum.CREATED
-        ));
-        accountCache.saveAccountOwner(account.getId(), account.getUserId());
-        applicationEventPublisher.publishEvent(new AccountChangedEventDTO(savedAccount));
+        outboxService.accountCreated(savedAccount);
 
         return accountMapper.toResponseDTO(savedAccount);
     }
@@ -63,8 +49,9 @@ public class AccountService {
 
         accountMapper.updateAccountFromDTO(data, account);
 
-        Account savedAccount = accountRepository.save(account);
-        applicationEventPublisher.publishEvent(new AccountChangedEventDTO(savedAccount));
+        // flush para o updatedAt já estar preenchido na foto que vai para o Outbox
+        Account savedAccount = accountRepository.saveAndFlush(account);
+        outboxService.accountUpdated(savedAccount);
 
         return accountMapper.toResponseDTO(savedAccount);
     }
@@ -75,12 +62,7 @@ public class AccountService {
         Account account = accountSelector.getAccountByIdAndUserId(id);
 
         accountRepository.delete(account);
-        accountEventPublisher.publishAccount(new AccountEventDTO(
-                account.getId(),
-                account.getUserId(),
-                StatusEventEnum.DELETED
-        ));
-        applicationEventPublisher.publishEvent(new AccountDeletedEventDTO(account.getId()));
+        outboxService.accountDeleted(account);
     }
 
     @Transactional
@@ -93,13 +75,7 @@ public class AccountService {
         }
 
         account.setDeleted(false);
-        accountRepository.save(account);
-
-        accountEventPublisher.publishAccount(new AccountEventDTO(
-                account.getId(),
-                account.getUserId(),
-                StatusEventEnum.RESTORE
-        ));
-        applicationEventPublisher.publishEvent(new AccountChangedEventDTO(account));
+        accountRepository.saveAndFlush(account);
+        outboxService.accountRestored(account);
     }
 }
