@@ -88,7 +88,7 @@ perde.
 | `controllers` | camada HTTP: validação de entrada e códigos de resposta |
 | `services` | regras de escrita: `AccountService`, `AccountBalanceService`, `AccountInternalService`, `AccountValidatorService` |
 | `query` | lado de leitura: `AccountQueryService` (consultas), `AccountSpecification` (filtros da listagem), `AccountDocument` (modelo do Mongo) e `AccountProjector` (grava no Mongo) |
-| `outbox` | `OutboxService` (registra), `OutboxEventFactory` (monta as linhas), `OutboxRelay` (entrega) e `OutboxEvent` (registro da tabela) |
+| `outbox` | `OutboxService` (registra), `OutboxEventFactory` (monta as linhas), `AccountOutboxDispatcher` (entrega cada linha ao destino), `OutboxEvent` (registro da tabela) e `OutboxConfig` (liga o relay) |
 | `kafka` | consumo dos eventos de transação e tratamento de erros |
 | `dto`, `enums`, `exceptions` | contratos de entrada e saída, tipos e erros de domínio |
 
@@ -167,7 +167,7 @@ no Kafka sem precisar consultar a tabela. Ele não foi usado aqui por causa do b
 
 ### O que foi usado no lugar
 
-O `OutboxRelay` roda dentro do próprio serviço, numa thread única, e lê a tabela em dois momentos:
+O `OutboxRelay` (classe genérica do módulo `shared`, usada também pelo `creditcard`) roda dentro do próprio serviço, numa thread única, e lê a tabela em dois momentos:
 
 - **Logo depois de cada commit** que grava no Outbox, por meio de um `@TransactionalEventListener(AFTER_COMMIT)`.
   A entrega acontece em milissegundos e só depois que a transação foi confirmada.

@@ -1,7 +1,7 @@
 package com.emmanuelfinance.account.outbox;
 
 import com.emmanuelfinance.account.Account;
-import com.emmanuelfinance.account.outbox.dto.OutboxEventSavedDTO;
+import com.emmanuelfinance.shared.outbox.dtos.OutboxEventSavedDTO;
 import com.emmanuelfinance.shared.modules.account.kafka.account.enums.StatusEventEnum;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

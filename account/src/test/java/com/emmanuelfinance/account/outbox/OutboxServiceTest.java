@@ -3,8 +3,8 @@ package com.emmanuelfinance.account.outbox;
 import com.emmanuelfinance.account.Account;
 import com.emmanuelfinance.account.AccountMapper;
 import com.emmanuelfinance.account.enums.TypeEnum;
-import com.emmanuelfinance.account.outbox.dto.OutboxEventSavedDTO;
-import com.emmanuelfinance.account.outbox.enums.OutboxEventType;
+import com.emmanuelfinance.shared.outbox.dtos.OutboxEventSavedDTO;
+import com.emmanuelfinance.account.outbox.enums.AccountOutboxEventType;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,9 +50,9 @@ class OutboxServiceTest {
         outboxService.accountCreated(newAccount());
 
         assertEquals(List.of(
-                OutboxEventType.ACCOUNT_EVENT,
-                OutboxEventType.ACCOUNT_CHANGED,
-                OutboxEventType.ACCOUNT_OWNER_CACHED
+                AccountOutboxEventType.ACCOUNT_EVENT,
+                AccountOutboxEventType.ACCOUNT_CHANGED,
+                AccountOutboxEventType.ACCOUNT_OWNER_CACHED
         ), registeredTypes());
     }
 
@@ -60,28 +60,28 @@ class OutboxServiceTest {
     void shouldRegisterOnlyTheSnapshotWhenTheAccountIsUpdated() {
         outboxService.accountUpdated(newAccount());
 
-        assertEquals(List.of(OutboxEventType.ACCOUNT_CHANGED), registeredTypes());
+        assertEquals(List.of(AccountOutboxEventType.ACCOUNT_CHANGED), registeredTypes());
     }
 
     @Test
     void shouldRegisterTheEventAndTheSnapshotWhenTheAccountIsDeleted() {
         outboxService.accountDeleted(newAccount());
 
-        assertEquals(List.of(OutboxEventType.ACCOUNT_EVENT, OutboxEventType.ACCOUNT_CHANGED), registeredTypes());
+        assertEquals(List.of(AccountOutboxEventType.ACCOUNT_EVENT, AccountOutboxEventType.ACCOUNT_CHANGED), registeredTypes());
     }
 
     @Test
     void shouldRegisterTheEventAndTheSnapshotWhenTheAccountIsRestored() {
         outboxService.accountRestored(newAccount());
 
-        assertEquals(List.of(OutboxEventType.ACCOUNT_EVENT, OutboxEventType.ACCOUNT_CHANGED), registeredTypes());
+        assertEquals(List.of(AccountOutboxEventType.ACCOUNT_EVENT, AccountOutboxEventType.ACCOUNT_CHANGED), registeredTypes());
     }
 
     @Test
     void shouldRegisterOnlyTheSnapshotWhenTheBalanceChanges() {
         outboxService.accountBalanceChanged(newAccount());
 
-        assertEquals(List.of(OutboxEventType.ACCOUNT_CHANGED), registeredTypes());
+        assertEquals(List.of(AccountOutboxEventType.ACCOUNT_CHANGED), registeredTypes());
     }
 
     @Test
@@ -93,11 +93,13 @@ class OutboxServiceTest {
 
     // todas as linhas de uma operação são gravadas juntas, em uma única chamada
     @SuppressWarnings("unchecked")
-    private List<OutboxEventType> registeredTypes() {
+    private List<AccountOutboxEventType> registeredTypes() {
         ArgumentCaptor<List<OutboxEvent>> captor = ArgumentCaptor.forClass(List.class);
         verify(outboxEventRepository, times(1)).saveAll(captor.capture());
 
-        return captor.getValue().stream().map(OutboxEvent::getType).toList();
+        return captor.getValue().stream()
+                .map(event -> (AccountOutboxEventType) event.getType())
+                .toList();
     }
 
     private Account newAccount() {
