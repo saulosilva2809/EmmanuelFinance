@@ -47,6 +47,9 @@ replay_pid*
 **/.env
 **/.env.local
 
+# Instruções locais do Claude Code
+CLAUDE.md
+
 # ==========================================
 # 4. SISTEMA OPERACIONAL
 # ==========================================
