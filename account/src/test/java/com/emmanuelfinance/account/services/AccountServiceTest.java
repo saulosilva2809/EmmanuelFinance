@@ -1,15 +1,15 @@
 package com.emmanuelfinance.account.services;
 
 import com.emmanuelfinance.account.*;
-import com.emmanuelfinance.account.dto.AccountFiltersDTO;
 import com.emmanuelfinance.account.dto.CreateAccountDTO;
 import com.emmanuelfinance.account.dto.ResponseAccountDTO;
 import com.emmanuelfinance.account.dto.UpdateAccountDTO;
+import com.emmanuelfinance.account.dto.events.AccountChangedEventDTO;
+import com.emmanuelfinance.account.dto.events.AccountDeletedEventDTO;
 import com.emmanuelfinance.account.enums.TypeEnum;
 import com.emmanuelfinance.account.exceptions.AccountDomainException;
 import com.emmanuelfinance.account.exceptions.AccountErrorCode;
 import com.emmanuelfinance.account.kafka.AccountEventPublisher;
-import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.modules.account.AccountCache;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
@@ -26,11 +26,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -62,6 +58,9 @@ public class AccountServiceTest {
 
     @Mock
     private AccountSelector accountSelector;
+
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     private AccountInternalService accountInternalService;
@@ -117,87 +116,7 @@ public class AccountServiceTest {
                             account.getInitialBalance().equals(new BigDecimal("1000.00"))
             ));
             verify(accountEventPublisher, times(1)).publishAccount(any(AccountEventDTO.class));
-        }
-    }
-
-    @Nested
-    @DisplayName("Tests of the view method")
-    class ViewMethodTests {
-
-        @Test
-        void shouldThrowAccountNotFoundWhenAccountDoesNotExist() {
-            // preparação
-            UUID nonExistentAccountId = UUID.randomUUID();
-
-            // ensinando o selector a lançar a exceção
-            when(accountSelector.getAccountByIdAndUserId(nonExistentAccountId))
-                    .thenThrow(new AccountDomainException(AccountErrorCode.ACCOUNT_NOT_FOUND));
-
-            // when e then
-            // valida a chamada do method e lança a exeção
-            AccountDomainException exception = assertThrows(AccountDomainException.class, () -> {
-                accountService.view(nonExistentAccountId);
-            });
-
-            assertEquals(AccountErrorCode.ACCOUNT_NOT_FOUND, exception.getErrorCode());
-
-            // garante que o selector foi chamado
-            verify(accountSelector, times(1)).getAccountByIdAndUserId(nonExistentAccountId);
-
-            // verifica se o userClientCacheService não foi chamado
-            verifyNoInteractions(userClientCacheService);
-        }
-
-        @Test
-        void shouldGiveErrorWhenFetchingADeletedAccount() {
-            CreateAccountDTO accountDTO = AccountTestDataBuilder.createAccountDTO();
-            Account accountEntity = AccountTestDataBuilder.accountEntity(
-                    accountDTO,
-                    userId,
-                    true
-            );
-
-            when(accountSelector.getAccountByIdAndUserId(accountEntity.getId()))
-                    .thenThrow(new AccountDomainException(AccountErrorCode.ACCOUNT_NOT_FOUND));
-
-            AccountDomainException exception = assertThrows(AccountDomainException.class, () -> {
-                accountService.view(accountEntity.getId());
-            });
-
-            assertEquals(AccountErrorCode.ACCOUNT_NOT_FOUND, exception.getErrorCode());
-
-            verify(accountSelector, times(1)).getAccountByIdAndUserId(accountEntity.getId());
-        }
-
-        @Test
-        void shouldReturnTheAccountSuccessfully() {
-            // fase de preparação
-            UUID accountId = UUID.randomUUID();
-
-            Account mockAccount = new Account();
-            mockAccount.setId(accountId);
-            mockAccount.setName("Conta Itaú");
-            mockAccount.setUserId(userId);
-            mockAccount.setType(TypeEnum.INVESTMENT);
-            mockAccount.setInitialBalance(new BigDecimal("1000.00"));
-            mockAccount.setCurrentBalance(new BigDecimal("1000.00"));
-
-            // ensinando os mocks
-            when(accountSelector.getAccountByIdAndUserId(accountId))
-                    .thenReturn(mockAccount);
-
-            // when
-            ResponseAccountDTO result = accountService.view(accountId);
-
-            // then
-            assertNotNull(result);
-            assertEquals(accountId, result.id());
-            assertEquals("Conta Itaú", result.name());
-            assertEquals(new BigDecimal("1000.00"), result.initialBalance());
-            assertEquals(new BigDecimal("1000.00"), result.currentBalance());
-
-            // verificaões de chamada
-            verify(accountSelector, times(1)).getAccountByIdAndUserId(accountId);
+            verify(applicationEventPublisher, times(1)).publishEvent(any(AccountChangedEventDTO.class));
         }
     }
 
@@ -241,65 +160,6 @@ public class AccountServiceTest {
             assertEquals(AccountErrorCode.ACCOUNT_NOT_FOUND, exception.getErrorCode());
 
             verify(accountSelector, times(1)).getAccountByIdIncludingDeleted(nonExistentId);
-        }
-    }
-
-    @Nested
-    @DisplayName("Tests of the list method")
-    class ListMethodTests {
-
-        @Test
-        void shouldReturnEmptyPageWhenNoAccountsFound() {
-            AccountFiltersDTO filters = new AccountFiltersDTO("Conta Nula", null);
-            Pageable pageable = PageRequest.of(0, 10);
-
-            Page<Account> emptyPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
-            when(accountRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(emptyPage);
-
-            // when
-            PageResponseDTO<ResponseAccountDTO> result = accountService.list(filters, pageable);
-
-            // then
-            assertNotNull(result);
-            assertTrue(result.content().isEmpty()); // valida que o content está vazio
-
-            // verificações
-            verify(accountRepository, times(1)).findAll(any(Specification.class), eq(pageable));
-            verifyNoInteractions(userClientCacheService);
-        }
-
-        @Test
-        void shouldReturnPaginatedAccountsSuccessfully() {
-            // preparação
-            CreateAccountDTO accountDTO = AccountTestDataBuilder.createAccountDTO();
-            Account accountEntity = AccountTestDataBuilder.accountEntity(
-                    accountDTO,
-                    userId,
-                    false
-            );
-            // dtos de filtro e user
-            AccountFiltersDTO filters = new AccountFiltersDTO("C6", TypeEnum.CHECKING);
-            Pageable pageable = PageRequest.of(0, 10); // page 0, size 10
-
-            // criando a página
-            List<Account> accountList = List.of(accountEntity);
-            Page<Account> accountPage = new PageImpl<>(accountList, pageable, accountList.size());
-
-            // ensinando os mocks
-            when(accountRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(accountPage);
-
-            // when
-            PageResponseDTO<ResponseAccountDTO> result = accountService.list(filters, pageable);
-
-            // then
-            assertNotNull(result);
-            assertNotNull(result.content());
-            assertEquals(1, result.content().size()); // garante que veio apenas 1 item
-            assertEquals(accountEntity.getId(), result.content().get(0).id());
-            assertEquals(accountDTO.name(), result.content().get(0).name());
-
-            // verificações
-            verify(accountRepository, times(1)).findAll(any(Specification.class), eq(pageable));
         }
     }
 
@@ -438,6 +298,7 @@ public class AccountServiceTest {
             verify(accountSelector, times(1)).getAccountByIdAndUserId(accountId);
             verify(accountRepository, times(1)).delete(account);
             verify(accountEventPublisher, times(1)).publishAccount(any(AccountEventDTO.class));
+            verify(applicationEventPublisher, times(1)).publishEvent(any(AccountDeletedEventDTO.class));
         }
     }
 
@@ -464,6 +325,7 @@ public class AccountServiceTest {
             assertEquals(AccountErrorCode.RESTORE_ACCOUNT_NOT_DELETED, exception.getErrorCode());
 
             verify(accountSelector, times(1)).getAccountByIdIncludingDeleted(accountEntity.getId());
+            verify(applicationEventPublisher, never()).publishEvent(any(AccountChangedEventDTO.class));
             verify(accountEventPublisher, never()).publishAccount(any(AccountEventDTO.class));
         }
 
@@ -482,6 +344,7 @@ public class AccountServiceTest {
             accountService.restore(accountEntity.getId());
 
             verify(accountSelector, times(1)).getAccountByIdIncludingDeleted(accountEntity.getId());
+            verify(applicationEventPublisher, times(1)).publishEvent(any(AccountChangedEventDTO.class));
             verify(accountEventPublisher, times(1)).publishAccount(any(AccountEventDTO.class));
         }
     }

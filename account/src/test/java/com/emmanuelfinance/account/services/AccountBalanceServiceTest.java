@@ -18,6 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.emmanuelfinance.account.dto.events.AccountChangedEventDTO;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -38,6 +40,9 @@ public class AccountBalanceServiceTest {
 
     @Mock
     private AccountRepository accountRepository;
+
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
 
     private Account account;
     private UUID userId;
@@ -128,6 +133,7 @@ public class AccountBalanceServiceTest {
             log.info("Saldo esperado: 6000 - Saldo presente na conta: {}", account.getCurrentBalance());
 
             verify(accountRepository, times(1)).saveAndFlush(account);
+            verify(applicationEventPublisher, times(1)).publishEvent(any(AccountChangedEventDTO.class));
         }
 
         @Test

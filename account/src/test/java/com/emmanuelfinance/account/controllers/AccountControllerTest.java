@@ -9,6 +9,7 @@ import com.emmanuelfinance.account.dto.UpdateAccountDTO;
 import com.emmanuelfinance.account.enums.TypeEnum;
 import com.emmanuelfinance.account.exceptions.AccountDomainException;
 import com.emmanuelfinance.account.exceptions.AccountErrorCode;
+import com.emmanuelfinance.account.query.AccountQueryService;
 import com.emmanuelfinance.account.services.AccountService;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.enums.BanksEnum;
@@ -52,6 +53,9 @@ public class AccountControllerTest {
 
     @MockBean
     private AccountService accountService;
+
+    @MockBean
+    private AccountQueryService accountQueryService;
 
     @Nested
     @DisplayName("Cenários do POST /accounts")
@@ -102,7 +106,7 @@ public class AccountControllerTest {
         void shouldReturn404WhenTheAccountIsNotFound() throws Exception {
             UUID notFoundId = UUID.randomUUID();
 
-            when(accountService.view(notFoundId)).thenThrow(
+            when(accountQueryService.view(notFoundId)).thenThrow(
                     new AccountDomainException(AccountErrorCode.ACCOUNT_NOT_FOUND)
             );
 
@@ -111,7 +115,7 @@ public class AccountControllerTest {
                     .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isNotFound());
 
-            verify(accountService, times(1)).view(notFoundId);
+            verify(accountQueryService, times(1)).view(notFoundId);
         }
 
         @Test
@@ -123,7 +127,7 @@ public class AccountControllerTest {
                     false
             );
 
-            when(accountService.view(account.getId())).thenReturn(
+            when(accountQueryService.view(account.getId())).thenReturn(
                     AccountTestDataBuilder.responseAccountDTO(account)
             );
 
@@ -132,7 +136,7 @@ public class AccountControllerTest {
                     .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk());
 
-            verify(accountService, times(1)).view(account.getUserId());
+            verify(accountQueryService, times(1)).view(account.getUserId());
         }
     }
 
@@ -158,7 +162,7 @@ public class AccountControllerTest {
                     1
             );
 
-            when(accountService.list(any(AccountFiltersDTO.class), any(Pageable.class)))
+            when(accountQueryService.list(any(AccountFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(pageResponse);
 
             mockMvc.perform(get("/accounts")
@@ -175,7 +179,7 @@ public class AccountControllerTest {
                     .andExpect(jsonPath("$.totalElements").value(1))
                     .andExpect(jsonPath("$.totalPages").value(1));
 
-            verify(accountService, times(1)).list(any(AccountFiltersDTO.class), any(Pageable.class));
+            verify(accountQueryService, times(1)).list(any(AccountFiltersDTO.class), any(Pageable.class));
         }
 
         @Test
@@ -189,7 +193,7 @@ public class AccountControllerTest {
                     0
             );
 
-            when(accountService.list(any(AccountFiltersDTO.class), any(Pageable.class)))
+            when(accountQueryService.list(any(AccountFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(emptyPageResponse);
 
             mockMvc.perform(get("/accounts")
@@ -200,7 +204,7 @@ public class AccountControllerTest {
                     .andExpect(jsonPath("$.content").isEmpty())
                     .andExpect(jsonPath("$.totalElements").value(0));
 
-            verify(accountService, times(1)).list(any(AccountFiltersDTO.class), any(Pageable.class));
+            verify(accountQueryService, times(1)).list(any(AccountFiltersDTO.class), any(Pageable.class));
         }
 
         @Test
@@ -211,7 +215,7 @@ public class AccountControllerTest {
                             .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isBadRequest());
 
-            verify(accountService, atMostOnce()).list(any(AccountFiltersDTO.class), any(Pageable.class));
+            verify(accountQueryService, atMostOnce()).list(any(AccountFiltersDTO.class), any(Pageable.class));
         }
     }
 
@@ -237,7 +241,7 @@ public class AccountControllerTest {
                     1
             );
 
-            when(accountService.listDeleted(any(AccountFiltersDTO.class), any(Pageable.class)))
+            when(accountQueryService.listDeleted(any(AccountFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(pageResponse);
 
             mockMvc.perform(get("/accounts/deleted")
@@ -254,7 +258,7 @@ public class AccountControllerTest {
                     .andExpect(jsonPath("$.totalElements").value(1))
                     .andExpect(jsonPath("$.totalPages").value(1));
 
-            verify(accountService, times(1)).listDeleted(any(AccountFiltersDTO.class), any(Pageable.class));
+            verify(accountQueryService, times(1)).listDeleted(any(AccountFiltersDTO.class), any(Pageable.class));
         }
 
         @Test
@@ -268,7 +272,7 @@ public class AccountControllerTest {
                     0
             );
 
-            when(accountService.listDeleted(any(AccountFiltersDTO.class), any(Pageable.class)))
+            when(accountQueryService.listDeleted(any(AccountFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(emptyPageResponse);
 
             mockMvc.perform(get("/accounts/deleted")
@@ -279,7 +283,7 @@ public class AccountControllerTest {
                     .andExpect(jsonPath("$.content").isEmpty())
                     .andExpect(jsonPath("$.totalElements").value(0));
 
-            verify(accountService, times(1)).listDeleted(any(AccountFiltersDTO.class), any(Pageable.class));
+            verify(accountQueryService, times(1)).listDeleted(any(AccountFiltersDTO.class), any(Pageable.class));
         }
 
         @Test
@@ -290,7 +294,7 @@ public class AccountControllerTest {
                             .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isBadRequest());
 
-            verify(accountService, atMostOnce()).listDeleted(any(AccountFiltersDTO.class), any(Pageable.class));
+            verify(accountQueryService, atMostOnce()).listDeleted(any(AccountFiltersDTO.class), any(Pageable.class));
         }
     }
 
