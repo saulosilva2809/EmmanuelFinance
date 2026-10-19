@@ -246,6 +246,27 @@ public class InvoiceServiceTest {
         }
 
         @Test
+        @DisplayName("Deve devolver o valor já pago da fatura")
+        void shouldReturnTheAmountPaidOfTheInvoice() {
+            UUID userId = UUID.randomUUID();
+            UUID creditCardId = UUID.randomUUID();
+            Pageable pageable = PageRequest.of(0, 10);
+            Invoice invoice = InvoiceTestDataBuilder.invoiceEntity(userId, creditCardId);
+            invoice.setAmountPaid(new BigDecimal("150.00"));
+            CreditCardSummaryDTO cardSummary = InvoiceTestDataBuilder.creditCardSummaryDTO(creditCardId);
+
+            when(securityUtils.getCurrentUserId()).thenReturn(userId);
+            when(invoiceRepository.findAll(any(Specification.class), eq(pageable)))
+                    .thenReturn(new PageImpl<>(List.of(invoice), pageable, 1));
+            when(creditCardClientCacheService.getCreditCardSummaryDTO(creditCardId)).thenReturn(cardSummary);
+
+            PageResponseDTO<ResponseInvoiceDTO> result =
+                    invoiceService.list(new InvoiceFiltersDTO(creditCardId, 10, 2026, InvoiceStatusEnum.OPEN), pageable);
+
+            assertEquals(new BigDecimal("150.00"), result.content().get(0).amountPaid());
+        }
+
+        @Test
         @DisplayName("Deve retornar página vazia quando não houver faturas")
         void shouldReturnEmptyPage() {
             Pageable pageable = PageRequest.of(0, 10);

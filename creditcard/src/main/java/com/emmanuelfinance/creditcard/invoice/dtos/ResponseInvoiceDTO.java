@@ -16,6 +16,7 @@ public record ResponseInvoiceDTO(
         Integer dueDate,
         Integer closingDate,
         BigDecimal totalAmount,
+        BigDecimal amountPaid,
         InvoiceStatusEnum status,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
