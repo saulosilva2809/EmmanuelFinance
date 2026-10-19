@@ -11,7 +11,7 @@ import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceSelector;
 import com.emmanuelfinance.creditcard.payment.dto.PaymentTotalDTO;
 import com.emmanuelfinance.creditcard.payment.exceptions.PaymentDomainException;
 import com.emmanuelfinance.creditcard.payment.exceptions.PaymentErrorCode;
-import com.emmanuelfinance.creditcard.payment.kafka.PaymentProducer;
+import com.emmanuelfinance.creditcard.payment.outbox.OutboxService;
 import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
@@ -21,8 +21,6 @@ import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -38,7 +36,7 @@ public class PaymentService {
     private final SecurityUtils securityUtils;
     private final CreditCardSelector creditCardSelector;
     private final CreditCardRepository creditCardRepository;
-    private final PaymentProducer paymentProducer;
+    private final OutboxService outboxService;
 
     private void validateInvoice(Invoice invoice, UUID userId, UUID creditCardId) {
         boolean belongsToUserAndCard = userId.equals(invoice.getUserId())
@@ -69,20 +67,6 @@ public class PaymentService {
         creditCardRepository.save(creditCard);
     }
 
-    private void publishAfterCommit(InvoicePaymentDTO event) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            paymentProducer.publishInvoicePaymentCreated(event);
-            return;
-        }
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                paymentProducer.publishInvoicePaymentCreated(event);
-            }
-        });
-    }
-
     @Transactional
     public void totalInvoicePayment(UUID creditCardId, UUID invoiceId, PaymentTotalDTO data) {
         UUID userId = securityUtils.getCurrentUserId();
@@ -101,11 +85,11 @@ public class PaymentService {
 
         invoice.setAmountPaid(totalAmount);
         invoice.setStatus(InvoiceStatusEnum.PAID);
-        invoiceRepository.save(invoice);
 
+        invoiceRepository.save(invoice);
         giveLimitBack(creditCard, totalAmount);
 
-        publishAfterCommit(new InvoicePaymentDTO(
+        outboxService.invoicePayment(new InvoicePaymentDTO(
                 data.accountId(),
                 userId,
                 invoice.getCreditCardId(),
