@@ -148,6 +148,7 @@ public class InvoiceTestDataBuilder {
                 invoice.getDueDate(),
                 invoice.getClosingDate(),
                 invoice.getTotalAmount(),
+                invoice.getAmountPaid(),
                 invoice.getStatus(),
                 invoice.getCreatedAt(),
                 invoice.getUpdatedAt()
