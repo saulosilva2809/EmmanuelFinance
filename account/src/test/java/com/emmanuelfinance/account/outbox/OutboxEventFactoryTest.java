@@ -4,7 +4,7 @@ import com.emmanuelfinance.account.Account;
 import com.emmanuelfinance.account.AccountMapper;
 import com.emmanuelfinance.account.enums.TypeEnum;
 import com.emmanuelfinance.account.outbox.dto.AccountOwnerDTO;
-import com.emmanuelfinance.account.outbox.enums.OutboxEventType;
+import com.emmanuelfinance.account.outbox.enums.AccountOutboxEventType;
 import com.emmanuelfinance.account.query.AccountDocument;
 import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
 import com.emmanuelfinance.shared.modules.account.kafka.account.enums.StatusEventEnum;
@@ -31,7 +31,7 @@ class OutboxEventFactoryTest {
 
         OutboxEvent row = outboxEventFactory.accountEvent(account, StatusEventEnum.CREATED);
 
-        assertEquals(OutboxEventType.ACCOUNT_EVENT, row.getType());
+        assertEquals(AccountOutboxEventType.ACCOUNT_EVENT, row.getType());
         assertEquals(account.getId().toString(), row.getAggregateId());
         assertNotNull(row.getCreatedAt());
         assertEquals(new AccountEventDTO(account.getId(), account.getUserId(), StatusEventEnum.CREATED),
@@ -44,7 +44,7 @@ class OutboxEventFactoryTest {
 
         OutboxEvent row = outboxEventFactory.accountSnapshot(account, false);
 
-        assertEquals(OutboxEventType.ACCOUNT_CHANGED, row.getType());
+        assertEquals(AccountOutboxEventType.ACCOUNT_CHANGED, row.getType());
         assertEquals(account.getId().toString(), row.getAggregateId());
 
         AccountDocument snapshot = objectMapper.treeToValue(row.getPayload(), AccountDocument.class);
@@ -68,7 +68,7 @@ class OutboxEventFactoryTest {
 
         OutboxEvent row = outboxEventFactory.accountOwner(account);
 
-        assertEquals(OutboxEventType.ACCOUNT_OWNER_CACHED, row.getType());
+        assertEquals(AccountOutboxEventType.ACCOUNT_OWNER_CACHED, row.getType());
         assertEquals(new AccountOwnerDTO(account.getId(), account.getUserId()),
                 objectMapper.treeToValue(row.getPayload(), AccountOwnerDTO.class));
     }
