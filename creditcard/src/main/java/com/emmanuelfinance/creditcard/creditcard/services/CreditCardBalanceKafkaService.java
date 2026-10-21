@@ -4,6 +4,7 @@ import com.emmanuelfinance.creditcard.creditcard.CreditCard;
 import com.emmanuelfinance.creditcard.creditcard.CreditCardRepository;
 import com.emmanuelfinance.creditcard.creditcard.CreditCardSelector;
 import com.emmanuelfinance.creditcard.invoice.services.InvoiceService;
+import com.emmanuelfinance.creditcard.outbox.OutboxService;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class CreditCardBalanceKafkaService {
     private final CreditCardSelector creditCardSelector;
     private final InvoiceService invoiceService;
     private final CreditCardRepository creditCardRepository;
+    private final OutboxService outboxService;
 
     @Transactional
     public void processTransactionCreate(TransactionCreatedEvent event) {
@@ -27,6 +29,7 @@ public class CreditCardBalanceKafkaService {
         creditCard.setAvailableLimit(creditCard.getAvailableLimit().subtract(event.amount()));
 
         creditCardRepository.saveAndFlush(creditCard);
+        outboxService.creditCardChanged(creditCard);
         invoiceService.findOrCreate(event);
     }
 
@@ -37,6 +40,7 @@ public class CreditCardBalanceKafkaService {
 
         log.info("NOVO LIMITE DISPONÍVEL: {}", creditCard.getAvailableLimit());
         creditCardRepository.saveAndFlush(creditCard);
+        outboxService.creditCardChanged(creditCard);
         invoiceService.delete(event);
     }
 
@@ -46,6 +50,7 @@ public class CreditCardBalanceKafkaService {
         creditCard.setAvailableLimit(creditCard.getAvailableLimit().subtract(event.amount()));
 
         creditCardRepository.saveAndFlush(creditCard);
+        outboxService.creditCardChanged(creditCard);
         invoiceService.restore(event);
     }
 }

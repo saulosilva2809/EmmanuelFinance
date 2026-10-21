@@ -1,5 +1,6 @@
-package com.emmanuelfinance.creditcard.payment.outbox;
+package com.emmanuelfinance.creditcard.outbox;
 
+import com.emmanuelfinance.creditcard.outbox.enums.CreditCardOutboxEventType;
 import com.emmanuelfinance.creditcard.payment.kafka.PaymentProducer;
 import com.emmanuelfinance.shared.modules.payment.InvoicePaymentDTO;
 import com.emmanuelfinance.shared.outbox.BaseOutboxEvent;
@@ -20,7 +21,7 @@ public class PaymentOutboxDispatcher implements OutboxDispatcher {
 
     @Override
     public boolean supports(com.emmanuelfinance.shared.outbox.enums.OutboxEventType type) {
-        return PaymentOutboxEventType.INVOICE_PAYMENT.equals(type);
+        return CreditCardOutboxEventType.INVOICE_PAYMENT.equals(type);
     }
 
     @Override

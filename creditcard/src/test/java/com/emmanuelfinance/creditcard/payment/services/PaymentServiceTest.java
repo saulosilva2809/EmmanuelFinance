@@ -13,7 +13,7 @@ import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceSelector;
 import com.emmanuelfinance.creditcard.payment.dto.PaymentTotalDTO;
 import com.emmanuelfinance.creditcard.payment.exceptions.PaymentDomainException;
 import com.emmanuelfinance.creditcard.payment.exceptions.PaymentErrorCode;
-import com.emmanuelfinance.creditcard.payment.outbox.OutboxService;
+import com.emmanuelfinance.creditcard.outbox.OutboxService;
 import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
@@ -102,7 +102,7 @@ public class PaymentServiceTest {
 
     private void assertNothingWasChargedOrPublished() {
         verify(invoiceRepository, never()).save(any(Invoice.class));
-        verify(creditCardRepository, never()).save(any(CreditCard.class));
+        verify(creditCardRepository, never()).saveAndFlush(any(CreditCard.class));
         verifyNoInteractions(outboxService);
     }
 
@@ -137,7 +137,8 @@ public class PaymentServiceTest {
             assertEquals(10, event.month());
             assertEquals(2026, event.year());
             assertEquals(new BigDecimal("300.00"), event.totalPaid());
-            verify(creditCardRepository, times(1)).save(card);
+            verify(creditCardRepository, times(1)).saveAndFlush(card);
+            verify(outboxService, times(1)).creditCardChanged(card);
             verify(accountOwnershipValidator, times(1)).validate(accountId);
         }
 

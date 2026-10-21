@@ -1,4 +1,4 @@
-package com.emmanuelfinance.creditcard.payment.outbox;
+package com.emmanuelfinance.creditcard.outbox;
 
 import com.emmanuelfinance.shared.outbox.BaseOutboxEventRepository;
 import org.springframework.stereotype.Repository;

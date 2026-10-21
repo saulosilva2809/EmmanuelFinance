@@ -8,6 +8,7 @@ import com.emmanuelfinance.creditcard.creditcard.dto.ResponseCreditCardDTO;
 import com.emmanuelfinance.creditcard.creditcard.dto.UpdateCreditCardDTO;
 import com.emmanuelfinance.creditcard.creditcard.exceptions.CreditCardDomainException;
 import com.emmanuelfinance.creditcard.creditcard.exceptions.CreditCardErrorCode;
+import com.emmanuelfinance.creditcard.creditcard.query.CreditCardQueryService;
 import com.emmanuelfinance.creditcard.creditcard.services.CreditCardService;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.enums.BanksEnum;
@@ -57,6 +58,9 @@ public class CreditCardControllerTest {
 
     @MockBean
     private CreditCardService creditCardService;
+
+    @MockBean
+    private CreditCardQueryService creditCardQueryService;
 
     private ResponseCreditCardDTO responseDTO(boolean deleted) {
         CreateCreditCardDTO dto = CreditCardTestDataBuilder.createCardDTO();
@@ -150,21 +154,21 @@ public class CreditCardControllerTest {
         @DisplayName("Deve retornar 200 OK quando o cartão for encontrado")
         void shouldReturn200WhenFound() throws Exception {
             ResponseCreditCardDTO response = responseDTO(false);
-            when(creditCardService.view(response.id())).thenReturn(response);
+            when(creditCardQueryService.view(response.id())).thenReturn(response);
 
             mockMvc.perform(get("/credit-card/{id}", response.id()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").value(response.id().toString()))
                     .andExpect(jsonPath("$.name").value(response.name()));
 
-            verify(creditCardService, times(1)).view(response.id());
+            verify(creditCardQueryService, times(1)).view(response.id());
         }
 
         @Test
         @DisplayName("Deve retornar 404 Not Found quando o cartão não existir")
         void shouldReturn404WhenNotFound() throws Exception {
             UUID id = UUID.randomUUID();
-            when(creditCardService.view(id)).thenThrow(new CreditCardNotFound());
+            when(creditCardQueryService.view(id)).thenThrow(new CreditCardNotFound());
 
             mockMvc.perform(get("/credit-card/{id}", id))
                     .andExpect(status().isNotFound());
@@ -188,7 +192,7 @@ public class CreditCardControllerTest {
         @DisplayName("Deve retornar 200 OK com os dados paginados")
         void shouldReturn200WithPaginatedData() throws Exception {
             ResponseCreditCardDTO response = responseDTO(false);
-            when(creditCardService.list(any(CreditCardFiltersDTO.class), any(Pageable.class)))
+            when(creditCardQueryService.list(any(CreditCardFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(pageOf(response));
 
             mockMvc.perform(get("/credit-card")
@@ -205,7 +209,7 @@ public class CreditCardControllerTest {
         @Test
         @DisplayName("Deve retornar 200 OK com content vazio")
         void shouldReturn200WithEmptyContent() throws Exception {
-            when(creditCardService.list(any(CreditCardFiltersDTO.class), any(Pageable.class)))
+            when(creditCardQueryService.list(any(CreditCardFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(emptyPage());
 
             mockMvc.perform(get("/credit-card"))
@@ -218,7 +222,7 @@ public class CreditCardControllerTest {
         @DisplayName("Deve repassar os filtros ao service")
         void shouldPassFiltersToService() throws Exception {
             UUID accountId = UUID.randomUUID();
-            when(creditCardService.list(any(CreditCardFiltersDTO.class), any(Pageable.class)))
+            when(creditCardQueryService.list(any(CreditCardFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(emptyPage());
 
             mockMvc.perform(get("/credit-card")
@@ -228,20 +232,20 @@ public class CreditCardControllerTest {
                     .andExpect(status().isOk());
 
             ArgumentCaptor<CreditCardFiltersDTO> captor = ArgumentCaptor.forClass(CreditCardFiltersDTO.class);
-            verify(creditCardService).list(captor.capture(), any(Pageable.class));
+            verify(creditCardQueryService).list(captor.capture(), any(Pageable.class));
             assertEquals(new CreditCardFiltersDTO(accountId, "Cartao", BanksEnum.C6_BANK), captor.getValue());
         }
 
         @Test
         @DisplayName("Deve aplicar a ordenação padrão createdAt DESC")
         void shouldApplyDefaultSort() throws Exception {
-            when(creditCardService.list(any(CreditCardFiltersDTO.class), any(Pageable.class)))
+            when(creditCardQueryService.list(any(CreditCardFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(emptyPage());
 
             mockMvc.perform(get("/credit-card")).andExpect(status().isOk());
 
             ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-            verify(creditCardService).list(any(CreditCardFiltersDTO.class), captor.capture());
+            verify(creditCardQueryService).list(any(CreditCardFiltersDTO.class), captor.capture());
             assertEquals(Sort.Direction.DESC, captor.getValue().getSort().getOrderFor("createdAt").getDirection());
         }
 
@@ -263,7 +267,7 @@ public class CreditCardControllerTest {
         @DisplayName("Deve retornar 200 OK com os cartões excluídos paginados")
         void shouldReturn200WithPaginatedData() throws Exception {
             ResponseCreditCardDTO response = responseDTO(true);
-            when(creditCardService.listDeleted(any(CreditCardFiltersDTO.class), any(Pageable.class)))
+            when(creditCardQueryService.listDeleted(any(CreditCardFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(pageOf(response));
 
             mockMvc.perform(get("/credit-card/deleted"))
@@ -276,7 +280,7 @@ public class CreditCardControllerTest {
         @Test
         @DisplayName("Deve retornar 200 OK com content vazio")
         void shouldReturn200WithEmptyContent() throws Exception {
-            when(creditCardService.listDeleted(any(CreditCardFiltersDTO.class), any(Pageable.class)))
+            when(creditCardQueryService.listDeleted(any(CreditCardFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(emptyPage());
 
             mockMvc.perform(get("/credit-card/deleted"))
@@ -287,13 +291,13 @@ public class CreditCardControllerTest {
         @Test
         @DisplayName("Deve aplicar a ordenação padrão createdAt DESC")
         void shouldApplyDefaultSort() throws Exception {
-            when(creditCardService.listDeleted(any(CreditCardFiltersDTO.class), any(Pageable.class)))
+            when(creditCardQueryService.listDeleted(any(CreditCardFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(emptyPage());
 
             mockMvc.perform(get("/credit-card/deleted")).andExpect(status().isOk());
 
             ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-            verify(creditCardService).listDeleted(any(CreditCardFiltersDTO.class), captor.capture());
+            verify(creditCardQueryService).listDeleted(any(CreditCardFiltersDTO.class), captor.capture());
             assertEquals(Sort.Direction.DESC, captor.getValue().getSort().getOrderFor("createdAt").getDirection());
         }
 

@@ -1,5 +1,6 @@
-package com.emmanuelfinance.creditcard.payment.outbox;
+package com.emmanuelfinance.creditcard.outbox;
 
+import com.emmanuelfinance.creditcard.creditcard.CreditCard;
 import com.emmanuelfinance.shared.modules.payment.InvoicePaymentDTO;
 import com.emmanuelfinance.shared.outbox.dtos.OutboxEventSavedDTO;
 import lombok.RequiredArgsConstructor;
@@ -22,16 +23,24 @@ public class OutboxService {
     private final OutboxEventFactory outboxEventFactory;
 
     public void invoicePayment(InvoicePaymentDTO invoicePaymentDTO) {
-        register(
-                outboxEventFactory.createdInvoicePayment(invoicePaymentDTO)
-        );
+        register(outboxEventFactory.createdInvoicePayment(invoicePaymentDTO));
+    }
+
+    // create, update, restore and update limit
+    public void creditCardChanged(CreditCard creditCard) {
+        register(outboxEventFactory.creditCardSnapshot(creditCard, false));
+    }
+
+    // delete
+    public void creditCardDeleted(CreditCard creditCard) {
+        register(outboxEventFactory.creditCardSnapshot(creditCard, true));
     }
 
     private void register(OutboxEvent... outboxEvents) {
         outboxEventRepository.saveAll(List.of(outboxEvents));
 
         for (OutboxEvent outboxEvent : outboxEvents) {
-            log.info("Outbox: {} registrado para a conta {} (aguardando o commit)",
+            log.info("Outbox: {} registrado para o id {} (aguardando o commit)",
                     outboxEvent.getType(), outboxEvent.getAggregateId());
         }
 

@@ -5,6 +5,7 @@ import com.emmanuelfinance.creditcard.creditcard.CreditCardRepository;
 import com.emmanuelfinance.creditcard.creditcard.CreditCardSelector;
 import com.emmanuelfinance.creditcard.CreditCardTestDataBuilder;
 import com.emmanuelfinance.creditcard.creditcard.dto.CreateCreditCardDTO;
+import com.emmanuelfinance.creditcard.outbox.OutboxService;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardInternalSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.exceptions.CreditCardNotFound;
@@ -16,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -32,8 +34,22 @@ public class CreditCardInternalServiceTest {
     @Mock
     private CreditCardRepository creditCardRepository;
 
+    @Mock
+    private OutboxService outboxService;
+
     @InjectMocks
     private CreditCardInternalService creditCardInternalService;
+
+    // Regra: o serviço interno decide com o limite disponível, então lê do Postgres. O Mongo recebe os dados
+    // pelo Outbox e pode estar atrasado. Se isto falhar, alguém ligou o serviço interno ao lado de leitura.
+    @Test
+    @DisplayName("Não deve depender de nenhuma classe do lado de leitura (Mongo)")
+    void shouldNotDependOnTheMongoReadModel() {
+        boolean dependsOnReadModel = Arrays.stream(CreditCardInternalService.class.getDeclaredFields())
+                .anyMatch(field -> field.getType().getPackageName().endsWith(".query"));
+
+        assertFalse(dependsOnReadModel);
+    }
 
     @Nested
     @DisplayName("Cenários do getCreditCardSummary")
@@ -120,7 +136,7 @@ public class CreditCardInternalServiceTest {
     class DeactivateCardsByAccountIdTests {
 
         @Test
-        @DisplayName("Deve desativar todos os cartões vinculados à conta com sucesso")
+        @DisplayName("Deve desativar todos os cartões vinculados à conta e registrar cada exclusão no Outbox")
         void shouldDeactivateCardsByAccountIdSuccessfully() {
             UUID accountId = UUID.randomUUID();
             UUID userId = UUID.randomUUID();
@@ -136,6 +152,8 @@ public class CreditCardInternalServiceTest {
             verify(cardSelector, times(1)).findByAccountId(accountId);
             verify(creditCardRepository, times(1)).delete(card1);
             verify(creditCardRepository, times(1)).delete(card2);
+            verify(outboxService, times(1)).creditCardDeleted(card1);
+            verify(outboxService, times(1)).creditCardDeleted(card2);
         }
 
         @Test
@@ -149,6 +167,7 @@ public class CreditCardInternalServiceTest {
 
             verify(cardSelector, times(1)).findByAccountId(accountId);
             verify(creditCardRepository, never()).delete(any(CreditCard.class));
+            verifyNoInteractions(outboxService);
         }
     }
 }

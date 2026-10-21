@@ -11,7 +11,7 @@ import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceSelector;
 import com.emmanuelfinance.creditcard.payment.dto.PaymentTotalDTO;
 import com.emmanuelfinance.creditcard.payment.exceptions.PaymentDomainException;
 import com.emmanuelfinance.creditcard.payment.exceptions.PaymentErrorCode;
-import com.emmanuelfinance.creditcard.payment.outbox.OutboxService;
+import com.emmanuelfinance.creditcard.outbox.OutboxService;
 import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
@@ -64,7 +64,8 @@ public class PaymentService {
         }
 
         creditCard.setAvailableLimit(newLimit);
-        creditCardRepository.save(creditCard);
+        creditCardRepository.saveAndFlush(creditCard);
+        outboxService.creditCardChanged(creditCard);
     }
 
     @Transactional
