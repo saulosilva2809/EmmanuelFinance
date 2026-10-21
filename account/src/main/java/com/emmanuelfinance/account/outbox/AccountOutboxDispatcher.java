@@ -48,9 +48,11 @@ public class AccountOutboxDispatcher implements OutboxDispatcher {
         switch (outboxEvent.getType()) {
             case AccountOutboxEventType.ACCOUNT_EVENT -> {
                 AccountEventDTO payload = objectMapper.treeToValue(outboxEvent.getPayload(), AccountEventDTO.class);
+
                 kafkaTemplate.send(ACCOUNT_EVENTS_TOPIC, outboxEvent.getAggregateId(), payload)
                         .orTimeout(KAFKA_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                         .join();
+
                 log.info("Outbox: aviso {} da conta {} confirmado pelo Kafka (tópico {})",
                         payload.status(), outboxEvent.getAggregateId(), ACCOUNT_EVENTS_TOPIC);
             }
@@ -61,6 +63,7 @@ public class AccountOutboxDispatcher implements OutboxDispatcher {
             case AccountOutboxEventType.ACCOUNT_OWNER_CACHED -> {
                 AccountOwnerDTO owner = objectMapper.treeToValue(outboxEvent.getPayload(), AccountOwnerDTO.class);
                 accountCache.saveAccountOwner(owner.accountId(), owner.userId());
+
                 log.info("Outbox: dono da conta {} gravado no cache (Redis)", owner.accountId());
             }
             default -> throw new IllegalArgumentException("Tipo de evento não suportado por este dispatcher: " + outboxEvent.getType());
