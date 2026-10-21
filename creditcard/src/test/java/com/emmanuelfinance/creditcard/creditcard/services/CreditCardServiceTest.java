@@ -6,12 +6,11 @@ import com.emmanuelfinance.creditcard.creditcard.CreditCardRepository;
 import com.emmanuelfinance.creditcard.creditcard.CreditCardSelector;
 import com.emmanuelfinance.creditcard.CreditCardTestDataBuilder;
 import com.emmanuelfinance.creditcard.creditcard.dto.CreateCreditCardDTO;
-import com.emmanuelfinance.creditcard.creditcard.dto.CreditCardFiltersDTO;
 import com.emmanuelfinance.creditcard.creditcard.dto.ResponseCreditCardDTO;
 import com.emmanuelfinance.creditcard.creditcard.dto.UpdateCreditCardDTO;
 import com.emmanuelfinance.creditcard.creditcard.exceptions.CreditCardDomainException;
 import com.emmanuelfinance.creditcard.creditcard.exceptions.CreditCardErrorCode;
-import com.emmanuelfinance.shared.dto.PageResponseDTO;
+import com.emmanuelfinance.creditcard.outbox.OutboxService;
 import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.modules.account.exceptions.AccountNotFound;
@@ -25,11 +24,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -64,6 +58,9 @@ public class CreditCardServiceTest {
 
     @Mock
     private CreditCardBalanceService creditCardBalanceService;
+
+    @Mock
+    private OutboxService outboxService;
 
     @InjectMocks
     private CreditCardService creditCardService;
@@ -141,107 +138,7 @@ public class CreditCardServiceTest {
             assertEquals(dto.creditLimit(), mapped.getAvailableLimit());
             verify(creditCardValidatorService, times(1)).validateCreation(dto);
             verify(creditCardRepository, times(1)).save(mapped);
-        }
-    }
-
-    @Nested
-    @DisplayName("Tests of view method")
-    class ViewMethodTests {
-
-        @Test
-        @DisplayName("Deve lançar CreditCardNotFound quando o cartão não for encontrado")
-        void shouldReturnCardNotFoundError() {
-            UUID cardId = UUID.randomUUID();
-            when(creditCardSelector.getCreditCardById(cardId)).thenThrow(new CreditCardNotFound());
-
-            assertThrows(CreditCardNotFound.class, () -> creditCardService.view(cardId));
-
-            verify(creditCardSelector, times(1)).getCreditCardById(cardId);
-            verifyNoInteractions(creditCardMapper);
-        }
-
-        @Test
-        @DisplayName("Deve retornar o DTO do cartão encontrado")
-        void shouldReturnTheCardSuccessfully() {
-            CreditCard card = cardEntity(false);
-            ResponseCreditCardDTO expected = responseFor(card);
-            when(creditCardSelector.getCreditCardById(card.getId())).thenReturn(card);
-            when(creditCardMapper.toResponseDTO(card)).thenReturn(expected);
-
-            ResponseCreditCardDTO response = creditCardService.view(card.getId());
-
-            assertEquals(expected, response);
-            verify(creditCardSelector, times(1)).getCreditCardById(card.getId());
-        }
-    }
-
-    @Nested
-    @DisplayName("Tests of list method")
-    class ListMethodTests {
-
-        private final Pageable pageable = PageRequest.of(0, 10);
-
-        @Test
-        @DisplayName("Deve retornar página vazia quando não houver cartões")
-        void shouldReturnABlankPage() {
-            CreditCardFiltersDTO filters = new CreditCardFiltersDTO(null, null, BanksEnum.PAGBANK);
-            Page<CreditCard> page = new PageImpl<>(Collections.emptyList(), pageable, 0);
-            when(securityUtils.getCurrentUserId()).thenReturn(userId);
-            when(creditCardRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
-
-            PageResponseDTO<ResponseCreditCardDTO> response = creditCardService.list(filters, pageable);
-
-            assertNotNull(response);
-            assertTrue(response.content().isEmpty());
-            verify(creditCardRepository, times(1)).findAll(any(Specification.class), eq(pageable));
-        }
-
-        @Test
-        @DisplayName("Deve retornar os cartões mapeados para DTO")
-        void shouldReturnTheCardsSuccessfully() {
-            CreditCard card = cardEntity(false);
-            ResponseCreditCardDTO expected = responseFor(card);
-            CreditCardFiltersDTO filters = new CreditCardFiltersDTO(card.getAccountId(), "Nubank", BanksEnum.NUBANK);
-            when(securityUtils.getCurrentUserId()).thenReturn(userId);
-            when(creditCardRepository.findAll(any(Specification.class), eq(pageable)))
-                    .thenReturn(new PageImpl<>(List.of(card), pageable, 1));
-            when(creditCardMapper.toResponseDTO(card)).thenReturn(expected);
-
-            PageResponseDTO<ResponseCreditCardDTO> response = creditCardService.list(filters, pageable);
-
-            assertEquals(List.of(expected), response.content());
-            assertEquals(1L, response.totalElements());
-        }
-
-        @Test
-        @DisplayName("Deve listar os cartões excluídos mapeados para DTO")
-        void shouldListDeletedCards() {
-            CreditCard card = cardEntity(true);
-            ResponseCreditCardDTO expected = responseFor(card);
-            when(securityUtils.getCurrentUserId()).thenReturn(userId);
-            when(creditCardRepository.findAll(any(Specification.class), eq(pageable)))
-                    .thenReturn(new PageImpl<>(List.of(card), pageable, 1));
-            when(creditCardMapper.toResponseDTO(card)).thenReturn(expected);
-
-            PageResponseDTO<ResponseCreditCardDTO> response = creditCardService.listDeleted(
-                    new CreditCardFiltersDTO(null, null, null), pageable
-            );
-
-            assertEquals(List.of(expected), response.content());
-        }
-
-        @Test
-        @DisplayName("Deve retornar página vazia quando não houver cartões excluídos")
-        void shouldReturnBlankPageOfDeletedCards() {
-            when(securityUtils.getCurrentUserId()).thenReturn(userId);
-            when(creditCardRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(Page.empty(pageable));
-
-            PageResponseDTO<ResponseCreditCardDTO> response = creditCardService.listDeleted(
-                    new CreditCardFiltersDTO(null, null, null), pageable
-            );
-
-            assertTrue(response.content().isEmpty());
-            verifyNoInteractions(creditCardMapper);
+            verify(outboxService, times(1)).creditCardChanged(saved);
         }
     }
 
@@ -273,7 +170,7 @@ public class CreditCardServiceTest {
 
             verify(accountOwnershipValidator, times(1)).validate(accountNotFoundId);
             verifyNoInteractions(creditCardBalanceService);
-            verify(creditCardRepository, never()).save(any(CreditCard.class));
+            verify(creditCardRepository, never()).saveAndFlush(any(CreditCard.class));
         }
 
         @Test
@@ -287,7 +184,7 @@ public class CreditCardServiceTest {
 
             assertThrows(CreditCardDomainException.class, () -> creditCardService.update(card.getId(), dto));
 
-            verify(creditCardRepository, never()).save(any(CreditCard.class));
+            verify(creditCardRepository, never()).saveAndFlush(any(CreditCard.class));
             verifyNoInteractions(creditCardMapper);
         }
 
@@ -298,7 +195,7 @@ public class CreditCardServiceTest {
             UpdateCreditCardDTO dto = updateDTO(null);
             ResponseCreditCardDTO expected = responseFor(card);
             when(creditCardSelector.getCreditCardById(card.getId())).thenReturn(card);
-            when(creditCardRepository.save(card)).thenReturn(card);
+            when(creditCardRepository.saveAndFlush(card)).thenReturn(card);
             when(creditCardMapper.toResponseDTO(card)).thenReturn(expected);
 
             ResponseCreditCardDTO response = creditCardService.update(card.getId(), dto);
@@ -306,7 +203,8 @@ public class CreditCardServiceTest {
             assertEquals(expected, response);
             verify(creditCardBalanceService, times(1)).updateAvailableLimit(card, dto);
             verify(creditCardMapper, times(1)).updateCreditCardFromDTO(dto, card);
-            verify(creditCardRepository, times(1)).save(card);
+            verify(creditCardRepository, times(1)).saveAndFlush(card);
+            verify(outboxService, times(1)).creditCardChanged(card);
             verifyNoInteractions(accountOwnershipValidator);
         }
 
@@ -317,7 +215,7 @@ public class CreditCardServiceTest {
             CreditCard card = cardEntity(false);
             UpdateCreditCardDTO dto = updateDTO(newAccountId);
             when(creditCardSelector.getCreditCardById(card.getId())).thenReturn(card);
-            when(creditCardRepository.save(card)).thenReturn(card);
+            when(creditCardRepository.saveAndFlush(card)).thenReturn(card);
             when(creditCardMapper.toResponseDTO(card)).thenReturn(responseFor(card));
 
             creditCardService.update(card.getId(), dto);
@@ -339,6 +237,7 @@ public class CreditCardServiceTest {
             assertThrows(CreditCardNotFound.class, () -> creditCardService.delete(cardId));
 
             verify(creditCardRepository, never()).delete(any(CreditCard.class));
+            verify(outboxService, never()).creditCardDeleted(any(CreditCard.class));
         }
 
         @Test
@@ -351,6 +250,7 @@ public class CreditCardServiceTest {
 
             ArgumentCaptor<CreditCard> captor = ArgumentCaptor.forClass(CreditCard.class);
             verify(creditCardRepository, times(1)).delete(captor.capture());
+            verify(outboxService, times(1)).creditCardDeleted(card);
             assertEquals(card.getId(), captor.getValue().getId());
         }
     }
@@ -367,7 +267,7 @@ public class CreditCardServiceTest {
 
             assertThrows(CreditCardNotFound.class, () -> creditCardService.restore(cardId));
 
-            verify(creditCardRepository, never()).save(any(CreditCard.class));
+            verify(creditCardRepository, never()).saveAndFlush(any(CreditCard.class));
         }
 
         @Test
@@ -384,7 +284,7 @@ public class CreditCardServiceTest {
 
             assertEquals(CreditCardErrorCode.RESTORE_CARD_NOT_DELETED, exception.getErrorCode());
             assertFalse(card.isDeleted());
-            verify(creditCardRepository, never()).save(any(CreditCard.class));
+            verify(creditCardRepository, never()).saveAndFlush(any(CreditCard.class));
         }
 
         @Test
@@ -401,7 +301,7 @@ public class CreditCardServiceTest {
 
             assertEquals(CreditCardErrorCode.RESTORE_CARD_WITH_DELETED_ACCOUNT, exception.getErrorCode());
             assertTrue(card.isDeleted());
-            verify(creditCardRepository, never()).save(any(CreditCard.class));
+            verify(creditCardRepository, never()).saveAndFlush(any(CreditCard.class));
         }
 
         @Test
@@ -414,7 +314,8 @@ public class CreditCardServiceTest {
 
             assertFalse(card.isDeleted());
             verify(creditCardValidatorService, times(1)).validateRestoration(card);
-            verify(creditCardRepository, times(1)).save(card);
+            verify(creditCardRepository, times(1)).saveAndFlush(card);
+            verify(outboxService, times(1)).creditCardChanged(card);
         }
     }
 }

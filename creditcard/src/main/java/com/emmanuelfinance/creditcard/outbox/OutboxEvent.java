@@ -1,5 +1,6 @@
-package com.emmanuelfinance.creditcard.payment.outbox;
+package com.emmanuelfinance.creditcard.outbox;
 
+import com.emmanuelfinance.creditcard.outbox.enums.CreditCardOutboxEventType;
 import com.emmanuelfinance.shared.outbox.BaseOutboxEvent;
 import com.emmanuelfinance.shared.outbox.enums.OutboxEventType;
 import jakarta.persistence.*;
@@ -16,7 +17,7 @@ public class OutboxEvent extends BaseOutboxEvent {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
-    private PaymentOutboxEventType type;
+    private CreditCardOutboxEventType type;
 
     @Override
     public OutboxEventType getType() {

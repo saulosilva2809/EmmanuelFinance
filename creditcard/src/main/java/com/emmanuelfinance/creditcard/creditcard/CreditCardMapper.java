@@ -3,6 +3,7 @@ package com.emmanuelfinance.creditcard.creditcard;
 import com.emmanuelfinance.creditcard.creditcard.dto.CreateCreditCardDTO;
 import com.emmanuelfinance.creditcard.creditcard.dto.ResponseCreditCardDTO;
 import com.emmanuelfinance.creditcard.creditcard.dto.UpdateCreditCardDTO;
+import com.emmanuelfinance.creditcard.creditcard.query.CreditCardDocument;
 import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import org.mapstruct.*;
@@ -26,7 +27,12 @@ public abstract class CreditCardMapper {
     public abstract CreditCard toEntity(CreateCreditCardDTO data);
 
     @Mapping(target = "account", source = "accountId", qualifiedByName = "mapAccount")
+    public abstract ResponseCreditCardDTO toResponseDTO(CreditCardDocument entity);
+
+    @Mapping(target = "account", source = "accountId", qualifiedByName = "mapAccount")
     public abstract ResponseCreditCardDTO toResponseDTO(CreditCard entity);
+
+    public abstract CreditCardDocument toDocument(CreditCard entity);
 
     @Named("mapAccount")
     protected AccountSummaryDTO mapAccount(UUID accountId) {

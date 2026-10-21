@@ -1,5 +1,6 @@
-package com.emmanuelfinance.creditcard.payment.outbox;
+package com.emmanuelfinance.creditcard.outbox;
 
+import com.emmanuelfinance.creditcard.outbox.enums.CreditCardOutboxEventType;
 import com.emmanuelfinance.creditcard.payment.kafka.PaymentProducer;
 import com.emmanuelfinance.shared.modules.payment.InvoicePaymentDTO;
 import com.emmanuelfinance.shared.outbox.enums.OutboxEventType;
@@ -35,7 +36,7 @@ class PaymentOutboxDispatcherTest {
 
     @Test
     void shouldSupportOnlyTheInvoicePaymentType() {
-        assertTrue(dispatcher.supports(PaymentOutboxEventType.INVOICE_PAYMENT));
+        assertTrue(dispatcher.supports(CreditCardOutboxEventType.INVOICE_PAYMENT));
         assertFalse(dispatcher.supports(new OutboxEventType() {}));
     }
 
@@ -56,7 +57,6 @@ class PaymentOutboxDispatcherTest {
         assertEquals(payment.invoiceId(), published.invoiceId());
         assertEquals(payment.month(), published.month());
         assertEquals(payment.year(), published.year());
-        // o valor é o mesmo; o Jackson só tira os zeros finais do BigDecimal (300.00 vira 3E+2)
         assertEquals(0, payment.totalPaid().compareTo(published.totalPaid()));
     }
 
@@ -69,7 +69,7 @@ class PaymentOutboxDispatcherTest {
 
     private OutboxEvent row(InvoicePaymentDTO payment) {
         OutboxEvent row = new OutboxEvent();
-        row.setType(PaymentOutboxEventType.INVOICE_PAYMENT);
+        row.setType(CreditCardOutboxEventType.INVOICE_PAYMENT);
         row.setAggregateId(payment.accountId().toString());
         row.setPayload(objectMapper.valueToTree(payment));
         return row;

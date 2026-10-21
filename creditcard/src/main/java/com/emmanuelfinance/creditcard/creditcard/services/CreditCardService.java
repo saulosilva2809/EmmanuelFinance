@@ -2,17 +2,12 @@ package com.emmanuelfinance.creditcard.creditcard.services;
 
 import com.emmanuelfinance.creditcard.creditcard.*;
 import com.emmanuelfinance.creditcard.creditcard.dto.CreateCreditCardDTO;
-import com.emmanuelfinance.creditcard.creditcard.dto.CreditCardFiltersDTO;
 import com.emmanuelfinance.creditcard.creditcard.dto.ResponseCreditCardDTO;
 import com.emmanuelfinance.creditcard.creditcard.dto.UpdateCreditCardDTO;
-import com.emmanuelfinance.shared.annotation.WithDeletedFilter;
-import com.emmanuelfinance.shared.dto.PageResponseDTO;
+import com.emmanuelfinance.creditcard.outbox.OutboxService;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +25,7 @@ public class CreditCardService {
     private final CreditCardSelector cardSelector;
     private final CreditCardValidatorService creditCardValidatorService;
     private final CreditCardBalanceService creditCardBalanceService;
+    private final OutboxService outboxService;
 
     @Transactional
     public ResponseCreditCardDTO create(CreateCreditCardDTO data) {
@@ -46,43 +42,9 @@ public class CreditCardService {
                 .ifPresent(creditLimit -> creditCard.setAvailableLimit(creditLimit));
 
         CreditCard savedCreditCard = creditCardRepository.save(creditCard);
+        outboxService.creditCardChanged(savedCreditCard);
 
         return cardMapper.toResponseDTO(savedCreditCard);
-    }
-
-    public ResponseCreditCardDTO view(UUID cardId) {
-        CreditCard creditCard = cardSelector.getCreditCardById(cardId);
-        return cardMapper.toResponseDTO(creditCard);
-    }
-
-    @WithDeletedFilter()
-    public PageResponseDTO<ResponseCreditCardDTO> list(CreditCardFiltersDTO filters, Pageable pageable) {
-        UUID userId = securityUtils.getCurrentUserId();
-
-        Specification<CreditCard> specification = CreditCardSpecification.withFilter(filters, userId, false);
-        Page<CreditCard> page = creditCardRepository.findAll(
-                specification,
-                pageable
-        );
-
-        Page<ResponseCreditCardDTO> dtoPage = page.map(cardMapper::toResponseDTO);
-
-        return PageResponseDTO.from(dtoPage);
-    }
-
-    @WithDeletedFilter(enabled = false)
-    public PageResponseDTO<ResponseCreditCardDTO> listDeleted(CreditCardFiltersDTO filters, Pageable pageable) {
-        UUID userId = securityUtils.getCurrentUserId();
-
-        Specification<CreditCard> specification = CreditCardSpecification.withFilter(filters, userId, true);
-        Page<CreditCard> page = creditCardRepository.findAll(
-                specification,
-                pageable
-        );
-
-        Page<ResponseCreditCardDTO> dtoPage = page.map(cardMapper::toResponseDTO);
-
-        return PageResponseDTO.from(dtoPage);
     }
 
     @Transactional
@@ -95,7 +57,9 @@ public class CreditCardService {
 
         creditCardBalanceService.updateAvailableLimit(creditCard, data);
         cardMapper.updateCreditCardFromDTO(data, creditCard);
-        CreditCard updatedCard = creditCardRepository.save(creditCard);
+
+        CreditCard updatedCard = creditCardRepository.saveAndFlush(creditCard);
+        outboxService.creditCardChanged(updatedCard);
 
         return cardMapper.toResponseDTO(updatedCard);
     }
@@ -103,7 +67,9 @@ public class CreditCardService {
     @Transactional
     public void delete(UUID cardId) {
         CreditCard creditCard = cardSelector.getCreditCardById(cardId);
+
         creditCardRepository.delete(creditCard);
+        outboxService.creditCardDeleted(creditCard);
     }
 
     @Transactional
@@ -113,6 +79,7 @@ public class CreditCardService {
         creditCardValidatorService.validateRestoration(creditCard);
 
         creditCard.setDeleted(false);
-        creditCardRepository.save(creditCard);
+        creditCardRepository.saveAndFlush(creditCard);
+        outboxService.creditCardChanged(creditCard);
     }
 }

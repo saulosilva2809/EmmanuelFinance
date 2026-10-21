@@ -4,6 +4,7 @@ import com.emmanuelfinance.creditcard.creditcard.dto.CreateCreditCardDTO;
 import com.emmanuelfinance.creditcard.creditcard.dto.CreditCardFiltersDTO;
 import com.emmanuelfinance.creditcard.creditcard.dto.ResponseCreditCardDTO;
 import com.emmanuelfinance.creditcard.creditcard.dto.UpdateCreditCardDTO;
+import com.emmanuelfinance.creditcard.creditcard.query.CreditCardQueryService;
 import com.emmanuelfinance.creditcard.creditcard.services.CreditCardService;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import jakarta.validation.Valid;
@@ -23,6 +24,7 @@ import java.util.UUID;
 public class CreditCardController {
 
     private final CreditCardService creditCardService;
+    private final CreditCardQueryService creditCardQueryService;
 
     @PostMapping
     public ResponseEntity<ResponseCreditCardDTO> create(@Valid @RequestBody CreateCreditCardDTO data) {
@@ -32,7 +34,7 @@ public class CreditCardController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ResponseCreditCardDTO> view(@PathVariable UUID id) {
-        ResponseCreditCardDTO response = creditCardService.view(id);
+        ResponseCreditCardDTO response = creditCardQueryService.view(id);
         return ResponseEntity.ok().body(response);
     }
 
@@ -45,7 +47,7 @@ public class CreditCardController {
             )
             Pageable pageable
     ) {
-        PageResponseDTO<ResponseCreditCardDTO> response = creditCardService.list(filters, pageable);
+        PageResponseDTO<ResponseCreditCardDTO> response = creditCardQueryService.list(filters, pageable);
         return ResponseEntity.ok().body(response);
     }
 
@@ -58,7 +60,7 @@ public class CreditCardController {
             )
             Pageable pageable
     ) {
-        PageResponseDTO<ResponseCreditCardDTO> response = creditCardService.listDeleted(filters, pageable);
+        PageResponseDTO<ResponseCreditCardDTO> response = creditCardQueryService.listDeleted(filters, pageable);
         return ResponseEntity.ok().body(response);
     }
 

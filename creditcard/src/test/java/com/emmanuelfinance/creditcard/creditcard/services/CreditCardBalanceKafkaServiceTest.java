@@ -6,6 +6,7 @@ import com.emmanuelfinance.creditcard.creditcard.CreditCardSelector;
 import com.emmanuelfinance.creditcard.CreditCardTestDataBuilder;
 import com.emmanuelfinance.creditcard.invoice.InvoiceTestDataBuilder;
 import com.emmanuelfinance.creditcard.invoice.services.InvoiceService;
+import com.emmanuelfinance.creditcard.outbox.OutboxService;
 import com.emmanuelfinance.shared.modules.creditcard.exceptions.CreditCardNotFound;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
@@ -36,6 +37,9 @@ public class CreditCardBalanceKafkaServiceTest {
 
     @Mock
     private CreditCardRepository creditCardRepository;
+
+    @Mock
+    private OutboxService outboxService;
 
     @InjectMocks
     private CreditCardBalanceKafkaService creditCardBalanceKafkaService;
@@ -72,8 +76,9 @@ public class CreditCardBalanceKafkaServiceTest {
             creditCardBalanceKafkaService.processTransactionCreate(event);
 
             assertEquals(new BigDecimal("700.00"), card.getAvailableLimit());
-            InOrder inOrder = inOrder(creditCardRepository, invoiceService);
+            InOrder inOrder = inOrder(creditCardRepository, outboxService, invoiceService);
             inOrder.verify(creditCardRepository).saveAndFlush(card);
+            inOrder.verify(outboxService).creditCardChanged(card);
             inOrder.verify(invoiceService).findOrCreate(event);
         }
 
@@ -106,8 +111,9 @@ public class CreditCardBalanceKafkaServiceTest {
             creditCardBalanceKafkaService.processTransactionDeletion(event);
 
             assertEquals(new BigDecimal("1000.00"), card.getAvailableLimit());
-            InOrder inOrder = inOrder(creditCardRepository, invoiceService);
+            InOrder inOrder = inOrder(creditCardRepository, outboxService, invoiceService);
             inOrder.verify(creditCardRepository).saveAndFlush(card);
+            inOrder.verify(outboxService).creditCardChanged(card);
             inOrder.verify(invoiceService).delete(event);
         }
     }
@@ -126,8 +132,9 @@ public class CreditCardBalanceKafkaServiceTest {
             creditCardBalanceKafkaService.processTransactionRestore(event);
 
             assertEquals(new BigDecimal("700.00"), card.getAvailableLimit());
-            InOrder inOrder = inOrder(creditCardRepository, invoiceService);
+            InOrder inOrder = inOrder(creditCardRepository, outboxService, invoiceService);
             inOrder.verify(creditCardRepository).saveAndFlush(card);
+            inOrder.verify(outboxService).creditCardChanged(card);
             inOrder.verify(invoiceService).restore(event);
         }
 
