@@ -17,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Arrays;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -37,6 +38,17 @@ public class AccountInternalServiceTest {
     void setUp() {
         CreateAccountDTO accountDTO = AccountTestDataBuilder.createAccountDTO();
         account = AccountTestDataBuilder.accountEntity(accountDTO, UUID.randomUUID(), false);
+    }
+
+    // Regra: o serviço interno decide com o saldo, então lê do Postgres. O Mongo recebe os dados pelo Outbox
+    // e pode estar atrasado. Se isto falhar, alguém ligou o serviço interno ao lado de leitura.
+    @Test
+    @DisplayName("Não deve depender de nenhuma classe do lado de leitura (Mongo)")
+    void shouldNotDependOnTheMongoReadModel() {
+        boolean dependsOnReadModel = Arrays.stream(AccountInternalService.class.getDeclaredFields())
+                .anyMatch(field -> field.getType().getPackageName().endsWith(".query"));
+
+        assertFalse(dependsOnReadModel);
     }
 
     @Nested()

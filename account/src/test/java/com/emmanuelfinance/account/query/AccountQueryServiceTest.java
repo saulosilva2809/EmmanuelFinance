@@ -9,7 +9,6 @@ import com.emmanuelfinance.account.exceptions.AccountErrorCode;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.security.SecurityUtils;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mapstruct.factory.Mappers;
@@ -24,7 +23,6 @@ import org.springframework.data.mongodb.core.query.Query;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -36,7 +34,7 @@ import static org.mockito.Mockito.*;
 class AccountQueryServiceTest {
 
     @Mock
-    private AccountDocumentRepository accountDocumentRepository;
+    private AccountDocumentSelector accountDocumentSelector;
 
     @Mock
     private MongoTemplate mongoTemplate;
@@ -50,19 +48,12 @@ class AccountQueryServiceTest {
     @InjectMocks
     private AccountQueryService accountQueryService;
 
-    private UUID userId;
-
-    @BeforeEach
-    void setUp() {
-        userId = UUID.randomUUID();
-        when(securityUtils.getCurrentUserId()).thenReturn(userId);
-    }
+    private final UUID userId = UUID.randomUUID();
 
     @Test
     void shouldReturnTheAccountWhenItExists() {
         AccountDocument document = newDocument();
-        when(accountDocumentRepository.findByIdAndUserIdAndDeletedFalse(document.getId(), userId))
-                .thenReturn(Optional.of(document));
+        when(accountDocumentSelector.getByIdAndUserIdAndDeletedFalse(document.getId())).thenReturn(document);
 
         ResponseAccountDTO result = accountQueryService.view(document.getId());
 
@@ -72,10 +63,10 @@ class AccountQueryServiceTest {
     }
 
     @Test
-    void shouldThrowAccountNotFoundWhenAccountDoesNotExist() {
+    void shouldPropagateAccountNotFoundWhenAccountDoesNotExist() {
         UUID id = UUID.randomUUID();
-        when(accountDocumentRepository.findByIdAndUserIdAndDeletedFalse(id, userId))
-                .thenReturn(Optional.empty());
+        when(accountDocumentSelector.getByIdAndUserIdAndDeletedFalse(id))
+                .thenThrow(new AccountDomainException(AccountErrorCode.ACCOUNT_NOT_FOUND));
 
         AccountDomainException exception = assertThrows(AccountDomainException.class,
                 () -> accountQueryService.view(id));
@@ -87,6 +78,7 @@ class AccountQueryServiceTest {
     void shouldReturnPaginatedAccounts() {
         Pageable pageable = PageRequest.of(0, 10);
         AccountDocument document = newDocument();
+        when(securityUtils.getCurrentUserId()).thenReturn(userId);
         when(mongoTemplate.count(any(Query.class), eq(AccountDocument.class))).thenReturn(1L);
         when(mongoTemplate.find(any(Query.class), eq(AccountDocument.class))).thenReturn(List.of(document));
 
@@ -101,6 +93,7 @@ class AccountQueryServiceTest {
     @Test
     void shouldReturnEmptyPageWhenNoAccountsFound() {
         Pageable pageable = PageRequest.of(0, 10);
+        when(securityUtils.getCurrentUserId()).thenReturn(userId);
         when(mongoTemplate.count(any(Query.class), eq(AccountDocument.class))).thenReturn(0L);
         when(mongoTemplate.find(any(Query.class), eq(AccountDocument.class))).thenReturn(List.of());
 

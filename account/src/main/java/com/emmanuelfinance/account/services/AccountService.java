@@ -48,11 +48,9 @@ public class AccountService {
         Account account = accountSelector.getAccountByIdAndUserId(uuid);
 
         accountMapper.updateAccountFromDTO(data, account);
-
-        // flush para o updatedAt já estar preenchido na foto que vai para o Outbox
         Account savedAccount = accountRepository.saveAndFlush(account);
-        outboxService.accountUpdated(savedAccount);
 
+        outboxService.accountUpdated(savedAccount);
         return accountMapper.toResponseDTO(savedAccount);
     }
 

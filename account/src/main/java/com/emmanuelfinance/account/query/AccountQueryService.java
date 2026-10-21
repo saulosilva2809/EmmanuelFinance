@@ -3,8 +3,6 @@ package com.emmanuelfinance.account.query;
 import com.emmanuelfinance.account.AccountMapper;
 import com.emmanuelfinance.account.dto.AccountFiltersDTO;
 import com.emmanuelfinance.account.dto.ResponseAccountDTO;
-import com.emmanuelfinance.account.exceptions.AccountDomainException;
-import com.emmanuelfinance.account.exceptions.AccountErrorCode;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -22,16 +20,13 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AccountQueryService {
 
-    private final AccountDocumentRepository accountDocumentRepository;
+    private final AccountDocumentSelector accountDocumentSelector;
     private final MongoTemplate mongoTemplate;
     private final AccountMapper accountMapper;
     private final SecurityUtils securityUtils;
 
     public ResponseAccountDTO view(UUID id) {
-        UUID userId = securityUtils.getCurrentUserId();
-
-        AccountDocument document = accountDocumentRepository.findByIdAndUserIdAndDeletedFalse(id, userId)
-                .orElseThrow(() -> new AccountDomainException(AccountErrorCode.ACCOUNT_NOT_FOUND));
+        AccountDocument document = accountDocumentSelector.getByIdAndUserIdAndDeletedFalse(id);
 
         return accountMapper.toResponseDTO(document);
     }
@@ -48,11 +43,9 @@ public class AccountQueryService {
         UUID userId = securityUtils.getCurrentUserId();
 
         Query query = AccountSpecification.withFilter(filters, userId, deleted);
-
-        // o count precisa vir antes do with(pageable), que adiciona skip/limit na query
         long total = mongoTemplate.count(query, AccountDocument.class);
-        List<AccountDocument> documents = mongoTemplate.find(query.with(pageable), AccountDocument.class);
 
+        List<AccountDocument> documents = mongoTemplate.find(query.with(pageable), AccountDocument.class);
         Page<ResponseAccountDTO> page = new PageImpl<>(documents, pageable, total)
                 .map(accountMapper::toResponseDTO);
 

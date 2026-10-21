@@ -2,16 +2,15 @@ package com.emmanuelfinance.account.query;
 
 import com.emmanuelfinance.account.enums.TypeEnum;
 import com.emmanuelfinance.shared.enums.BanksEnum;
+import com.emmanuelfinance.shared.mongo.BaseDocument;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Document(collection = "accounts")
@@ -19,20 +18,16 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-public class AccountDocument {
-
-    @Id
-    private UUID id;
+public class AccountDocument extends BaseDocument {
 
     private UUID userId;
     private String name;
     private TypeEnum type;
     private BanksEnum bank;
+
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal initialBalance;
+
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal currentBalance;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-    private boolean deleted;
 }
