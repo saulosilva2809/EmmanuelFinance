@@ -6,7 +6,7 @@ import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreat
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionUpdatedEvent;
 import com.emmanuelfinance.transaction.Transaction;
-import com.emmanuelfinance.transaction.kafka.TransactionProducer;
+import com.emmanuelfinance.transaction.outbox.OutboxService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,11 +18,11 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TransactionEventsService {
 
-    private final TransactionProducer transactionProducer;
+    private final OutboxService outboxService;
 
     public void publishTransactionCreatedEvent(Transaction transaction) {
         if (transaction.getStatus() == StatusTransactionEnum.PAID) {
-            transactionProducer.publishTransactionCreated(new TransactionCreatedEvent(
+            outboxService.transactionCreatedEvent(new TransactionCreatedEvent(
                     transaction.getId(),
                     transaction.getAccountId(),
                     transaction.getCreditCardId(),
@@ -38,7 +38,7 @@ public class TransactionEventsService {
 
     public void publishInvoicePaymentCreatedEvent(Transaction transaction) {
         if (transaction.getStatus() == StatusTransactionEnum.PAID) {
-            transactionProducer.publishInvoicePaymentCreated(new TransactionCreatedEvent(
+            outboxService.invoicePaymentCreatedEvent(new TransactionCreatedEvent(
                     transaction.getId(),
                     transaction.getAccountId(),
                     transaction.getCreditCardId(),
@@ -60,7 +60,7 @@ public class TransactionEventsService {
             StatusTransactionEnum oldStatus
     ) {
         if (transaction.getStatus() == StatusTransactionEnum.PAID) {
-            transactionProducer.publishTransactionUpdated(new TransactionUpdatedEvent(
+            outboxService.transactionUpdatedEvent(new TransactionUpdatedEvent(
                     transaction.getId(),
                     oldAccountId,
                     transaction.getAccountId(),
@@ -77,7 +77,7 @@ public class TransactionEventsService {
 
     public void publishTransactionDeletedEvent(Transaction transaction) {
         if (transaction.getStatus() == StatusTransactionEnum.PAID) {
-            transactionProducer.publishTransactionDeleted(new TransactionDeletedAndRestoreEvent(
+            outboxService.transactionDeletedEvent(new TransactionDeletedAndRestoreEvent(
                     transaction.getId(),
                     transaction.getAccountId(),
                     transaction.getCreditCardId(),
@@ -93,7 +93,7 @@ public class TransactionEventsService {
 
     public void publishTransactionRestoreEvent(Transaction transaction) {
         if (transaction.getStatus() == StatusTransactionEnum.PAID) {
-            transactionProducer.publishTransactionRestore(new TransactionDeletedAndRestoreEvent(
+            outboxService.transactionRestoredEvent(new TransactionDeletedAndRestoreEvent(
                     transaction.getId(),
                     transaction.getAccountId(),
                     transaction.getCreditCardId(),

@@ -7,7 +7,7 @@ import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDelet
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionUpdatedEvent;
 import com.emmanuelfinance.transaction.Transaction;
 import com.emmanuelfinance.transaction.TransactionTestDataBuilder;
-import com.emmanuelfinance.transaction.kafka.TransactionProducer;
+import com.emmanuelfinance.transaction.outbox.OutboxService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -28,7 +28,7 @@ import static org.mockito.Mockito.*;
 public class TransactionEventsServiceTest {
 
     @Mock
-    private TransactionProducer transactionProducer;
+    private OutboxService outboxService;
 
     @InjectMocks
     private TransactionEventsService transactionEventsService;
@@ -53,7 +53,7 @@ public class TransactionEventsServiceTest {
             transactionEventsService.publishTransactionCreatedEvent(transaction);
 
             ArgumentCaptor<TransactionCreatedEvent> captor = ArgumentCaptor.forClass(TransactionCreatedEvent.class);
-            verify(transactionProducer, times(1)).publishTransactionCreated(captor.capture());
+            verify(outboxService, times(1)).transactionCreatedEvent(captor.capture());
             TransactionCreatedEvent event = captor.getValue();
 
             assertEquals(transaction.getId(), event.transactionId());
@@ -76,7 +76,7 @@ public class TransactionEventsServiceTest {
             transactionEventsService.publishTransactionCreatedEvent(transaction);
 
             ArgumentCaptor<TransactionCreatedEvent> captor = ArgumentCaptor.forClass(TransactionCreatedEvent.class);
-            verify(transactionProducer).publishTransactionCreated(captor.capture());
+            verify(outboxService).transactionCreatedEvent(captor.capture());
             assertNotNull(captor.getValue().date());
             assertFalse(captor.getValue().date().isBefore(before));
         }
@@ -87,7 +87,7 @@ public class TransactionEventsServiceTest {
             transactionEventsService.publishTransactionCreatedEvent(transaction(StatusTransactionEnum.PENDING, null));
             transactionEventsService.publishTransactionCreatedEvent(transaction(StatusTransactionEnum.FAILED, null));
 
-            verifyNoInteractions(transactionProducer);
+            verifyNoInteractions(outboxService);
         }
     }
 
@@ -107,7 +107,7 @@ public class TransactionEventsServiceTest {
             );
 
             ArgumentCaptor<TransactionUpdatedEvent> captor = ArgumentCaptor.forClass(TransactionUpdatedEvent.class);
-            verify(transactionProducer, times(1)).publishTransactionUpdated(captor.capture());
+            verify(outboxService, times(1)).transactionUpdatedEvent(captor.capture());
             TransactionUpdatedEvent event = captor.getValue();
 
             assertEquals(transaction.getId(), event.transactionId());
@@ -130,7 +130,7 @@ public class TransactionEventsServiceTest {
                     UUID.randomUUID(), BigDecimal.TEN, TypeEnum.EXPENSE, StatusTransactionEnum.PENDING
             );
 
-            verifyNoInteractions(transactionProducer);
+            verifyNoInteractions(outboxService);
         }
     }
 
@@ -148,7 +148,7 @@ public class TransactionEventsServiceTest {
 
             ArgumentCaptor<TransactionDeletedAndRestoreEvent> captor =
                     ArgumentCaptor.forClass(TransactionDeletedAndRestoreEvent.class);
-            verify(transactionProducer, times(1)).publishTransactionDeleted(captor.capture());
+            verify(outboxService, times(1)).transactionDeletedEvent(captor.capture());
             assertEquals(transaction.getId(), captor.getValue().transactionId());
             assertEquals(transaction.getAmount(), captor.getValue().amount());
             assertEquals(date, captor.getValue().date());
@@ -159,7 +159,7 @@ public class TransactionEventsServiceTest {
         void shouldNotPublishWhenNotPaid() {
             transactionEventsService.publishTransactionDeletedEvent(transaction(StatusTransactionEnum.PENDING, null));
 
-            verifyNoInteractions(transactionProducer);
+            verifyNoInteractions(outboxService);
         }
     }
 
@@ -176,7 +176,7 @@ public class TransactionEventsServiceTest {
 
             ArgumentCaptor<TransactionDeletedAndRestoreEvent> captor =
                     ArgumentCaptor.forClass(TransactionDeletedAndRestoreEvent.class);
-            verify(transactionProducer, times(1)).publishTransactionRestore(captor.capture());
+            verify(outboxService, times(1)).transactionRestoredEvent(captor.capture());
             assertEquals(transaction.getId(), captor.getValue().transactionId());
             assertEquals(transaction.getUserId(), captor.getValue().userId());
             assertNotNull(captor.getValue().date());
@@ -187,7 +187,7 @@ public class TransactionEventsServiceTest {
         void shouldNotPublishWhenNotPaid() {
             transactionEventsService.publishTransactionRestoreEvent(transaction(StatusTransactionEnum.FAILED, null));
 
-            verifyNoInteractions(transactionProducer);
+            verifyNoInteractions(outboxService);
         }
     }
 
@@ -204,8 +204,8 @@ public class TransactionEventsServiceTest {
             transactionEventsService.publishInvoicePaymentCreatedEvent(transaction);
 
             ArgumentCaptor<TransactionCreatedEvent> captor = ArgumentCaptor.forClass(TransactionCreatedEvent.class);
-            verify(transactionProducer, times(1)).publishInvoicePaymentCreated(captor.capture());
-            verify(transactionProducer, never()).publishTransactionCreated(any());
+            verify(outboxService, times(1)).invoicePaymentCreatedEvent(captor.capture());
+            verify(outboxService, never()).transactionCreatedEvent(any());
 
             TransactionCreatedEvent event = captor.getValue();
             assertEquals(transaction.getId(), event.transactionId());
@@ -223,7 +223,7 @@ public class TransactionEventsServiceTest {
             transactionEventsService.publishInvoicePaymentCreatedEvent(transaction(StatusTransactionEnum.PENDING, null));
             transactionEventsService.publishInvoicePaymentCreatedEvent(transaction(StatusTransactionEnum.FAILED, null));
 
-            verifyNoInteractions(transactionProducer);
+            verifyNoInteractions(outboxService);
         }
     }
 }

@@ -27,6 +27,12 @@ spring:
       port: ${REDIS_PORT:6379}
       timeout: 2000ms
 
+    mongodb:
+      uri: ${MONGODB_URI}
+      database: ${MONGODB_DATABASE}
+      uuid-representation: standard
+      auto-index-creation: true
+
   security:
     oauth2:
       resourceserver:

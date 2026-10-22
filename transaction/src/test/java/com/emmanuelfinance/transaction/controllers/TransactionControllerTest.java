@@ -12,6 +12,7 @@ import com.emmanuelfinance.transaction.dtos.TransactionFiltersDTO;
 import com.emmanuelfinance.transaction.dtos.UpdateTransactionDTO;
 import com.emmanuelfinance.transaction.exceptions.TransactionDomainException;
 import com.emmanuelfinance.transaction.exceptions.TransactionErrorCode;
+import com.emmanuelfinance.transaction.query.TransactionQueryService;
 import com.emmanuelfinance.transaction.services.TransactionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -59,6 +60,9 @@ public class TransactionControllerTest {
 
     @MockBean
     private TransactionService transactionService;
+
+    @MockBean
+    private TransactionQueryService transactionQueryService;
 
     private ResponseTransactionDTO responseDTO(boolean deleted) {
         Transaction transaction = TransactionTestDataBuilder.transactionEntity(UUID.randomUUID(), deleted);
@@ -180,21 +184,21 @@ public class TransactionControllerTest {
         @DisplayName("Deve retornar 200 OK quando a transação for encontrada")
         void shouldReturn200WhenFound() throws Exception {
             ResponseTransactionDTO response = responseDTO(false);
-            when(transactionService.view(response.id())).thenReturn(response);
+            when(transactionQueryService.view(response.id())).thenReturn(response);
 
             mockMvc.perform(get("/transactions/{id}", response.id()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").value(response.id().toString()))
                     .andExpect(jsonPath("$.amount").value(100.00));
 
-            verify(transactionService, times(1)).view(response.id());
+            verify(transactionQueryService, times(1)).view(response.id());
         }
 
         @Test
         @DisplayName("Deve retornar 404 Not Found quando a transação não existir")
         void shouldReturn404WhenNotFound() throws Exception {
             UUID id = UUID.randomUUID();
-            when(transactionService.view(id)).thenThrow(new TransactionNotFound());
+            when(transactionQueryService.view(id)).thenThrow(new TransactionNotFound());
 
             mockMvc.perform(get("/transactions/{id}", id))
                     .andExpect(status().isNotFound());
@@ -206,7 +210,7 @@ public class TransactionControllerTest {
             mockMvc.perform(get("/transactions/{id}", "abc"))
                     .andExpect(status().isBadRequest());
 
-            verifyNoInteractions(transactionService);
+            verifyNoInteractions(transactionQueryService);
         }
     }
 
@@ -218,7 +222,7 @@ public class TransactionControllerTest {
         @DisplayName("Deve retornar 200 OK com os dados paginados")
         void shouldReturn200WithPaginatedData() throws Exception {
             ResponseTransactionDTO response = responseDTO(false);
-            when(transactionService.list(any(TransactionFiltersDTO.class), any(Pageable.class)))
+            when(transactionQueryService.list(any(TransactionFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(pageOf(response));
 
             mockMvc.perform(get("/transactions").param("page", "0").param("size", "10"))
@@ -233,7 +237,7 @@ public class TransactionControllerTest {
         @Test
         @DisplayName("Deve retornar 200 OK com content vazio")
         void shouldReturn200WithEmptyContent() throws Exception {
-            when(transactionService.list(any(TransactionFiltersDTO.class), any(Pageable.class)))
+            when(transactionQueryService.list(any(TransactionFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(emptyPage());
 
             mockMvc.perform(get("/transactions"))
@@ -248,7 +252,7 @@ public class TransactionControllerTest {
             UUID accountId = UUID.randomUUID();
             UUID categoryId = UUID.randomUUID();
             UUID cardId = UUID.randomUUID();
-            when(transactionService.list(any(TransactionFiltersDTO.class), any(Pageable.class)))
+            when(transactionQueryService.list(any(TransactionFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(emptyPage());
 
             mockMvc.perform(get("/transactions")
@@ -264,7 +268,7 @@ public class TransactionControllerTest {
                     .andExpect(status().isOk());
 
             ArgumentCaptor<TransactionFiltersDTO> captor = ArgumentCaptor.forClass(TransactionFiltersDTO.class);
-            verify(transactionService).list(captor.capture(), any(Pageable.class));
+            verify(transactionQueryService).list(captor.capture(), any(Pageable.class));
             assertEquals(new TransactionFiltersDTO(
                     accountId, categoryId, cardId,
                     new BigDecimal("10.50"), new BigDecimal("99.90"),
@@ -276,13 +280,13 @@ public class TransactionControllerTest {
         @Test
         @DisplayName("Deve aplicar a ordenação padrão createdAt DESC")
         void shouldApplyDefaultSort() throws Exception {
-            when(transactionService.list(any(TransactionFiltersDTO.class), any(Pageable.class)))
+            when(transactionQueryService.list(any(TransactionFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(emptyPage());
 
             mockMvc.perform(get("/transactions")).andExpect(status().isOk());
 
             ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-            verify(transactionService).list(any(TransactionFiltersDTO.class), captor.capture());
+            verify(transactionQueryService).list(any(TransactionFiltersDTO.class), captor.capture());
             assertEquals(Sort.Direction.DESC, captor.getValue().getSort().getOrderFor("createdAt").getDirection());
         }
 
@@ -294,7 +298,7 @@ public class TransactionControllerTest {
             mockMvc.perform(get("/transactions").param("type", "INVALIDO"))
                     .andExpect(status().isBadRequest());
 
-            verifyNoInteractions(transactionService);
+            verifyNoInteractions(transactionQueryService);
         }
     }
 
@@ -306,7 +310,7 @@ public class TransactionControllerTest {
         @DisplayName("Deve retornar 200 OK com as transações excluídas paginadas")
         void shouldReturn200WithPaginatedData() throws Exception {
             ResponseTransactionDTO response = responseDTO(true);
-            when(transactionService.listDeleted(any(TransactionFiltersDTO.class), any(Pageable.class)))
+            when(transactionQueryService.listDeleted(any(TransactionFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(pageOf(response));
 
             mockMvc.perform(get("/transactions/deleted"))
@@ -319,7 +323,7 @@ public class TransactionControllerTest {
         @Test
         @DisplayName("Deve retornar 200 OK com content vazio")
         void shouldReturn200WithEmptyContent() throws Exception {
-            when(transactionService.listDeleted(any(TransactionFiltersDTO.class), any(Pageable.class)))
+            when(transactionQueryService.listDeleted(any(TransactionFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(emptyPage());
 
             mockMvc.perform(get("/transactions/deleted"))
@@ -330,13 +334,13 @@ public class TransactionControllerTest {
         @Test
         @DisplayName("Deve aplicar a ordenação padrão createdAt DESC")
         void shouldApplyDefaultSort() throws Exception {
-            when(transactionService.listDeleted(any(TransactionFiltersDTO.class), any(Pageable.class)))
+            when(transactionQueryService.listDeleted(any(TransactionFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(emptyPage());
 
             mockMvc.perform(get("/transactions/deleted")).andExpect(status().isOk());
 
             ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-            verify(transactionService).listDeleted(any(TransactionFiltersDTO.class), captor.capture());
+            verify(transactionQueryService).listDeleted(any(TransactionFiltersDTO.class), captor.capture());
             assertEquals(Sort.Direction.DESC, captor.getValue().getSort().getOrderFor("createdAt").getDirection());
         }
 
@@ -346,7 +350,7 @@ public class TransactionControllerTest {
             mockMvc.perform(get("/transactions/deleted").param("type", "INVALIDO"))
                     .andExpect(status().isBadRequest());
 
-            verifyNoInteractions(transactionService);
+            verifyNoInteractions(transactionQueryService);
         }
     }
 

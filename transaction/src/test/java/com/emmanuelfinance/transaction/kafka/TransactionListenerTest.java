@@ -7,6 +7,7 @@ import com.emmanuelfinance.transaction.Transaction;
 import com.emmanuelfinance.transaction.TransactionRepository;
 import com.emmanuelfinance.transaction.TransactionSelector;
 import com.emmanuelfinance.transaction.TransactionTestDataBuilder;
+import com.emmanuelfinance.transaction.outbox.OutboxService;
 import com.emmanuelfinance.transaction.services.TransactionServiceInternal;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -32,6 +33,9 @@ public class TransactionListenerTest {
     private TransactionRepository transactionRepository;
 
     @Mock
+    private OutboxService outboxService;
+
+    @Mock
     private TransactionServiceInternal transactionServiceInternal;
 
     @InjectMocks
@@ -50,7 +54,8 @@ public class TransactionListenerTest {
             transactionListener.handleTransactionFailed(transaction.getId());
 
             assertEquals(StatusTransactionEnum.FAILED, transaction.getStatus());
-            verify(transactionRepository, times(1)).save(transaction);
+            verify(transactionRepository, times(1)).saveAndFlush(transaction);
+            verify(outboxService, times(1)).transactionChanged(transaction);
         }
 
         @Test
@@ -61,7 +66,7 @@ public class TransactionListenerTest {
 
             assertThrows(TransactionNotFound.class, () -> transactionListener.handleTransactionFailed(id));
 
-            verifyNoInteractions(transactionRepository);
+            verifyNoInteractions(transactionRepository, outboxService);
         }
     }
 

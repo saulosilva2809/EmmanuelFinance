@@ -11,16 +11,17 @@ import com.emmanuelfinance.transaction.TransactionMapper;
 import com.emmanuelfinance.transaction.TransactionRepository;
 import com.emmanuelfinance.transaction.TransactionSelector;
 import com.emmanuelfinance.transaction.dtos.CreateTransactionDTO;
+import com.emmanuelfinance.transaction.outbox.OutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+// serviço das chamadas entre serviços e dos pagamentos de fatura que chegam pelo kafka. lê do postgres, que é a fonte
+// da verdade, e nunca do mongo: o mongo pode estar atrasado e quem chama aqui decide coisas com os dados
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -32,6 +33,7 @@ public class TransactionServiceInternal {
     private final TransactionRepository transactionRepository;
     private final TransactionEventsService transactionEventsService;
     private final IdempotencyService idempotencyService;
+    private final OutboxService outboxService;
 
     public TransactionSummaryDTO getSummaryDTO(UUID transactionId) {
         Transaction transaction = transactionSelector.getTransactionByIdInternal(
@@ -51,27 +53,11 @@ public class TransactionServiceInternal {
         );
     }
 
-    /**
-     * O evento só sai depois do commit, para o saldo da conta não ser debitado se a transação não for salva.
-     */
-    private void publishInvoicePaymentAfterCommit(Transaction transaction) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            transactionEventsService.publishInvoicePaymentCreatedEvent(transaction);
-            return;
-        }
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                transactionEventsService.publishInvoicePaymentCreatedEvent(transaction);
-            }
-        });
-    }
-
     @Transactional
     public void createTransactionRelatedToInvoicePayment(InvoicePaymentDTO data) {
         String idempotencyKey = idempotencyService.generateInvoicePaymentKey(data.userId(), data.invoiceId());
 
+        // o kafka pode entregar o mesmo pagamento duas vezes: a chave da fatura mostra se ele já foi processado
         if (transactionRepository.existsByIdempotencyKey(idempotencyKey)) {
             log.warn("Pagamento da fatura {} já processado, evento ignorado.", data.invoiceId());
             return;
@@ -99,7 +85,9 @@ public class TransactionServiceInternal {
         transaction.setStatus(StatusTransactionEnum.PAID);
         transaction.setIdempotencyKey(idempotencyKey);
 
+        // a transação nasce junto com o aviso para a conta descontar o saldo: os dois vão pelo outbox e só saem se esta transação confirmar
         transactionRepository.save(transaction);
-        publishInvoicePaymentAfterCommit(transaction);
+        outboxService.transactionChanged(transaction);
+        transactionEventsService.publishInvoicePaymentCreatedEvent(transaction);
     }
 }

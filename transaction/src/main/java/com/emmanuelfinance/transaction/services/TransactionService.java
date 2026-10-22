@@ -1,22 +1,17 @@
 package com.emmanuelfinance.transaction.services;
 
-import com.emmanuelfinance.shared.annotation.WithDeletedFilter;
-import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.enums.TypeEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import com.emmanuelfinance.transaction.*;
 import com.emmanuelfinance.transaction.dtos.CreateTransactionDTO;
 import com.emmanuelfinance.transaction.dtos.ResponseTransactionDTO;
-import com.emmanuelfinance.transaction.dtos.TransactionFiltersDTO;
 import com.emmanuelfinance.transaction.dtos.UpdateTransactionDTO;
 import com.emmanuelfinance.transaction.exceptions.TransactionDomainException;
 import com.emmanuelfinance.transaction.exceptions.TransactionErrorCode;
+import com.emmanuelfinance.transaction.outbox.OutboxService;
 import com.emmanuelfinance.transaction.services.scheduler.TransactionSchedulerService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +30,9 @@ public class TransactionService {
     private final TransactionValidatorService transactionValidatorService;
     private final TransactionEventsService transactionEventsService;
     private final TransactionSchedulerService transactionSchedulerService;
+    private final OutboxService outboxService;
 
+    // transação agendada espera a data (pendente); a que não é agendada já nasce paga
     private void setTransactionStatus(Transaction transaction) {
         if (Boolean.TRUE.equals(transaction.isScheduled())) {
             transaction.setStatus(StatusTransactionEnum.PENDING);
@@ -59,64 +56,27 @@ public class TransactionService {
         setTransactionStatus(transaction);
 
         Transaction savedTransaction = transactionRepository.save(transaction);
+        outboxService.transactionChanged(savedTransaction);
 
         if (savedTransaction.isScheduled()) {
             transactionSchedulerService.schedule(savedTransaction.getId(), savedTransaction.getDate());
         }
 
+        // só transação paga avisa os outros serviços; a agendada avisa quando for executada
         transactionEventsService.publishTransactionCreatedEvent(savedTransaction);
         return transactionMapper.toResponseDTO(savedTransaction);
-    }
-
-    public ResponseTransactionDTO view(UUID id) {
-        Transaction transaction = transactionSelector.getTransactionById(id);
-        return transactionMapper.toResponseDTO(transaction);
-    }
-
-    @WithDeletedFilter()
-    public PageResponseDTO<ResponseTransactionDTO> list(TransactionFiltersDTO filters, Pageable pageable) {
-        UUID userId = securityUtils.getCurrentUserId();
-
-        Specification<Transaction> specification = TransactionSpecification.withFilter(
-                filters,
-                userId,
-                false
-        );
-        Page<Transaction> page = transactionRepository.findAll(
-                specification,
-                pageable
-        );
-        Page<ResponseTransactionDTO> dtoPage = page.map(transactionMapper::toResponseDTO);
-
-        return PageResponseDTO.from(dtoPage);
-    }
-
-    @WithDeletedFilter(enabled = false)
-    public PageResponseDTO<ResponseTransactionDTO> listDeleted(TransactionFiltersDTO filters, Pageable pageable) {
-        UUID userId = securityUtils.getCurrentUserId();
-
-        Specification<Transaction> specification = TransactionSpecification.withFilter(
-                filters,
-                userId,
-                true
-        );
-        Page<Transaction> page = transactionRepository.findAll(
-                specification,
-                pageable
-        );
-        Page<ResponseTransactionDTO> dtoPage = page.map(transactionMapper::toResponseDTO);
-
-        return PageResponseDTO.from(dtoPage);
     }
 
     @Transactional
     public ResponseTransactionDTO update(UUID transactionId, UpdateTransactionDTO data) {
         Transaction transaction = transactionSelector.getTransactionById(transactionId);
 
+        // compra no cartão mexe em limite e fatura, então não pode ser alterada
         if (transaction.getCreditCardId() != null) {
             throw new TransactionDomainException(TransactionErrorCode.CARD_TRANSACTIONS_CANNOT_BE_CHANGED);
         }
 
+        // guarda os valores de antes, porque o aviso de atualização leva o antes e o depois
         UUID oldAccountId = transaction.getAccountId();
         BigDecimal oldAmount = transaction.getAmount();
         TypeEnum oldType = transaction.getType();
@@ -134,7 +94,8 @@ public class TransactionService {
             transactionSchedulerService.cancel(transaction.getId());
         }
 
-        Transaction updatedTransaction = transactionRepository.save(transaction);
+        Transaction updatedTransaction = transactionRepository.saveAndFlush(transaction);
+        outboxService.transactionChanged(updatedTransaction);
 
         // valida se está agendado e continua pendente
         if (StatusTransactionEnum.PENDING.equals(transaction.getStatus()) && updatedTransaction.isScheduled()) {
@@ -156,6 +117,7 @@ public class TransactionService {
     public void delete(UUID transactionId) {
         Transaction transaction = transactionSelector.getTransactionById(transactionId);
         transactionRepository.delete(transaction);
+        outboxService.transactionDeleted(transaction);
 
         transactionEventsService.publishTransactionDeletedEvent(transaction);
     }
@@ -166,7 +128,8 @@ public class TransactionService {
         transactionValidatorService.restore.validate(transaction);
 
         transaction.setDeleted(false);
-        transactionRepository.save(transaction);
+        transactionRepository.saveAndFlush(transaction);
+        outboxService.transactionChanged(transaction);
 
         transactionEventsService.publishTransactionRestoreEvent(transaction);
     }

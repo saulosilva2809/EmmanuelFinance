@@ -13,6 +13,7 @@ import com.emmanuelfinance.transaction.TransactionRepository;
 import com.emmanuelfinance.transaction.TransactionSelector;
 import com.emmanuelfinance.transaction.TransactionTestDataBuilder;
 import com.emmanuelfinance.transaction.dtos.CreateTransactionDTO;
+import com.emmanuelfinance.transaction.outbox.OutboxService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -51,8 +53,22 @@ public class TransactionServiceInternalTest {
     @Mock
     private IdempotencyService idempotencyService;
 
+    @Mock
+    private OutboxService outboxService;
+
     @InjectMocks
     private TransactionServiceInternal transactionServiceInternal;
+
+    // regra: o serviço interno lê do postgres, que é a fonte da verdade. o mongo pode estar atrasado.
+    // se isto falhar, alguém ligou o serviço interno ao lado de leitura
+    @Test
+    @DisplayName("Não deve depender de nenhuma classe do lado de leitura (Mongo)")
+    void shouldNotDependOnTheMongoReadModel() {
+        boolean dependsOnReadModel = Arrays.stream(TransactionServiceInternal.class.getDeclaredFields())
+                .anyMatch(field -> field.getType().getPackageName().endsWith(".query"));
+
+        assertFalse(dependsOnReadModel);
+    }
 
     @Nested
     @DisplayName("Cenários do getSummaryDTO")
@@ -116,7 +132,7 @@ public class TransactionServiceInternalTest {
         }
 
         @Test
-        @DisplayName("Deve criar a despesa paga com os dados do pagamento e publicar o evento")
+        @DisplayName("Deve criar a despesa paga com os dados do pagamento e registrar a foto e o aviso no Outbox")
         void shouldCreatePaidExpenseAndPublishEvent() {
             InvoicePaymentDTO payment = payment();
             when(idempotencyService.generateInvoicePaymentKey(userId, invoiceId)).thenReturn("chave-fatura");
@@ -128,8 +144,9 @@ public class TransactionServiceInternalTest {
             transactionServiceInternal.createTransactionRelatedToInvoicePayment(payment);
 
             ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
-            InOrder inOrder = inOrder(transactionRepository, transactionEventsService);
+            InOrder inOrder = inOrder(transactionRepository, outboxService, transactionEventsService);
             inOrder.verify(transactionRepository).save(captor.capture());
+            inOrder.verify(outboxService).transactionChanged(captor.getValue());
             inOrder.verify(transactionEventsService).publishInvoicePaymentCreatedEvent(captor.getValue());
 
             Transaction saved = captor.getValue();
@@ -171,7 +188,7 @@ public class TransactionServiceInternalTest {
             transactionServiceInternal.createTransactionRelatedToInvoicePayment(payment());
 
             verify(transactionRepository, never()).save(any(Transaction.class));
-            verifyNoInteractions(transactionEventsService, transactionMapper);
+            verifyNoInteractions(outboxService, transactionEventsService, transactionMapper);
         }
     }
 }

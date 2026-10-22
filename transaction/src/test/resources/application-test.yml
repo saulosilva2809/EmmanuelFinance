@@ -21,6 +21,12 @@ spring:
   cache:
     type: simple
 
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/transaction-test
+      database: transaction-test
+      uuid-representation: standard
+
   kafka:
     bootstrap-servers: localhost:9092
     listener:

@@ -6,6 +6,7 @@ import com.emmanuelfinance.transaction.dtos.ResponseTransactionDTO;
 import com.emmanuelfinance.transaction.dtos.TransactionFiltersDTO;
 import com.emmanuelfinance.transaction.dtos.UpdateTransactionDTO;
 import com.emmanuelfinance.transaction.services.TransactionService;
+import com.emmanuelfinance.transaction.query.TransactionQueryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +24,7 @@ import java.util.UUID;
 public class TransactionController {
 
     private final TransactionService transactionService;
+    private final TransactionQueryService transactionQueryService;
 
     @PostMapping()
     public ResponseEntity<ResponseTransactionDTO> create(
@@ -36,7 +38,7 @@ public class TransactionController {
     public ResponseEntity<ResponseTransactionDTO> view(
             @PathVariable UUID id
     ) {
-        ResponseTransactionDTO response = transactionService.view(id);
+        ResponseTransactionDTO response = transactionQueryService.view(id);
         return ResponseEntity.ok().body(response);
     }
 
@@ -49,7 +51,7 @@ public class TransactionController {
             )
             Pageable pageable
     ) {
-        PageResponseDTO<ResponseTransactionDTO> response = transactionService.list(filters, pageable);
+        PageResponseDTO<ResponseTransactionDTO> response = transactionQueryService.list(filters, pageable);
         return ResponseEntity.ok().body(response);
     }
 
@@ -62,7 +64,7 @@ public class TransactionController {
             )
             Pageable pageable
     ) {
-        PageResponseDTO<ResponseTransactionDTO> response = transactionService.listDeleted(filters, pageable);
+        PageResponseDTO<ResponseTransactionDTO> response = transactionQueryService.listDeleted(filters, pageable);
         return ResponseEntity.ok().body(response);
     }
 
