@@ -1,6 +1,6 @@
 package com.emmanuelfinance.creditcard.outbox;
 
-import com.emmanuelfinance.creditcard.outbox.enums.CreditCardOutboxEventType;
+import com.emmanuelfinance.creditcard.outbox.enums.PaymentOutboxEventType;
 import com.emmanuelfinance.creditcard.payment.kafka.PaymentProducer;
 import com.emmanuelfinance.shared.modules.payment.InvoicePaymentDTO;
 import com.emmanuelfinance.shared.outbox.enums.OutboxEventType;
@@ -36,8 +36,8 @@ class PaymentOutboxDispatcherTest {
 
     @Test
     void shouldSupportOnlyTheInvoicePaymentType() {
-        assertTrue(dispatcher.supports(CreditCardOutboxEventType.INVOICE_PAYMENT));
-        assertFalse(dispatcher.supports(new OutboxEventType() {}));
+        assertTrue(dispatcher.supports(PaymentOutboxEventType.INVOICE_PAYMENT));
+        assertFalse(dispatcher.supports(() -> "OUTRO_TIPO"));
     }
 
     @Test
@@ -69,7 +69,7 @@ class PaymentOutboxDispatcherTest {
 
     private OutboxEvent row(InvoicePaymentDTO payment) {
         OutboxEvent row = new OutboxEvent();
-        row.setType(CreditCardOutboxEventType.INVOICE_PAYMENT);
+        row.setType(PaymentOutboxEventType.INVOICE_PAYMENT);
         row.setAggregateId(payment.accountId().toString());
         row.setPayload(objectMapper.valueToTree(payment));
         return row;

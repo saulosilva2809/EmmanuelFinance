@@ -3,6 +3,7 @@ package com.emmanuelfinance.creditcard.invoice.services;
 import com.emmanuelfinance.creditcard.invoice.Invoice;
 import com.emmanuelfinance.creditcard.invoice.InvoiceTestDataBuilder;
 import com.emmanuelfinance.creditcard.invoice.repositories.InvoiceRepository;
+import com.emmanuelfinance.creditcard.outbox.OutboxService;
 import com.emmanuelfinance.shared.modules.creditcard.enums.InvoiceStatusEnum;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -25,6 +26,9 @@ public class InvoiceAmountServiceTest {
 
     @Mock
     private InvoiceRepository invoiceRepository;
+
+    @Mock
+    private OutboxService outboxService;
 
     @InjectMocks
     private InvoiceAmountService invoiceAmountService;
@@ -54,7 +58,9 @@ public class InvoiceAmountServiceTest {
             assertEquals(new BigDecimal("50.00"), invoice2.getTotalAmount());
             assertFalse(invoice1.isDeleted());
             assertFalse(invoice2.isDeleted());
-            verify(invoiceRepository, times(1)).saveAll(invoices);
+            verify(invoiceRepository, times(1)).saveAllAndFlush(invoices);
+            verify(outboxService, times(1)).invoiceChanged(invoice1);
+            verify(outboxService, times(1)).invoiceChanged(invoice2);
         }
 
         @Test
@@ -69,6 +75,8 @@ public class InvoiceAmountServiceTest {
             assertTrue(zeroed.isDeleted());
             assertEquals(new BigDecimal("70.00"), remaining.getTotalAmount());
             assertFalse(remaining.isDeleted());
+            verify(outboxService, times(1)).invoiceDeleted(zeroed);
+            verify(outboxService, times(1)).invoiceChanged(remaining);
         }
 
         @Test
@@ -88,7 +96,8 @@ public class InvoiceAmountServiceTest {
                     invoiceAmountService.removeBalanceAfterDeletion(Collections.emptyList(), BigDecimal.TEN)
             );
 
-            verify(invoiceRepository, times(1)).saveAll(Collections.emptyList());
+            verify(invoiceRepository, times(1)).saveAllAndFlush(Collections.emptyList());
+            verifyNoInteractions(outboxService);
         }
     }
 
@@ -109,7 +118,9 @@ public class InvoiceAmountServiceTest {
             assertFalse(deleted.isDeleted());
             assertEquals(new BigDecimal("70.00"), active.getTotalAmount());
             assertFalse(active.isDeleted());
-            verify(invoiceRepository, times(1)).saveAll(invoices);
+            verify(invoiceRepository, times(1)).saveAllAndFlush(invoices);
+            verify(outboxService, times(1)).invoiceChanged(deleted);
+            verify(outboxService, times(1)).invoiceChanged(active);
         }
     }
 }

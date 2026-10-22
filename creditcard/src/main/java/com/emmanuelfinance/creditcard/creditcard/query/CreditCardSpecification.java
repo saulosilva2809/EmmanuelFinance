@@ -7,6 +7,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 public class CreditCardSpecification {
 
@@ -22,7 +23,7 @@ public class CreditCardSpecification {
         }
 
         if (filters.name() != null && !filters.name().isBlank()) {
-            criteriaList.add(Criteria.where("name").regex("(?i)" + filters.name()));
+            criteriaList.add(Criteria.where("name").regex(Pattern.quote(filters.name()), "i"));
         }
 
         if (filters.bank() != null) {

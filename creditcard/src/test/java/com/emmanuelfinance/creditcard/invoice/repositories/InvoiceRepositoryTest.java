@@ -30,33 +30,6 @@ public class InvoiceRepositoryTest {
     }
 
     @Nested
-    @DisplayName("Cenários do existsByIdAndDeletedFalse")
-    class ExistsByIdAndDeletedFalseTests {
-
-        @Test
-        @DisplayName("Deve retornar true quando a fatura existir e não estiver excluída")
-        void shouldReturnTrueWhenInvoiceIsActive() {
-            Invoice saved = save(UUID.randomUUID(), 10, 2026, false);
-
-            assertTrue(invoiceRepository.existsByIdAndDeletedFalse(saved.getId()));
-        }
-
-        @Test
-        @DisplayName("Deve retornar false quando a fatura estiver excluída")
-        void shouldReturnFalseWhenInvoiceIsDeleted() {
-            Invoice saved = save(UUID.randomUUID(), 10, 2026, true);
-
-            assertFalse(invoiceRepository.existsByIdAndDeletedFalse(saved.getId()));
-        }
-
-        @Test
-        @DisplayName("Deve retornar false quando o ID não existir")
-        void shouldReturnFalseWhenInvoiceDoesNotExist() {
-            assertFalse(invoiceRepository.existsByIdAndDeletedFalse(UUID.randomUUID()));
-        }
-    }
-
-    @Nested
     @DisplayName("Cenários do findByCreditCardIdAndMonthAndYearAndDeletedFalse")
     class FindByCardMonthYearTests {
 

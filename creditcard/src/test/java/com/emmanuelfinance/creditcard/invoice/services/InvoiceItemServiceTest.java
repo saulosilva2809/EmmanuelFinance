@@ -1,31 +1,19 @@
 package com.emmanuelfinance.creditcard.invoice.services;
 
-import com.emmanuelfinance.creditcard.invoice.Invoice;
 import com.emmanuelfinance.creditcard.invoice.InvoiceItem;
 import com.emmanuelfinance.creditcard.invoice.InvoiceTestDataBuilder;
-import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceItemDTO;
-import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceSummaryDTO;
-import com.emmanuelfinance.creditcard.invoice.exceptions.InvoiceDomainException;
-import com.emmanuelfinance.creditcard.invoice.exceptions.InvoiceErrorCode;
 import com.emmanuelfinance.creditcard.invoice.repositories.InvoiceItemRepository;
-import com.emmanuelfinance.shared.dto.PageResponseDTO;
-import com.emmanuelfinance.shared.modules.transaction.TransactionClientCacheService;
-import com.emmanuelfinance.shared.modules.transaction.dtos.TransactionSummaryDTO;
+import com.emmanuelfinance.creditcard.outbox.OutboxService;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
-import com.emmanuelfinance.shared.security.SecurityUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -34,8 +22,6 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,16 +31,7 @@ public class InvoiceItemServiceTest {
     private InvoiceItemRepository invoiceItemRepository;
 
     @Mock
-    private SecurityUtils securityUtils;
-
-    @Mock
-    private InvoiceServiceInternal invoiceServiceInternal;
-
-    @Mock
-    private TransactionClientCacheService transactionClientCacheService;
-
-    @Mock
-    private InvoiceValidatorService invoiceValidatorService;
+    private OutboxService outboxService;
 
     @InjectMocks
     private InvoiceItemService invoiceItemService;
@@ -64,7 +41,7 @@ public class InvoiceItemServiceTest {
     class CreateInvoiceItemTests {
 
         @Test
-        @DisplayName("Deve salvar o item com os dados do evento e da parcela")
+        @DisplayName("Deve salvar o item com os dados do evento e da parcela e registrar a foto no Outbox")
         void shouldSaveItemWithEventAndInstallmentData() {
             UUID userId = UUID.randomUUID();
             UUID invoiceId = UUID.randomUUID();
@@ -75,7 +52,9 @@ public class InvoiceItemServiceTest {
             invoiceItemService.createInvoiceItem(event, invoiceId, 2, new BigDecimal("100.00"));
 
             ArgumentCaptor<InvoiceItem> captor = ArgumentCaptor.forClass(InvoiceItem.class);
-            verify(invoiceItemRepository, times(1)).save(captor.capture());
+            InOrder inOrder = inOrder(invoiceItemRepository, outboxService);
+            inOrder.verify(invoiceItemRepository).save(captor.capture());
+            inOrder.verify(outboxService).invoiceItemChanged(captor.getValue());
             InvoiceItem saved = captor.getValue();
 
             assertEquals(userId, saved.getUserId());
@@ -88,95 +67,35 @@ public class InvoiceItemServiceTest {
     }
 
     @Nested
-    @DisplayName("Cenários do listByInvoiceId")
-    class ListByInvoiceIdTests {
-
-        @Test
-        @DisplayName("Deve retornar página de DTOs com resumo da fatura e da transação")
-        void shouldReturnPageOfDTOs() {
-            UUID userId = UUID.randomUUID();
-            Invoice invoice = InvoiceTestDataBuilder.invoiceEntity(userId, UUID.randomUUID());
-            InvoiceItem item = InvoiceTestDataBuilder.invoiceItemEntity(userId, invoice.getId(), UUID.randomUUID());
-            ResponseInvoiceSummaryDTO invoiceSummary = InvoiceTestDataBuilder.responseInvoiceSummaryDTO(invoice);
-            TransactionSummaryDTO transactionSummary = InvoiceTestDataBuilder.transactionSummaryDTO();
-            Pageable pageable = PageRequest.of(0, 10);
-
-            when(securityUtils.getCurrentUserId()).thenReturn(userId);
-            when(invoiceItemRepository.findAll(any(Specification.class), eq(pageable)))
-                    .thenReturn(new PageImpl<>(List.of(item), pageable, 1));
-            when(invoiceServiceInternal.invoiceSummaryDTO(invoice.getId())).thenReturn(invoiceSummary);
-            when(transactionClientCacheService.getTransactionSummaryDTO(item.getTransactionId()))
-                    .thenReturn(transactionSummary);
-
-            PageResponseDTO<ResponseInvoiceItemDTO> result = invoiceItemService.listByInvoiceId(invoice.getId(), pageable);
-
-            assertEquals(1, result.content().size());
-            assertEquals(1L, result.totalElements());
-            assertEquals(
-                    InvoiceTestDataBuilder.responseInvoiceItemDTO(item, invoiceSummary, transactionSummary),
-                    result.content().get(0)
-            );
-            verify(securityUtils, times(1)).getCurrentUserId();
-            verify(invoiceValidatorService, times(1)).existsById(invoice.getId());
-        }
-
-        @Test
-        @DisplayName("Deve lançar INVOICE_NOT_FOUND e não consultar itens quando a fatura não existir")
-        void shouldThrowWhenInvoiceDoesNotExist() {
-            UUID invoiceId = UUID.randomUUID();
-            when(securityUtils.getCurrentUserId()).thenReturn(UUID.randomUUID());
-            doThrow(new InvoiceDomainException(InvoiceErrorCode.INVOICE_NOT_FOUND))
-                    .when(invoiceValidatorService).existsById(invoiceId);
-
-            InvoiceDomainException exception = assertThrows(
-                    InvoiceDomainException.class,
-                    () -> invoiceItemService.listByInvoiceId(invoiceId, PageRequest.of(0, 10))
-            );
-
-            assertEquals(InvoiceErrorCode.INVOICE_NOT_FOUND, exception.getErrorCode());
-            verifyNoInteractions(invoiceItemRepository);
-        }
-
-        @Test
-        @DisplayName("Não deve validar a fatura quando o invoiceId for nulo")
-        void shouldNotValidateInvoiceWhenInvoiceIdIsNull() {
-            Pageable pageable = PageRequest.of(0, 10);
-            when(securityUtils.getCurrentUserId()).thenReturn(UUID.randomUUID());
-            when(invoiceItemRepository.findAll(any(Specification.class), eq(pageable)))
-                    .thenReturn(Page.empty(pageable));
-
-            invoiceItemService.listByInvoiceId(null, pageable);
-
-            verifyNoInteractions(invoiceValidatorService);
-        }
-
-        @Test
-        @DisplayName("Deve retornar página vazia quando não houver itens")
-        void shouldReturnEmptyPage() {
-            Pageable pageable = PageRequest.of(0, 10);
-            when(securityUtils.getCurrentUserId()).thenReturn(UUID.randomUUID());
-            when(invoiceItemRepository.findAll(any(Specification.class), eq(pageable)))
-                    .thenReturn(Page.empty(pageable));
-
-            PageResponseDTO<ResponseInvoiceItemDTO> result = invoiceItemService.listByInvoiceId(UUID.randomUUID(), pageable);
-
-            assertTrue(result.content().isEmpty());
-            verifyNoInteractions(invoiceServiceInternal, transactionClientCacheService);
-        }
-    }
-
-    @Nested
     @DisplayName("Cenários do delete")
     class DeleteTests {
 
         @Test
-        @DisplayName("Deve deletar os itens pela transação")
-        void shouldDeleteByTransactionId() {
+        @DisplayName("Deve excluir os itens da transação e registrar a exclusão de cada um no Outbox")
+        void shouldDeleteTheItemsAndRegisterEachOneInTheOutbox() {
+            UUID userId = UUID.randomUUID();
             UUID transactionId = UUID.randomUUID();
+            InvoiceItem item1 = InvoiceTestDataBuilder.invoiceItemEntity(userId, UUID.randomUUID(), transactionId);
+            InvoiceItem item2 = InvoiceTestDataBuilder.invoiceItemEntity(userId, UUID.randomUUID(), transactionId);
+            List<InvoiceItem> items = List.of(item1, item2);
+            when(invoiceItemRepository.findByTransactionId(transactionId)).thenReturn(items);
 
             invoiceItemService.delete(transactionId);
 
-            verify(invoiceItemRepository, times(1)).deleteByTransactionId(transactionId);
+            verify(invoiceItemRepository, times(1)).deleteAll(items);
+            verify(outboxService, times(1)).invoiceItemDeleted(item1);
+            verify(outboxService, times(1)).invoiceItemDeleted(item2);
+        }
+
+        @Test
+        @DisplayName("Não deve registrar nada no Outbox quando a transação não tem itens")
+        void shouldNotRegisterAnythingWhenThereAreNoItems() {
+            UUID transactionId = UUID.randomUUID();
+            when(invoiceItemRepository.findByTransactionId(transactionId)).thenReturn(Collections.emptyList());
+
+            invoiceItemService.delete(transactionId);
+
+            verifyNoInteractions(outboxService);
         }
     }
 
@@ -185,7 +104,7 @@ public class InvoiceItemServiceTest {
     class RestoreTests {
 
         @Test
-        @DisplayName("Deve marcar os itens da transação como não excluídos")
+        @DisplayName("Deve marcar os itens como não excluídos, gravar e registrar a foto de cada um no Outbox")
         void shouldRestoreItems() {
             UUID userId = UUID.randomUUID();
             UUID transactionId = UUID.randomUUID();
@@ -195,12 +114,17 @@ public class InvoiceItemServiceTest {
             InvoiceItem item2 = InvoiceTestDataBuilder.invoiceItemEntity(
                     userId, UUID.randomUUID(), transactionId, 2, 2, new BigDecimal("50.00"), true
             );
-            when(invoiceItemRepository.findByTransactionId(transactionId)).thenReturn(List.of(item1, item2));
+            List<InvoiceItem> items = List.of(item1, item2);
+            when(invoiceItemRepository.findByTransactionId(transactionId)).thenReturn(items);
 
             invoiceItemService.restore(transactionId);
 
             assertFalse(item1.isDeleted());
             assertFalse(item2.isDeleted());
+            InOrder inOrder = inOrder(invoiceItemRepository, outboxService);
+            inOrder.verify(invoiceItemRepository).saveAllAndFlush(items);
+            inOrder.verify(outboxService).invoiceItemChanged(item1);
+            inOrder.verify(outboxService).invoiceItemChanged(item2);
         }
 
         @Test
@@ -210,6 +134,7 @@ public class InvoiceItemServiceTest {
             when(invoiceItemRepository.findByTransactionId(transactionId)).thenReturn(Collections.emptyList());
 
             assertDoesNotThrow(() -> invoiceItemService.restore(transactionId));
+            verifyNoInteractions(outboxService);
         }
     }
 }

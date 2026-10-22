@@ -8,13 +8,13 @@ import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceDTO;
 import com.emmanuelfinance.creditcard.invoice.repositories.InvoiceRepository;
 import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceItemSelector;
 import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceSelector;
+import com.emmanuelfinance.creditcard.outbox.OutboxService;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.modules.creditcard.CreditCardClientCacheService;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.enums.InvoiceStatusEnum;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
-import com.emmanuelfinance.shared.security.SecurityUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -61,7 +61,7 @@ public class InvoiceServiceTest {
     private InvoiceItemSelector invoiceItemSelector;
 
     @Mock
-    private SecurityUtils securityUtils;
+    private OutboxService outboxService;
 
     @Mock
     private InvoiceAmountService invoiceAmountService;
@@ -107,6 +107,7 @@ public class InvoiceServiceTest {
             ArgumentCaptor<Invoice> captor = ArgumentCaptor.forClass(Invoice.class);
             verify(invoiceRepository, times(1)).save(captor.capture());
             Invoice saved = captor.getValue();
+            verify(outboxService, times(1)).invoiceChanged(saved);
 
             assertEquals(userId, saved.getUserId());
             assertEquals(creditCardId, saved.getCreditCardId());
@@ -191,7 +192,8 @@ public class InvoiceServiceTest {
 
             // parcela = 50.00; 200 + 50 (e não 200 + 100, o valor total da compra)
             assertEquals(new BigDecimal("250.00"), existing.getTotalAmount());
-            verify(invoiceRepository, times(2)).save(any(Invoice.class));
+            verify(invoiceRepository, times(2)).saveAndFlush(any(Invoice.class));
+            verify(outboxService, times(2)).invoiceChanged(any(Invoice.class));
             verify(creditCardClientCacheService, never()).getCreditCardInternalSummaryDTO(any());
             verify(invoiceItemService, times(1)).createInvoiceItem(
                     event, existing.getId(), 1, new BigDecimal("50.00")
@@ -213,74 +215,8 @@ public class InvoiceServiceTest {
             invoiceService.findOrCreate(event);
 
             assertEquals(new BigDecimal("100.00"), existing.getTotalAmount());
-            verify(invoiceRepository, times(1)).save(existing);
-        }
-    }
-
-    @Nested
-    @DisplayName("Cenários do list")
-    class ListTests {
-
-        @Test
-        @DisplayName("Deve retornar página de DTOs com o resumo do cartão")
-        void shouldReturnPageOfDTOs() {
-            UUID userId = UUID.randomUUID();
-            UUID creditCardId = UUID.randomUUID();
-            Pageable pageable = PageRequest.of(0, 10);
-            Invoice invoice = InvoiceTestDataBuilder.invoiceEntity(userId, creditCardId);
-            CreditCardSummaryDTO cardSummary = InvoiceTestDataBuilder.creditCardSummaryDTO(creditCardId);
-
-            when(securityUtils.getCurrentUserId()).thenReturn(userId);
-            when(invoiceRepository.findAll(any(Specification.class), eq(pageable)))
-                    .thenReturn(new PageImpl<>(List.of(invoice), pageable, 1));
-            when(creditCardClientCacheService.getCreditCardSummaryDTO(creditCardId)).thenReturn(cardSummary);
-
-            InvoiceFiltersDTO filters = new InvoiceFiltersDTO(creditCardId, 10, 2026, InvoiceStatusEnum.OPEN);
-            PageResponseDTO<ResponseInvoiceDTO> result = invoiceService.list(filters, pageable);
-
-            assertEquals(1, result.content().size());
-            assertEquals(1L, result.totalElements());
-            assertEquals(1, result.totalPages());
-            assertEquals(InvoiceTestDataBuilder.responseInvoiceDTO(invoice, cardSummary), result.content().get(0));
-            verify(securityUtils, times(1)).getCurrentUserId();
-        }
-
-        @Test
-        @DisplayName("Deve devolver o valor já pago da fatura")
-        void shouldReturnTheAmountPaidOfTheInvoice() {
-            UUID userId = UUID.randomUUID();
-            UUID creditCardId = UUID.randomUUID();
-            Pageable pageable = PageRequest.of(0, 10);
-            Invoice invoice = InvoiceTestDataBuilder.invoiceEntity(userId, creditCardId);
-            invoice.setAmountPaid(new BigDecimal("150.00"));
-            CreditCardSummaryDTO cardSummary = InvoiceTestDataBuilder.creditCardSummaryDTO(creditCardId);
-
-            when(securityUtils.getCurrentUserId()).thenReturn(userId);
-            when(invoiceRepository.findAll(any(Specification.class), eq(pageable)))
-                    .thenReturn(new PageImpl<>(List.of(invoice), pageable, 1));
-            when(creditCardClientCacheService.getCreditCardSummaryDTO(creditCardId)).thenReturn(cardSummary);
-
-            PageResponseDTO<ResponseInvoiceDTO> result =
-                    invoiceService.list(new InvoiceFiltersDTO(creditCardId, 10, 2026, InvoiceStatusEnum.OPEN), pageable);
-
-            assertEquals(new BigDecimal("150.00"), result.content().get(0).amountPaid());
-        }
-
-        @Test
-        @DisplayName("Deve retornar página vazia quando não houver faturas")
-        void shouldReturnEmptyPage() {
-            Pageable pageable = PageRequest.of(0, 10);
-            when(securityUtils.getCurrentUserId()).thenReturn(UUID.randomUUID());
-            when(invoiceRepository.findAll(any(Specification.class), eq(pageable)))
-                    .thenReturn(Page.empty(pageable));
-
-            PageResponseDTO<ResponseInvoiceDTO> result = invoiceService.list(
-                    new InvoiceFiltersDTO(null, null, null, null), pageable
-            );
-
-            assertTrue(result.content().isEmpty());
-            assertEquals(0L, result.totalElements());
-            verifyNoInteractions(creditCardClientCacheService);
+            verify(invoiceRepository, times(1)).saveAndFlush(existing);
+            verify(outboxService, times(1)).invoiceChanged(existing);
         }
     }
 

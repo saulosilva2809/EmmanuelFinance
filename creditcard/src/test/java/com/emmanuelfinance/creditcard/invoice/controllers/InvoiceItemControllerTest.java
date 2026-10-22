@@ -6,7 +6,7 @@ import com.emmanuelfinance.creditcard.invoice.InvoiceTestDataBuilder;
 import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceItemDTO;
 import com.emmanuelfinance.creditcard.invoice.exceptions.InvoiceDomainException;
 import com.emmanuelfinance.creditcard.invoice.exceptions.InvoiceErrorCode;
-import com.emmanuelfinance.creditcard.invoice.services.InvoiceItemService;
+import com.emmanuelfinance.creditcard.invoice.query.invoiceitem.InvoiceItemQueryService;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -45,7 +45,7 @@ public class InvoiceItemControllerTest {
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @MockBean
-    private InvoiceItemService invoiceItemService;
+    private InvoiceItemQueryService invoiceItemQueryService;
 
     @Test
     @DisplayName("Deve retornar 200 OK com os itens paginados da fatura")
@@ -58,7 +58,7 @@ public class InvoiceItemControllerTest {
                 InvoiceTestDataBuilder.responseInvoiceSummaryDTO(invoice),
                 InvoiceTestDataBuilder.transactionSummaryDTO()
         );
-        when(invoiceItemService.listByInvoiceId(eq(invoice.getId()), any(Pageable.class)))
+        when(invoiceItemQueryService.listByInvoiceId(eq(invoice.getId()), any(Pageable.class)))
                 .thenReturn(new PageResponseDTO<>(List.of(dto), 0, 10, 1L, 1));
 
         mockMvc.perform(get("/credit-card/invoice-item/{invoiceId}", invoice.getId())
@@ -75,14 +75,14 @@ public class InvoiceItemControllerTest {
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.totalPages").value(1));
 
-        verify(invoiceItemService, times(1)).listByInvoiceId(eq(invoice.getId()), any(Pageable.class));
+        verify(invoiceItemQueryService, times(1)).listByInvoiceId(eq(invoice.getId()), any(Pageable.class));
     }
 
     @Test
     @DisplayName("Deve retornar 200 OK com content vazio quando a fatura não tiver itens")
     void shouldReturn200WithEmptyContent() throws Exception {
         UUID invoiceId = UUID.randomUUID();
-        when(invoiceItemService.listByInvoiceId(eq(invoiceId), any(Pageable.class)))
+        when(invoiceItemQueryService.listByInvoiceId(eq(invoiceId), any(Pageable.class)))
                 .thenReturn(new PageResponseDTO<>(Collections.emptyList(), 0, 10, 0L, 0));
 
         mockMvc.perform(get("/credit-card/invoice-item/{invoiceId}", invoiceId))
@@ -95,13 +95,13 @@ public class InvoiceItemControllerTest {
     @DisplayName("Deve aplicar a ordenação padrão installmentNumber,createdAt ASC")
     void shouldApplyDefaultSort() throws Exception {
         UUID invoiceId = UUID.randomUUID();
-        when(invoiceItemService.listByInvoiceId(eq(invoiceId), any(Pageable.class)))
+        when(invoiceItemQueryService.listByInvoiceId(eq(invoiceId), any(Pageable.class)))
                 .thenReturn(new PageResponseDTO<>(Collections.emptyList(), 0, 10, 0L, 0));
 
         mockMvc.perform(get("/credit-card/invoice-item/{invoiceId}", invoiceId)).andExpect(status().isOk());
 
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(invoiceItemService).listByInvoiceId(eq(invoiceId), captor.capture());
+        verify(invoiceItemQueryService).listByInvoiceId(eq(invoiceId), captor.capture());
         Sort sort = captor.getValue().getSort();
         assertEquals(Sort.Direction.ASC, sort.getOrderFor("installmentNumber").getDirection());
         assertEquals(Sort.Direction.ASC, sort.getOrderFor("createdAt").getDirection());
@@ -111,7 +111,7 @@ public class InvoiceItemControllerTest {
     @DisplayName("Deve retornar 404 Not Found quando a fatura não existir")
     void shouldReturn404WhenInvoiceDoesNotExist() throws Exception {
         UUID invoiceId = UUID.randomUUID();
-        when(invoiceItemService.listByInvoiceId(eq(invoiceId), any(Pageable.class)))
+        when(invoiceItemQueryService.listByInvoiceId(eq(invoiceId), any(Pageable.class)))
                 .thenThrow(new InvoiceDomainException(InvoiceErrorCode.INVOICE_NOT_FOUND));
 
         mockMvc.perform(get("/credit-card/invoice-item/{invoiceId}", invoiceId))
@@ -124,6 +124,6 @@ public class InvoiceItemControllerTest {
         mockMvc.perform(get("/credit-card/invoice-item/{invoiceId}", "abc"))
                 .andExpect(status().isBadRequest());
 
-        verifyNoInteractions(invoiceItemService);
+        verifyNoInteractions(invoiceItemQueryService);
     }
 }

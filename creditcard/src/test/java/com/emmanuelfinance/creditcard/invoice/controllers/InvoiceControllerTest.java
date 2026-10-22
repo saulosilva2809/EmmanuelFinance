@@ -4,7 +4,7 @@ import com.emmanuelfinance.creditcard.invoice.Invoice;
 import com.emmanuelfinance.creditcard.invoice.InvoiceTestDataBuilder;
 import com.emmanuelfinance.creditcard.invoice.dtos.InvoiceFiltersDTO;
 import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceDTO;
-import com.emmanuelfinance.creditcard.invoice.services.InvoiceService;
+import com.emmanuelfinance.creditcard.invoice.query.invoice.InvoiceQueryService;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.modules.creditcard.enums.InvoiceStatusEnum;
 import org.junit.jupiter.api.DisplayName;
@@ -43,7 +43,7 @@ public class InvoiceControllerTest {
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @MockBean
-    private InvoiceService invoiceService;
+    private InvoiceQueryService invoiceQueryService;
 
     @Test
     @DisplayName("Deve retornar 200 OK com os dados paginados")
@@ -53,7 +53,7 @@ public class InvoiceControllerTest {
         ResponseInvoiceDTO dto = InvoiceTestDataBuilder.responseInvoiceDTO(
                 invoice, InvoiceTestDataBuilder.creditCardSummaryDTO(creditCardId)
         );
-        when(invoiceService.list(any(InvoiceFiltersDTO.class), any(Pageable.class)))
+        when(invoiceQueryService.list(any(InvoiceFiltersDTO.class), any(Pageable.class)))
                 .thenReturn(new PageResponseDTO<>(List.of(dto), 0, 10, 1L, 1));
 
         mockMvc.perform(get("/credit-card/invoices")
@@ -70,13 +70,13 @@ public class InvoiceControllerTest {
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.totalPages").value(1));
 
-        verify(invoiceService, times(1)).list(any(InvoiceFiltersDTO.class), any(Pageable.class));
+        verify(invoiceQueryService, times(1)).list(any(InvoiceFiltersDTO.class), any(Pageable.class));
     }
 
     @Test
     @DisplayName("Deve retornar 200 OK com content vazio quando não houver faturas")
     void shouldReturn200WithEmptyContent() throws Exception {
-        when(invoiceService.list(any(InvoiceFiltersDTO.class), any(Pageable.class)))
+        when(invoiceQueryService.list(any(InvoiceFiltersDTO.class), any(Pageable.class)))
                 .thenReturn(new PageResponseDTO<>(Collections.emptyList(), 0, 10, 0L, 0));
 
         mockMvc.perform(get("/credit-card/invoices")
@@ -90,7 +90,7 @@ public class InvoiceControllerTest {
     @DisplayName("Deve repassar os filtros da query string ao service")
     void shouldPassFiltersToService() throws Exception {
         UUID creditCardId = UUID.randomUUID();
-        when(invoiceService.list(any(InvoiceFiltersDTO.class), any(Pageable.class)))
+        when(invoiceQueryService.list(any(InvoiceFiltersDTO.class), any(Pageable.class)))
                 .thenReturn(new PageResponseDTO<>(Collections.emptyList(), 0, 10, 0L, 0));
 
         mockMvc.perform(get("/credit-card/invoices")
@@ -101,20 +101,20 @@ public class InvoiceControllerTest {
                 .andExpect(status().isOk());
 
         ArgumentCaptor<InvoiceFiltersDTO> captor = ArgumentCaptor.forClass(InvoiceFiltersDTO.class);
-        verify(invoiceService).list(captor.capture(), any(Pageable.class));
+        verify(invoiceQueryService).list(captor.capture(), any(Pageable.class));
         assertEquals(new InvoiceFiltersDTO(creditCardId, 10, 2026, InvoiceStatusEnum.PAID), captor.getValue());
     }
 
     @Test
     @DisplayName("Deve aplicar a ordenação padrão year,month ASC")
     void shouldApplyDefaultSort() throws Exception {
-        when(invoiceService.list(any(InvoiceFiltersDTO.class), any(Pageable.class)))
+        when(invoiceQueryService.list(any(InvoiceFiltersDTO.class), any(Pageable.class)))
                 .thenReturn(new PageResponseDTO<>(Collections.emptyList(), 0, 10, 0L, 0));
 
         mockMvc.perform(get("/credit-card/invoices")).andExpect(status().isOk());
 
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(invoiceService).list(any(InvoiceFiltersDTO.class), captor.capture());
+        verify(invoiceQueryService).list(any(InvoiceFiltersDTO.class), captor.capture());
         Sort sort = captor.getValue().getSort();
         assertEquals(Sort.Direction.ASC, sort.getOrderFor("year").getDirection());
         assertEquals(Sort.Direction.ASC, sort.getOrderFor("month").getDirection());
@@ -126,7 +126,7 @@ public class InvoiceControllerTest {
         mockMvc.perform(get("/credit-card/invoices").param("status", "INVALIDO"))
                 .andExpect(status().isBadRequest());
 
-        verifyNoInteractions(invoiceService);
+        verifyNoInteractions(invoiceQueryService);
     }
 
     @Test
@@ -135,6 +135,6 @@ public class InvoiceControllerTest {
         mockMvc.perform(get("/credit-card/invoices").param("creditCardId", "abc"))
                 .andExpect(status().isBadRequest());
 
-        verifyNoInteractions(invoiceService);
+        verifyNoInteractions(invoiceQueryService);
     }
 }

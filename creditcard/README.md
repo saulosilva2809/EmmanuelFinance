@@ -94,8 +94,8 @@ Todos os endpoints exigem JWT (Keycloak), e o dono do cartão é sempre o usuár
 
 ## 3. Arquitetura
 
-Escrita e leitura dos cartões são separadas (CQRS), e um Outbox garante que o que acontece depois de salvar não se
-perde. As faturas e os pagamentos ficam só no Postgres.
+Escrita e leitura de cartões, faturas e itens de fatura são separadas (CQRS), e um Outbox garante que o que acontece
+depois de salvar não se perde.
 
 ```
                     ESCRITA                                                LEITURA
@@ -108,10 +108,13 @@ perde. As faturas e os pagamentos ficam só no Postgres.
                                       │ commit
                                       ▼
                                  OutboxRelay
-                         ┌────────────┴─────────────┐
-                         ▼                          ▼
-              CreditCardOutboxDispatcher   PaymentOutboxDispatcher
-              (foto do cartão ──▶ MongoDB)   (pagamento ──▶ Kafka)
+              ┌──────────────┬────┴─────────┬──────────────────┐
+              ▼              ▼              ▼                  ▼
+   CreditCardOutbox-   InvoiceOutbox-  InvoiceItemOutbox-  PaymentOutbox-
+   Dispatcher          Dispatcher      Dispatcher          Dispatcher
+   (cartão ─▶ Mongo)   (fatura ─▶ Mongo) (item ─▶ Mongo)   (pagamento ─▶ Kafka)
+
+ (a leitura de faturas e itens vem do Mongo: InvoiceQueryService e InvoiceItemQueryService)
 
  Chamadas entre serviços (/internal/...) ──▶ CreditCardInternalService ──▶ Postgres (nunca o Mongo)
 ```
@@ -122,20 +125,23 @@ perde. As faturas e os pagamentos ficam só no Postgres.
 |--------|-------|
 | `creditcard` | o cartão: `controllers`, `services` (escrita), `kafka` (consumo dos eventos), `query` (leitura no Mongo), `dto` e `exceptions` |
 | `creditcard.query` | `CreditCardQueryService` (consultas), `CreditCardSpecification` (filtros), `CreditCardDocument` (modelo do Mongo) e `CreditCardProjector` (grava no Mongo) |
-| `invoice` | faturas e itens: controllers, serviços, repositórios e filtros |
+| `invoice` | faturas e itens (escrita no Postgres): controllers, serviços, repositórios e `InvoiceMapper` |
+| `invoice.query.invoice` | `InvoiceQueryService` (consulta as faturas), `InvoiceSpecification` (filtros), `InvoiceDocument` e `InvoiceProjector` |
+| `invoice.query.invoiceitem` | o mesmo para os itens: `InvoiceItemQueryService`, `InvoiceItemSpecification`, `InvoiceItemDocument` e `InvoiceItemProjector` |
 | `payment` | pagamento da fatura e o produtor Kafka do evento de pagamento |
-| `outbox` | `OutboxService` (registra), `OutboxEventFactory` (monta as linhas), os dispatchers (entregam), `OutboxEvent` e `OutboxConfig` |
+| `outbox` | `OutboxService` (registra), `OutboxEventFactory` (monta as linhas), um dispatcher por destino (entregam), `OutboxEvent` e `OutboxConfig`; os tipos de evento ficam em `outbox.enums`, um enum por assunto |
 
 ---
 
 ## 4. Conceitos aplicados
 
-### CQRS (só para os cartões)
+### CQRS (cartões, faturas e itens de fatura)
 - **Escrita:** PostgreSQL, com transações e controle de concorrência.
-- **Leitura:** MongoDB, um documento por cartão (coleção `credit_card`), com índice em
-  `userId + deleted + createdAt`. O `GET /credit-card` nunca consulta o Postgres.
+- **Leitura:** MongoDB, um documento por registro, em três coleções: `credit_card`, `invoice` e `invoice_item`.
+  `GET /credit-card`, `GET /credit-card/invoices` e `GET /credit-card/invoice-item/{invoiceId}` nunca consultam o
+  Postgres. A lista de itens também lê a fatura do Mongo, para mostrar o resumo dela e conferir que é do usuário.
 
-Isso traz consistência eventual: logo depois de criar ou alterar um cartão, a leitura pode levar alguns instantes
+Isso traz consistência eventual: logo depois de criar ou alterar um registro, a leitura pode levar alguns instantes
 para refletir a mudança.
 
 ### Transactional Outbox
@@ -145,28 +151,33 @@ transação cobre todos eles. Para não perder nada, o serviço grava, na mesma 
 módulo `shared`) entrega cada linha ao destino e a apaga. Se o destino estiver fora do ar, a linha continua pendente
 e é tentada de novo.
 
-Há um único Outbox no serviço, com dois tipos de linha:
+Há um único Outbox no serviço (uma tabela, uma entidade, um `OutboxService`), com quatro tipos de linha, um enum
+por assunto:
 
 | Tipo | Destino | Conteúdo |
 |------|---------|----------|
 | `CREDIT_CARD_CHANGED` | MongoDB | foto completa do cartão naquele instante (`deleted = true` quando excluído) |
+| `INVOICE_CHANGED` | MongoDB | foto completa da fatura |
+| `INVOICE_ITEM_CHANGED` | MongoDB | foto completa do item da fatura |
 | `INVOICE_PAYMENT` | Kafka (`created-invoice-payment-topic`) | dados do pagamento da fatura |
+
+O tipo é gravado como texto na coluna `type`. Por isso o relay pergunta a cada dispatcher `supports(tipo)` e a
+comparação é feita pelo nome do tipo (`OutboxEventType.is`), não por `equals`.
 
 O que registra cada linha:
 
-| Operação | Foto do cartão (Mongo) | Pagamento (Kafka) |
-|----------|------------------------|-------------------|
-| Criar cartão | sim | não |
-| Editar cartão (inclui o limite) | sim | não |
-| Excluir cartão | sim, com `deleted = true` | não |
-| Restaurar cartão | sim | não |
-| Conta excluída (desativa os cartões dela) | sim, uma por cartão | não |
-| Compra criada, excluída ou restaurada (muda o limite) | sim | não |
-| Pagar a fatura (devolve o limite) | sim | sim |
+| Operação | Cartão | Fatura | Item | Pagamento (Kafka) |
+|----------|--------|--------|------|-------------------|
+| Criar, editar, excluir ou restaurar cartão | sim | não | não | não |
+| Conta excluída (desativa os cartões dela) | sim, um por cartão | não | não | não |
+| Compra criada (muda o limite, cria ou soma a fatura, cria os itens) | sim | sim | sim | não |
+| Compra excluída (devolve o limite, subtrai da fatura, exclui os itens) | sim | sim; `deleted = true` se a fatura zerou | sim, com `deleted = true` | não |
+| Compra restaurada | sim | sim | sim | não |
+| Pagar a fatura (fatura vira `PAID`, devolve o limite) | sim | sim | não | sim |
 
-Como a foto é sempre o cartão inteiro, o Mongo só precisa sobrescrever o documento: receber a mesma foto duas vezes
-não muda nada, e uma foto perdida é corrigida pela seguinte. O relay entrega "pelo menos uma vez": se o serviço
-cair entre entregar e apagar a linha, ela é entregue de novo.
+Como a foto é sempre o registro inteiro, o Mongo só precisa sobrescrever o documento: receber a mesma foto duas
+vezes não muda nada, e uma foto perdida é corrigida pela seguinte. O relay entrega "pelo menos uma vez": se o
+serviço cair entre entregar e apagar a linha, ela é entregue de novo.
 
 ### Chamadas entre serviços leem do Postgres
 O Mongo recebe os dados pelo Outbox, então ele pode estar atrasado. Os endpoints `/internal/...` são usados pelos
@@ -187,7 +198,7 @@ leitura (`query`). A regra vale para consultas que mostram dados (Mongo) versus 
 | `created-invoice-payment-topic` | publica (pelo Outbox) | o `transaction` registra a transação do pagamento e publica `invoice-payment-created-topic`, que o `account` consome para descontar o saldo |
 
 ### Outros
-- **Exclusão lógica** com `@SQLDelete` para cartões e faturas, e listagem separada dos excluídos.
+- **Exclusão lógica** com `@SQLDelete` para cartões, faturas e itens, e listagem separada dos cartões excluídos.
 - **Migrations** versionadas com Flyway (`V1` a `V11`) e `ddl-auto: validate`.
 - **DTOs** imutáveis (`record`), Bean Validation na borda e MapStruct nos mapeamentos.
 - **Segurança:** OAuth2 Resource Server (JWT), com tudo bloqueado por padrão.

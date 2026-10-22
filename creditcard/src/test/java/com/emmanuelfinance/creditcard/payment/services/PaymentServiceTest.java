@@ -101,7 +101,7 @@ public class PaymentServiceTest {
     }
 
     private void assertNothingWasChargedOrPublished() {
-        verify(invoiceRepository, never()).save(any(Invoice.class));
+        verify(invoiceRepository, never()).saveAndFlush(any(Invoice.class));
         verify(creditCardRepository, never()).saveAndFlush(any(CreditCard.class));
         verifyNoInteractions(outboxService);
     }
@@ -125,7 +125,8 @@ public class PaymentServiceTest {
 
             ArgumentCaptor<InvoicePaymentDTO> captor = ArgumentCaptor.forClass(InvoicePaymentDTO.class);
             InOrder inOrder = inOrder(invoiceRepository, outboxService);
-            inOrder.verify(invoiceRepository).save(invoice);
+            inOrder.verify(invoiceRepository).saveAndFlush(invoice);
+            inOrder.verify(outboxService).invoiceChanged(invoice);
             inOrder.verify(outboxService).invoicePayment(captor.capture());
 
             InvoicePaymentDTO event = captor.getValue();

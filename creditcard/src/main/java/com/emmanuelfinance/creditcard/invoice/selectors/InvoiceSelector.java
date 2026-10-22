@@ -30,10 +30,6 @@ public class InvoiceSelector {
         return invoice;
     }
 
-    public Invoice getById(UUID invoiceId) {
-        return invoiceRepository.getById(invoiceId);
-    }
-
     public Invoice getByIdExcludingDeleted(UUID invoiceId) {
         Invoice invoice = invoiceRepository.findByIdAndDeletedFalse(invoiceId)
                 .orElseThrow(() -> new InvoiceDomainException(InvoiceErrorCode.INVOICE_NOT_FOUND));

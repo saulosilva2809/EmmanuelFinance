@@ -4,7 +4,16 @@ import com.emmanuelfinance.creditcard.CreditCardTestDataBuilder;
 import com.emmanuelfinance.creditcard.creditcard.CreditCard;
 import com.emmanuelfinance.creditcard.creditcard.CreditCardMapper;
 import com.emmanuelfinance.creditcard.creditcard.query.CreditCardDocument;
+import com.emmanuelfinance.creditcard.invoice.Invoice;
+import com.emmanuelfinance.creditcard.invoice.InvoiceItem;
+import com.emmanuelfinance.creditcard.invoice.InvoiceTestDataBuilder;
+import com.emmanuelfinance.creditcard.invoice.query.invoice.InvoiceDocument;
+import com.emmanuelfinance.creditcard.invoice.query.invoiceitem.InvoiceItemDocument;
+import com.emmanuelfinance.creditcard.outbox.enums.InvoiceItemOutboxEventType;
+import com.emmanuelfinance.creditcard.outbox.enums.InvoiceOutboxEventType;
+import com.emmanuelfinance.creditcard.invoice.InvoiceMapper;
 import com.emmanuelfinance.creditcard.outbox.enums.CreditCardOutboxEventType;
+import com.emmanuelfinance.creditcard.outbox.enums.PaymentOutboxEventType;
 import com.emmanuelfinance.shared.modules.payment.InvoicePaymentDTO;
 import com.emmanuelfinance.shared.outbox.dtos.OutboxEventSavedDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,7 +52,7 @@ class OutboxServiceTest {
     @BeforeEach
     void setUp() {
         OutboxEventFactory outboxEventFactory =
-                new OutboxEventFactory(objectMapper, Mappers.getMapper(CreditCardMapper.class));
+                new OutboxEventFactory(objectMapper, Mappers.getMapper(CreditCardMapper.class), Mappers.getMapper(InvoiceMapper.class));
         outboxService = new OutboxService(outboxEventRepository, applicationEventPublisher, outboxEventFactory);
     }
 
@@ -53,7 +62,7 @@ class OutboxServiceTest {
 
         List<OutboxEvent> saved = registeredRows();
         assertEquals(1, saved.size());
-        assertEquals(CreditCardOutboxEventType.INVOICE_PAYMENT, saved.get(0).getType());
+        assertEquals(PaymentOutboxEventType.INVOICE_PAYMENT.name(), saved.get(0).getType().name());
     }
 
     @Test
@@ -62,7 +71,7 @@ class OutboxServiceTest {
 
         List<OutboxEvent> saved = registeredRows();
         assertEquals(1, saved.size());
-        assertEquals(CreditCardOutboxEventType.CREDIT_CARD_CHANGED, saved.get(0).getType());
+        assertEquals(CreditCardOutboxEventType.CREDIT_CARD_CHANGED.name(), saved.get(0).getType().name());
         assertFalse(objectMapper.treeToValue(saved.get(0).getPayload(), CreditCardDocument.class).isDeleted());
     }
 
@@ -72,7 +81,7 @@ class OutboxServiceTest {
 
         List<OutboxEvent> saved = registeredRows();
         assertEquals(1, saved.size());
-        assertEquals(CreditCardOutboxEventType.CREDIT_CARD_CHANGED, saved.get(0).getType());
+        assertEquals(CreditCardOutboxEventType.CREDIT_CARD_CHANGED.name(), saved.get(0).getType().name());
         assertTrue(objectMapper.treeToValue(saved.get(0).getPayload(), CreditCardDocument.class).isDeleted());
     }
 
@@ -81,6 +90,43 @@ class OutboxServiceTest {
         outboxService.creditCardChanged(newCreditCard());
 
         verify(applicationEventPublisher, times(1)).publishEvent(any(OutboxEventSavedDTO.class));
+    }
+
+    @Test
+    void shouldRegisterTheInvoiceSnapshotWhenTheInvoiceChangesOrIsDeleted() throws Exception {
+        Invoice invoice = InvoiceTestDataBuilder.invoiceEntity(UUID.randomUUID(), UUID.randomUUID());
+
+        outboxService.invoiceChanged(invoice);
+        outboxService.invoiceDeleted(invoice);
+
+        ArgumentCaptor<List<OutboxEvent>> captor = rowsCaptor();
+        verify(outboxEventRepository, times(2)).saveAll(captor.capture());
+        List<OutboxEvent> first = captor.getAllValues().get(0);
+        List<OutboxEvent> second = captor.getAllValues().get(1);
+        assertEquals(InvoiceOutboxEventType.INVOICE_CHANGED.name(), first.get(0).getType().name());
+        assertFalse(objectMapper.treeToValue(first.get(0).getPayload(), InvoiceDocument.class).isDeleted());
+        assertTrue(objectMapper.treeToValue(second.get(0).getPayload(), InvoiceDocument.class).isDeleted());
+    }
+
+    @Test
+    void shouldRegisterTheInvoiceItemSnapshotWhenTheItemChangesOrIsDeleted() throws Exception {
+        InvoiceItem item = InvoiceTestDataBuilder.invoiceItemEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
+
+        outboxService.invoiceItemChanged(item);
+        outboxService.invoiceItemDeleted(item);
+
+        ArgumentCaptor<List<OutboxEvent>> captor = rowsCaptor();
+        verify(outboxEventRepository, times(2)).saveAll(captor.capture());
+        List<OutboxEvent> first = captor.getAllValues().get(0);
+        List<OutboxEvent> second = captor.getAllValues().get(1);
+        assertEquals(InvoiceItemOutboxEventType.INVOICE_ITEM_CHANGED.name(), first.get(0).getType().name());
+        assertFalse(objectMapper.treeToValue(first.get(0).getPayload(), InvoiceItemDocument.class).isDeleted());
+        assertTrue(objectMapper.treeToValue(second.get(0).getPayload(), InvoiceItemDocument.class).isDeleted());
+    }
+
+    @SuppressWarnings("unchecked")
+    private ArgumentCaptor<List<OutboxEvent>> rowsCaptor() {
+        return ArgumentCaptor.forClass(List.class);
     }
 
     @SuppressWarnings("unchecked")

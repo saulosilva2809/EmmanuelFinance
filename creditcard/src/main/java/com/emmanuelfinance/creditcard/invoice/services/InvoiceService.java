@@ -2,25 +2,17 @@ package com.emmanuelfinance.creditcard.invoice.services;
 
 import com.emmanuelfinance.creditcard.invoice.Invoice;
 import com.emmanuelfinance.creditcard.invoice.InvoiceItem;
-import com.emmanuelfinance.creditcard.invoice.dtos.InvoiceFiltersDTO;
-import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceDTO;
 import com.emmanuelfinance.creditcard.invoice.repositories.InvoiceRepository;
 import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceItemSelector;
 import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceSelector;
-import com.emmanuelfinance.creditcard.invoice.specifications.InvoiceSpecification;
-import com.emmanuelfinance.shared.dto.PageResponseDTO;
+import com.emmanuelfinance.creditcard.outbox.OutboxService;
 import com.emmanuelfinance.shared.modules.creditcard.CreditCardClientCacheService;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardInternalSummaryDTO;
-import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.enums.InvoiceStatusEnum;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
-import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,31 +33,11 @@ public class InvoiceService {
     private final InvoiceRepository invoiceRepository;
     private final InvoiceItemService invoiceItemService;
     private final InvoiceItemSelector invoiceItemSelector;
-    private final SecurityUtils securityUtils;
     private final InvoiceAmountService invoiceAmountService;
+    private final OutboxService outboxService;
 
     private CreditCardInternalSummaryDTO getCreditCardInternal(UUID creditCardId) {
         return creditCardClientCacheService.getCreditCardInternalSummaryDTO(creditCardId);
-    }
-
-    private ResponseInvoiceDTO invoiceAsDTO(Invoice invoice) {
-        CreditCardSummaryDTO cardSummaryDTO = creditCardClientCacheService.getCreditCardSummaryDTO(
-                invoice.getCreditCardId()
-        );
-
-        return new ResponseInvoiceDTO(
-                invoice.getId(),
-                cardSummaryDTO,
-                invoice.getMonth(),
-                invoice.getYear(),
-                invoice.getDueDate(),
-                invoice.getClosingDate(),
-                invoice.getTotalAmount(),
-                invoice.getAmountPaid(),
-                invoice.getStatus(),
-                invoice.getCreatedAt(),
-                invoice.getUpdatedAt()
-        );
     }
 
     @Transactional
@@ -85,6 +57,7 @@ public class InvoiceService {
         invoice.setStatus(InvoiceStatusEnum.OPEN);
 
         invoiceRepository.save(invoice);
+        outboxService.invoiceChanged(invoice);
         log.info("Criada nova INVOICE para {}/{}", targetDate.getMonthValue(), targetDate.getYear());
 
         return invoice;
@@ -105,7 +78,8 @@ public class InvoiceService {
             BigDecimal currentAmount = invoice.getTotalAmount() != null ? invoice.getTotalAmount() : BigDecimal.ZERO;
             invoice.setTotalAmount(currentAmount.add(installmentAmount));
 
-            invoiceRepository.save(invoice);
+            invoiceRepository.saveAndFlush(invoice);
+            outboxService.invoiceChanged(invoice);
             log.info("INVOICE já existe para {}/{}. Valor atualizado.", targetDate.getMonthValue(), targetDate.getYear());
 
             return invoice;
@@ -125,24 +99,9 @@ public class InvoiceService {
         for (int i = 0; i < totalInstallments; i++) {
             LocalDate installmentDate = event.date().toLocalDate().plusMonths(i);
 
-            // cria a fatura
             Invoice invoice = processInvoiceForDate(event, installmentDate, installmentAmount);
-            // cria o item da fatura
             invoiceItemService.createInvoiceItem(event, invoice.getId(), i+1, installmentAmount);
         }
-    }
-
-    public PageResponseDTO<ResponseInvoiceDTO> list(InvoiceFiltersDTO filters, Pageable pageable) {
-        UUID userId = securityUtils.getCurrentUserId();
-
-        Specification<Invoice> specification = InvoiceSpecification.withFilter(filters, userId);
-        Page<Invoice> page = invoiceRepository.findAll(
-                specification,
-                pageable
-        );
-
-        Page<ResponseInvoiceDTO> dtoPage = page.map(this::invoiceAsDTO);
-        return PageResponseDTO.from(dtoPage);
     }
 
     @Transactional

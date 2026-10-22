@@ -13,8 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
-// Serviço das chamadas ENTRE serviços. Lê do Postgres (fonte da verdade), nunca do Mongo: o Mongo recebe
-// os dados pelo Outbox e pode estar atrasado, e quem chama aqui usa o limite disponível para tomar decisões.
 @Service
 @RequiredArgsConstructor
 public class CreditCardInternalService {
@@ -45,7 +43,6 @@ public class CreditCardInternalService {
         );
     }
 
-    // @Transactional: o Outbox exige uma transação, e assim todos os cartões da conta e as suas linhas confirmam juntos
     @Transactional
     public void deactivateCardsByAccountId(UUID accountId) {
         List<CreditCard> cards = cardSelector.findByAccountId(accountId);

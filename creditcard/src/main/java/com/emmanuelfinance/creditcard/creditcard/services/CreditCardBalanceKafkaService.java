@@ -23,6 +23,7 @@ public class CreditCardBalanceKafkaService {
     private final CreditCardRepository creditCardRepository;
     private final OutboxService outboxService;
 
+
     @Transactional
     public void processTransactionCreate(TransactionCreatedEvent event) {
         CreditCard creditCard = creditCardSelector.getCreditCardByIdInternal(event.creditCardId());

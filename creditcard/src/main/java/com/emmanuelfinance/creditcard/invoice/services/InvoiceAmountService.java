@@ -2,7 +2,7 @@ package com.emmanuelfinance.creditcard.invoice.services;
 
 import com.emmanuelfinance.creditcard.invoice.Invoice;
 import com.emmanuelfinance.creditcard.invoice.repositories.InvoiceRepository;
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.creditcard.outbox.OutboxService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +14,7 @@ import java.util.List;
 public class InvoiceAmountService {
 
     private final InvoiceRepository invoiceRepository;
+    private final OutboxService outboxService;
 
     private void verifyAmount(List<Invoice> invoiceList) {
         invoiceList.stream()
@@ -27,7 +28,15 @@ public class InvoiceAmountService {
                             invoice.getTotalAmount().subtract(amount)
                 ));
         verifyAmount(invoiceList);
-        invoiceRepository.saveAll(invoiceList);
+        invoiceRepository.saveAllAndFlush(invoiceList);
+
+        invoiceList.forEach(invoice -> {
+            if (invoice.isDeleted()) {
+                outboxService.invoiceDeleted(invoice);
+            } else {
+                outboxService.invoiceChanged(invoice);
+            }
+        });
     }
 
     public void addBalanceAfterRestore(List<Invoice> invoiceList, BigDecimal amount) {
@@ -36,6 +45,7 @@ public class InvoiceAmountService {
                 invoice.setDeleted(false);
         });
 
-        invoiceRepository.saveAll(invoiceList);
+        invoiceRepository.saveAllAndFlush(invoiceList);
+        invoiceList.forEach(outboxService::invoiceChanged);
     }
 }
