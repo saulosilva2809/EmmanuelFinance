@@ -6,7 +6,7 @@ fatura.
 
 - Porta local: `8006`
 - Stack: Java 21, Spring Boot 3.3, PostgreSQL (Neon), MongoDB (Atlas), Kafka, Redis e Keycloak (JWT)
-- Não está no `docker-compose.yml`: roda pelo IntelliJ ou pelo Maven
+- Não está no `docker-compose.yml`: roda pelo IntelliJ
 
 ---
 
