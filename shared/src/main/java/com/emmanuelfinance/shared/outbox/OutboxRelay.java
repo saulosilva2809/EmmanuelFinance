@@ -13,9 +13,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-// Entrega o que o Outbox do serviço registrou. Não é @Component de propósito: cada serviço que tem um Outbox
-// o importa com @Import(OutboxRelay.class). Um @ConditionalOnBean aqui seria avaliado antes dos repositórios
-// existirem e o relay nunca seria criado.
 @Slf4j
 @RequiredArgsConstructor
 public class OutboxRelay {

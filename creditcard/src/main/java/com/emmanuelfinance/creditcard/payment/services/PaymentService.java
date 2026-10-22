@@ -87,7 +87,8 @@ public class PaymentService {
         invoice.setAmountPaid(totalAmount);
         invoice.setStatus(InvoiceStatusEnum.PAID);
 
-        invoiceRepository.save(invoice);
+        invoiceRepository.saveAndFlush(invoice);
+        outboxService.invoiceChanged(invoice);
         giveLimitBack(creditCard, totalAmount);
 
         outboxService.invoicePayment(new InvoicePaymentDTO(

@@ -81,25 +81,6 @@ public class InvoiceSelectorTest {
     }
 
     @Nested
-    @DisplayName("Cenários do getById")
-    class GetByIdTests {
-
-        @Test
-        @DisplayName("Deve retornar a fatura pelo ID")
-        void shouldReturnInvoiceById() {
-            Invoice saved = invoiceRepository.saveAndFlush(
-                    InvoiceTestDataBuilder.invoiceEntity(UUID.randomUUID(), UUID.randomUUID())
-            );
-
-            Invoice result = invoiceSelector.getById(saved.getId());
-
-            assertNotNull(result);
-            assertEquals(saved.getId(), result.getId());
-            assertEquals(saved.getTotalAmount(), result.getTotalAmount());
-        }
-    }
-
-    @Nested
     @DisplayName("Cenários do getByIdExcludingDeleted")
     class GetByIdExcludingDeletedTests {
 

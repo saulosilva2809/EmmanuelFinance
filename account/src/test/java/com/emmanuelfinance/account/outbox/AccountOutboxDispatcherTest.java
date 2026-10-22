@@ -58,7 +58,7 @@ class AccountOutboxDispatcherTest {
         assertTrue(dispatcher.supports(AccountOutboxEventType.ACCOUNT_EVENT));
         assertTrue(dispatcher.supports(AccountOutboxEventType.ACCOUNT_CHANGED));
         assertTrue(dispatcher.supports(AccountOutboxEventType.ACCOUNT_OWNER_CACHED));
-        assertFalse(dispatcher.supports(new OutboxEventType() {}));
+        assertFalse(dispatcher.supports(() -> "OUTRO_TIPO"));
     }
 
     @Test

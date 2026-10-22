@@ -1,6 +1,8 @@
 package com.emmanuelfinance.creditcard.outbox;
 
 import com.emmanuelfinance.creditcard.creditcard.CreditCard;
+import com.emmanuelfinance.creditcard.invoice.Invoice;
+import com.emmanuelfinance.creditcard.invoice.InvoiceItem;
 import com.emmanuelfinance.shared.modules.payment.InvoicePaymentDTO;
 import com.emmanuelfinance.shared.outbox.dtos.OutboxEventSavedDTO;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,22 @@ public class OutboxService {
     // delete
     public void creditCardDeleted(CreditCard creditCard) {
         register(outboxEventFactory.creditCardSnapshot(creditCard, true));
+    }
+
+    public void invoiceChanged(Invoice invoice) {
+        register(outboxEventFactory.invoiceSnapshot(invoice, false));
+    }
+
+    public void invoiceDeleted(Invoice invoice) {
+        register(outboxEventFactory.invoiceSnapshot(invoice, true));
+    }
+
+    public void invoiceItemChanged(InvoiceItem invoiceItem) {
+        register(outboxEventFactory.invoiceItemSnapshot(invoiceItem, false));
+    }
+
+    public void invoiceItemDeleted(InvoiceItem invoiceItem) {
+        register(outboxEventFactory.invoiceItemSnapshot(invoiceItem, true));
     }
 
     private void register(OutboxEvent... outboxEvents) {

@@ -3,6 +3,7 @@ package com.emmanuelfinance.creditcard.outbox;
 import com.emmanuelfinance.creditcard.creditcard.query.CreditCardDocument;
 import com.emmanuelfinance.creditcard.creditcard.query.CreditCardProjector;
 import com.emmanuelfinance.creditcard.outbox.enums.CreditCardOutboxEventType;
+import com.emmanuelfinance.creditcard.outbox.enums.PaymentOutboxEventType;
 import com.emmanuelfinance.shared.outbox.enums.OutboxEventType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -37,8 +38,8 @@ class CreditCardOutboxDispatcherTest {
     @Test
     void shouldSupportOnlyTheCreditCardChangedType() {
         assertTrue(dispatcher.supports(CreditCardOutboxEventType.CREDIT_CARD_CHANGED));
-        assertFalse(dispatcher.supports(CreditCardOutboxEventType.INVOICE_PAYMENT));
-        assertFalse(dispatcher.supports(new OutboxEventType() {}));
+        assertFalse(dispatcher.supports(PaymentOutboxEventType.INVOICE_PAYMENT));
+        assertFalse(dispatcher.supports(() -> "OUTRO_TIPO"));
     }
 
     @Test

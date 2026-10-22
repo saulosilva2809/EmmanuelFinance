@@ -20,6 +20,7 @@ public class CreditCardListener {
     private final CreditCardBalanceKafkaService creditCardBalanceKafkaService;
     private final CreditCardProducer creditCardProducer;
 
+
     @KafkaListener(topics = "account-events", groupId = "credit-card-service-group")
     public void handleAccountDeleted(AccountEventDTO event) {
         log.info("Recebido evento de conta: {}", event.accountId());

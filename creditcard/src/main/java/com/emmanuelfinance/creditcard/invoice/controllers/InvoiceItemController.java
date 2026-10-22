@@ -1,7 +1,7 @@
 package com.emmanuelfinance.creditcard.invoice.controllers;
 
 import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceItemDTO;
-import com.emmanuelfinance.creditcard.invoice.services.InvoiceItemService;
+import com.emmanuelfinance.creditcard.invoice.query.invoiceitem.InvoiceItemQueryService;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -20,7 +20,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class InvoiceItemController {
 
-    private final InvoiceItemService invoiceItemService;
+    private final InvoiceItemQueryService invoiceItemQueryService;
 
     @GetMapping("/{invoiceId}")
     public ResponseEntity<PageResponseDTO<ResponseInvoiceItemDTO>> listById(
@@ -31,7 +31,7 @@ public class InvoiceItemController {
             )
             Pageable pageable
     ) {
-        PageResponseDTO<ResponseInvoiceItemDTO> response = invoiceItemService.listByInvoiceId(
+        PageResponseDTO<ResponseInvoiceItemDTO> response = invoiceItemQueryService.listByInvoiceId(
                 invoiceId,
                 pageable
         );

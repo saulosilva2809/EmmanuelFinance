@@ -20,7 +20,7 @@ public class CreditCardOutboxDispatcher implements OutboxDispatcher {
 
     @Override
     public boolean supports(OutboxEventType type) {
-        return CreditCardOutboxEventType.CREDIT_CARD_CHANGED.equals(type);
+        return CreditCardOutboxEventType.CREDIT_CARD_CHANGED.is(type);
     }
 
     @Override

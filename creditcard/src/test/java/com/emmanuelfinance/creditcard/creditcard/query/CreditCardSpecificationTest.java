@@ -50,6 +50,15 @@ class CreditCardSpecificationTest {
     }
 
     @Test
+    void shouldTreatRegexCharactersInTheNameAsPlainText() {
+        List<Document> conditions = conditions(new CreditCardFiltersDTO(null, "a.b", null), false);
+
+        Pattern pattern = (Pattern) valueOf(conditions, "name");
+        assertTrue(pattern.matcher("cartão a.b").find());
+        assertFalse(pattern.matcher("cartão axb").find());
+    }
+
+    @Test
     void shouldIgnoreABlankName() {
         List<Document> conditions = conditions(new CreditCardFiltersDTO(null, "   ", null), false);
 

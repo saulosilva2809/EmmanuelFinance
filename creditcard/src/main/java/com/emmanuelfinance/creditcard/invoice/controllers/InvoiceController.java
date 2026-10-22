@@ -2,6 +2,7 @@ package com.emmanuelfinance.creditcard.invoice.controllers;
 
 import com.emmanuelfinance.creditcard.invoice.dtos.InvoiceFiltersDTO;
 import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceDTO;
+import com.emmanuelfinance.creditcard.invoice.query.invoice.InvoiceQueryService;
 import com.emmanuelfinance.creditcard.invoice.services.InvoiceService;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class InvoiceController {
 
-    private final InvoiceService invoiceService;
+    private final InvoiceQueryService invoiceQueryService;
 
     @GetMapping
     public ResponseEntity<PageResponseDTO<ResponseInvoiceDTO>> list(
@@ -29,7 +30,7 @@ public class InvoiceController {
             )
             Pageable pageable
     ) {
-        PageResponseDTO<ResponseInvoiceDTO> response = invoiceService.list(filters, pageable);
+        PageResponseDTO<ResponseInvoiceDTO> response = invoiceQueryService.list(filters, pageable);
         return ResponseEntity.ok().body(response);
     }
 }

@@ -5,7 +5,6 @@ import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import javax.swing.undo.CannotRedoException;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,6 +14,7 @@ public class CreditCardSelector {
 
     private final CreditCardRepository creditCardRepository;
     private final SecurityUtils securityUtils;
+
 
     public CreditCard getCreditCardById(UUID cardId) {
         UUID userId = securityUtils.getCurrentUserId();
