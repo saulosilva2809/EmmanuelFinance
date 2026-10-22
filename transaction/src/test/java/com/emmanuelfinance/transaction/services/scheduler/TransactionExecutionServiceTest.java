@@ -5,6 +5,7 @@ import com.emmanuelfinance.transaction.Transaction;
 import com.emmanuelfinance.transaction.TransactionRepository;
 import com.emmanuelfinance.transaction.TransactionSelector;
 import com.emmanuelfinance.transaction.TransactionTestDataBuilder;
+import com.emmanuelfinance.transaction.outbox.OutboxService;
 import com.emmanuelfinance.transaction.services.TransactionEventsService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,9 @@ public class TransactionExecutionServiceTest {
     @Mock
     private TransactionRepository transactionRepository;
 
+    @Mock
+    private OutboxService outboxService;
+
     @InjectMocks
     private TransactionExecutionService transactionExecutionService;
 
@@ -47,7 +51,8 @@ public class TransactionExecutionServiceTest {
         transactionExecutionService.executeScheduledTransaction(transaction.getId());
 
         assertEquals(StatusTransactionEnum.PAID, transaction.getStatus());
-        verify(transactionRepository, times(1)).save(transaction);
+        verify(transactionRepository, times(1)).saveAndFlush(transaction);
+        verify(outboxService, times(1)).transactionChanged(transaction);
         verify(transactionEventsService, times(1)).publishTransactionCreatedEvent(transaction);
     }
 
@@ -61,7 +66,7 @@ public class TransactionExecutionServiceTest {
         transactionExecutionService.executeScheduledTransaction(transaction.getId());
 
         assertEquals(StatusTransactionEnum.PENDING, transaction.getStatus());
-        verifyNoInteractions(transactionRepository, transactionEventsService);
+        verifyNoInteractions(transactionRepository, transactionEventsService, outboxService);
     }
 
     @Test
@@ -73,7 +78,7 @@ public class TransactionExecutionServiceTest {
 
         transactionExecutionService.executeScheduledTransaction(transaction.getId());
 
-        verifyNoInteractions(transactionRepository, transactionEventsService);
+        verifyNoInteractions(transactionRepository, transactionEventsService, outboxService);
     }
 
     @Test
@@ -85,7 +90,7 @@ public class TransactionExecutionServiceTest {
         transactionExecutionService.executeScheduledTransaction(transaction.getId());
 
         assertEquals(StatusTransactionEnum.PENDING, transaction.getStatus());
-        verifyNoInteractions(transactionRepository, transactionEventsService);
+        verifyNoInteractions(transactionRepository, transactionEventsService, outboxService);
     }
 
     @Test
@@ -99,6 +104,7 @@ public class TransactionExecutionServiceTest {
         assertDoesNotThrow(() -> transactionExecutionService.executeScheduledTransaction(transaction.getId()));
 
         assertEquals(StatusTransactionEnum.PENDING, transaction.getStatus());
-        verify(transactionRepository, times(2)).save(transaction);
+        verify(transactionRepository, times(2)).saveAndFlush(transaction);
+        verify(outboxService, times(2)).transactionChanged(transaction);
     }
 }

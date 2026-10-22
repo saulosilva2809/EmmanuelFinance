@@ -6,6 +6,7 @@ import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnu
 import com.emmanuelfinance.transaction.Transaction;
 import com.emmanuelfinance.transaction.TransactionRepository;
 import com.emmanuelfinance.transaction.TransactionSelector;
+import com.emmanuelfinance.transaction.outbox.OutboxService;
 import com.emmanuelfinance.transaction.dtos.CreateTransactionDTO;
 import com.emmanuelfinance.transaction.services.TransactionService;
 import com.emmanuelfinance.transaction.services.TransactionServiceInternal;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -25,6 +27,7 @@ public class TransactionListener {
     private final TransactionSelector transactionSelector;
     private final TransactionRepository transactionRepository;
     private final TransactionServiceInternal transactionServiceInternal;
+    private final OutboxService outboxService;
 
     @KafkaListener(
             topics = "transaction-failed-topic",
@@ -33,12 +36,14 @@ public class TransactionListener {
                     "spring.json.value.default.type=java.util.UUID"
             }
     )
+    @Transactional
     public void handleTransactionFailed(UUID transactionId) {
         log.info("Atualizando status da transação {} para FAILED", transactionId);
 
         Transaction transaction = transactionSelector.getTransactionByIdInternal(transactionId);
         transaction.setStatus(StatusTransactionEnum.FAILED);
-        transactionRepository.save(transaction);
+        transactionRepository.saveAndFlush(transaction);
+        outboxService.transactionChanged(transaction);
     }
 
     @KafkaListener(

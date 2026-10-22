@@ -9,6 +9,7 @@ import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardSummaryDTO;
 import com.emmanuelfinance.transaction.dtos.CreateTransactionDTO;
 import com.emmanuelfinance.transaction.dtos.ResponseTransactionDTO;
 import com.emmanuelfinance.transaction.dtos.UpdateTransactionDTO;
+import com.emmanuelfinance.transaction.query.TransactionDocument;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -44,6 +45,13 @@ public abstract class TransactionMapper {
     @Mapping(target = "creditCardSummary", source = "creditCardId", qualifiedByName = "mapCreditCard")
     @Mapping(target = "categorySummary", source = "categoryId", qualifiedByName = "mapCategory")
     public abstract ResponseTransactionDTO toResponseDTO(Transaction entity);
+
+    @Mapping(target = "accountSummary", source = "accountId", qualifiedByName = "mapAccount")
+    @Mapping(target = "creditCardSummary", source = "creditCardId", qualifiedByName = "mapCreditCard")
+    @Mapping(target = "categorySummary", source = "categoryId", qualifiedByName = "mapCategory")
+    public abstract ResponseTransactionDTO toResponseDTO(TransactionDocument document);
+
+    public abstract TransactionDocument toDocument(Transaction entity);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)

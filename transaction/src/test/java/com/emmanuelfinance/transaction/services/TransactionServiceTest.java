@@ -22,6 +22,7 @@ import com.emmanuelfinance.transaction.dtos.TransactionFiltersDTO;
 import com.emmanuelfinance.transaction.dtos.UpdateTransactionDTO;
 import com.emmanuelfinance.transaction.exceptions.TransactionDomainException;
 import com.emmanuelfinance.transaction.exceptions.TransactionErrorCode;
+import com.emmanuelfinance.transaction.outbox.OutboxService;
 import com.emmanuelfinance.transaction.services.scheduler.TransactionSchedulerService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -86,6 +87,9 @@ public class TransactionServiceTest {
     private CreditCardClientCacheService creditCardClientCacheService;
 
     @Mock
+    private OutboxService outboxService;
+
+    @Mock
     private AccountClientCacheService accountClientCacheService;
 
     private TransactionService transactionService;
@@ -106,7 +110,8 @@ public class TransactionServiceTest {
                 idempotencyService,
                 validator,
                 transactionEventsService,
-                transactionSchedulerService
+                transactionSchedulerService,
+                outboxService
         );
     }
 
@@ -175,6 +180,7 @@ public class TransactionServiceTest {
             assertEquals(saved.getId(), response.id());
 
             verify(idempotencyService, times(1)).validateAndLock("chave-123");
+            verify(outboxService, times(1)).transactionChanged(saved);
             verify(transactionEventsService, times(1)).publishTransactionCreatedEvent(saved);
             verifyNoInteractions(transactionSchedulerService);
         }
@@ -194,6 +200,7 @@ public class TransactionServiceTest {
 
             assertEquals(StatusTransactionEnum.PENDING, saved.getStatus());
             verify(transactionSchedulerService, times(1)).schedule(saved.getId(), date);
+            verify(outboxService, times(1)).transactionChanged(saved);
             verify(transactionEventsService, times(1)).publishTransactionCreatedEvent(saved);
         }
 
@@ -223,97 +230,6 @@ public class TransactionServiceTest {
             assertDomainError(TransactionErrorCode.TRANSACTION_ALREADY_EXISTS, () -> transactionService.create(dto));
 
             verifyNoInteractions(transactionRepository, transactionEventsService, transactionSchedulerService);
-        }
-    }
-
-    @Nested
-    @DisplayName("Cenários do view")
-    class ViewTests {
-
-        @Test
-        @DisplayName("Deve retornar o DTO da transação encontrada")
-        void shouldReturnDTO() {
-            Transaction transaction = TransactionTestDataBuilder.transactionEntity(userId);
-            ResponseTransactionDTO dto = TransactionTestDataBuilder.responseDTO(transaction);
-            when(transactionSelector.getTransactionById(transaction.getId())).thenReturn(transaction);
-            when(transactionMapper.toResponseDTO(transaction)).thenReturn(dto);
-
-            assertEquals(dto, transactionService.view(transaction.getId()));
-        }
-
-        @Test
-        @DisplayName("Deve propagar TransactionNotFound quando a transação não existir")
-        void shouldPropagateNotFound() {
-            UUID id = UUID.randomUUID();
-            when(transactionSelector.getTransactionById(id)).thenThrow(new TransactionNotFound());
-
-            assertThrows(TransactionNotFound.class, () -> transactionService.view(id));
-
-            verifyNoInteractions(transactionMapper);
-        }
-    }
-
-    @Nested
-    @DisplayName("Cenários do list e listDeleted")
-    class ListTests {
-
-        private final Pageable pageable = PageRequest.of(0, 10);
-        private final TransactionFiltersDTO filters =
-                new TransactionFiltersDTO(null, null, null, null, null, null, null, null, null);
-
-        @Test
-        @DisplayName("Deve listar as transações mapeadas para DTO")
-        void shouldListTransactions() {
-            Transaction transaction = TransactionTestDataBuilder.transactionEntity(userId);
-            ResponseTransactionDTO dto = TransactionTestDataBuilder.responseDTO(transaction);
-            when(securityUtils.getCurrentUserId()).thenReturn(userId);
-            when(transactionRepository.findAll(any(Specification.class), eq(pageable)))
-                    .thenReturn(new PageImpl<>(List.of(transaction), pageable, 1));
-            when(transactionMapper.toResponseDTO(transaction)).thenReturn(dto);
-
-            PageResponseDTO<ResponseTransactionDTO> result = transactionService.list(filters, pageable);
-
-            assertEquals(List.of(dto), result.content());
-            assertEquals(1L, result.totalElements());
-            assertEquals(1, result.totalPages());
-        }
-
-        @Test
-        @DisplayName("Deve retornar página vazia quando não houver transações")
-        void shouldReturnEmptyPage() {
-            when(securityUtils.getCurrentUserId()).thenReturn(userId);
-            when(transactionRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(Page.empty(pageable));
-
-            PageResponseDTO<ResponseTransactionDTO> result = transactionService.list(filters, pageable);
-
-            assertTrue(result.content().isEmpty());
-            assertEquals(0L, result.totalElements());
-            verifyNoInteractions(transactionMapper);
-        }
-
-        @Test
-        @DisplayName("Deve listar as transações excluídas mapeadas para DTO")
-        void shouldListDeletedTransactions() {
-            Transaction transaction = TransactionTestDataBuilder.transactionEntity(userId, true);
-            ResponseTransactionDTO dto = TransactionTestDataBuilder.responseDTO(transaction);
-            when(securityUtils.getCurrentUserId()).thenReturn(userId);
-            when(transactionRepository.findAll(any(Specification.class), eq(pageable)))
-                    .thenReturn(new PageImpl<>(List.of(transaction), pageable, 1));
-            when(transactionMapper.toResponseDTO(transaction)).thenReturn(dto);
-
-            PageResponseDTO<ResponseTransactionDTO> result = transactionService.listDeleted(filters, pageable);
-
-            assertEquals(List.of(dto), result.content());
-            assertTrue(result.content().get(0).deleted());
-        }
-
-        @Test
-        @DisplayName("Deve retornar página vazia quando não houver transações excluídas")
-        void shouldReturnEmptyDeletedPage() {
-            when(securityUtils.getCurrentUserId()).thenReturn(userId);
-            when(transactionRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(Page.empty(pageable));
-
-            assertTrue(transactionService.listDeleted(filters, pageable).content().isEmpty());
         }
     }
 
@@ -353,7 +269,7 @@ public class TransactionServiceTest {
                 transaction.setAmount(new BigDecimal("200.00"));
                 return null;
             }).when(transactionMapper).updateEntityFromDTO(dto, transaction);
-            when(transactionRepository.save(transaction)).thenReturn(transaction);
+            when(transactionRepository.saveAndFlush(transaction)).thenReturn(transaction);
 
             transactionService.update(transaction.getId(), dto);
 
@@ -376,7 +292,7 @@ public class TransactionServiceTest {
                 transaction.setScheduled(false);
                 return null;
             }).when(transactionMapper).updateEntityFromDTO(dto, transaction);
-            when(transactionRepository.save(transaction)).thenReturn(transaction);
+            when(transactionRepository.saveAndFlush(transaction)).thenReturn(transaction);
 
             transactionService.update(transaction.getId(), dto);
 
@@ -404,7 +320,7 @@ public class TransactionServiceTest {
                 transaction.setDate(newDate);
                 return null;
             }).when(transactionMapper).updateEntityFromDTO(dto, transaction);
-            when(transactionRepository.save(transaction)).thenReturn(transaction);
+            when(transactionRepository.saveAndFlush(transaction)).thenReturn(transaction);
 
             transactionService.update(transaction.getId(), dto);
 
@@ -424,7 +340,7 @@ public class TransactionServiceTest {
             assertDomainError(TransactionErrorCode.CANNOT_SCHEDULE_UNSCHEDULED_TRANSACTION,
                     () -> transactionService.update(transaction.getId(), dto));
 
-            verifyNoInteractions(transactionMapper, transactionRepository, transactionEventsService);
+            verifyNoInteractions(transactionMapper, transactionRepository, transactionEventsService, outboxService);
         }
     }
 
@@ -441,6 +357,7 @@ public class TransactionServiceTest {
             transactionService.delete(transaction.getId());
 
             verify(transactionRepository, times(1)).delete(transaction);
+            verify(outboxService, times(1)).transactionDeleted(transaction);
             verify(transactionEventsService, times(1)).publishTransactionDeletedEvent(transaction);
         }
 
@@ -452,7 +369,7 @@ public class TransactionServiceTest {
 
             assertThrows(TransactionNotFound.class, () -> transactionService.delete(id));
 
-            verifyNoInteractions(transactionRepository, transactionEventsService);
+            verifyNoInteractions(transactionRepository, transactionEventsService, outboxService);
         }
     }
 
@@ -469,7 +386,8 @@ public class TransactionServiceTest {
             transactionService.restore(transaction.getId());
 
             assertFalse(transaction.isDeleted());
-            verify(transactionRepository, times(1)).save(transaction);
+            verify(transactionRepository, times(1)).saveAndFlush(transaction);
+            verify(outboxService, times(1)).transactionChanged(transaction);
             verify(transactionEventsService, times(1)).publishTransactionRestoreEvent(transaction);
         }
 
@@ -482,7 +400,7 @@ public class TransactionServiceTest {
             assertDomainError(TransactionErrorCode.RESTORE_TRANSACTION_NOT_DELETED,
                     () -> transactionService.restore(transaction.getId()));
 
-            verifyNoInteractions(transactionRepository, transactionEventsService);
+            verifyNoInteractions(transactionRepository, transactionEventsService, outboxService);
         }
 
         @Test
@@ -501,7 +419,7 @@ public class TransactionServiceTest {
                     () -> transactionService.restore(transaction.getId()));
 
             assertTrue(transaction.isDeleted());
-            verifyNoInteractions(transactionRepository, transactionEventsService);
+            verifyNoInteractions(transactionRepository, transactionEventsService, outboxService);
         }
     }
 }

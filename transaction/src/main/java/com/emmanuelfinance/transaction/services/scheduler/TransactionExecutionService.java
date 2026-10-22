@@ -4,6 +4,7 @@ import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnu
 import com.emmanuelfinance.transaction.Transaction;
 import com.emmanuelfinance.transaction.TransactionRepository;
 import com.emmanuelfinance.transaction.TransactionSelector;
+import com.emmanuelfinance.transaction.outbox.OutboxService;
 import com.emmanuelfinance.transaction.services.TransactionEventsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ public class TransactionExecutionService {
     private final TransactionEventsService transactionEventsService;
     private final TransactionSelector transactionSelector;
     private final TransactionRepository transactionRepository;
+    private final OutboxService outboxService;
 
     @Transactional
     public void executeScheduledTransaction(UUID transactionId) {
@@ -43,13 +45,17 @@ public class TransactionExecutionService {
 
         try {
             transaction.setStatus(StatusTransactionEnum.PAID);
-            transactionRepository.save(transaction);
+            // grava na hora para a data de atualização já ir preenchida na foto do outbox
+            transactionRepository.saveAndFlush(transaction);
+            outboxService.transactionChanged(transaction);
 
             transactionEventsService.publishTransactionCreatedEvent(transaction);
         } catch (Exception e) {
             log.error("Erro ao executar transação agendada {}: {}", transactionId, e.getMessage());
             transaction.setStatus(StatusTransactionEnum.PENDING);
-            transactionRepository.save(transaction);
+            // volta para pendente também no mongo, senão ele ficaria mostrando a transação como paga
+            transactionRepository.saveAndFlush(transaction);
+            outboxService.transactionChanged(transaction);
         }
     }
 }
