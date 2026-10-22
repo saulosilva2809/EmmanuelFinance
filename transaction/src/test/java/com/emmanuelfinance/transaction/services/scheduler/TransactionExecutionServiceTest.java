@@ -1,12 +1,13 @@
 package com.emmanuelfinance.transaction.services.scheduler;
 
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
-import com.emmanuelfinance.transaction.Transaction;
-import com.emmanuelfinance.transaction.TransactionRepository;
-import com.emmanuelfinance.transaction.TransactionSelector;
+import com.emmanuelfinance.transaction.transaction.Transaction;
+import com.emmanuelfinance.transaction.transaction.TransactionRepository;
+import com.emmanuelfinance.transaction.transaction.TransactionSelector;
 import com.emmanuelfinance.transaction.TransactionTestDataBuilder;
-import com.emmanuelfinance.transaction.outbox.OutboxService;
-import com.emmanuelfinance.transaction.services.TransactionEventsService;
+import com.emmanuelfinance.transaction.transaction.outbox.OutboxService;
+import com.emmanuelfinance.transaction.transaction.services.TransactionEventsService;
+import com.emmanuelfinance.transaction.transaction.services.scheduler.TransactionExecutionService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

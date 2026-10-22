@@ -9,9 +9,10 @@ import com.emmanuelfinance.shared.modules.category.dtos.CategorySummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardInternalSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardSummaryDTO;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
-import com.emmanuelfinance.transaction.dtos.CreateTransactionDTO;
-import com.emmanuelfinance.transaction.dtos.ResponseTransactionDTO;
-import com.emmanuelfinance.transaction.dtos.UpdateTransactionDTO;
+import com.emmanuelfinance.transaction.transaction.Transaction;
+import com.emmanuelfinance.transaction.transaction.dtos.CreateTransactionDTO;
+import com.emmanuelfinance.transaction.transaction.dtos.ResponseTransactionDTO;
+import com.emmanuelfinance.transaction.transaction.dtos.UpdateTransactionDTO;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

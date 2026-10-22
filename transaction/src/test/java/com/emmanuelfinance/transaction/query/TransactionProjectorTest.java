@@ -1,5 +1,8 @@
 package com.emmanuelfinance.transaction.query;
 
+import com.emmanuelfinance.transaction.transaction.query.TransactionDocument;
+import com.emmanuelfinance.transaction.transaction.query.TransactionDocumentRepository;
+import com.emmanuelfinance.transaction.transaction.query.TransactionProjector;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

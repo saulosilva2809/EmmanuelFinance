@@ -1,7 +1,6 @@
 package com.emmanuelfinance.transaction.services;
 
 import com.emmanuelfinance.config.exceptions.APIException;
-import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.enums.TypeEnum;
 import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
@@ -11,19 +10,22 @@ import com.emmanuelfinance.shared.modules.creditcard.CreditCardClientCacheServic
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.exceptions.TransactionNotFound;
 import com.emmanuelfinance.shared.security.SecurityUtils;
-import com.emmanuelfinance.transaction.Transaction;
-import com.emmanuelfinance.transaction.TransactionMapper;
-import com.emmanuelfinance.transaction.TransactionRepository;
-import com.emmanuelfinance.transaction.TransactionSelector;
+import com.emmanuelfinance.transaction.transaction.Transaction;
+import com.emmanuelfinance.transaction.transaction.TransactionMapper;
+import com.emmanuelfinance.transaction.transaction.TransactionRepository;
+import com.emmanuelfinance.transaction.transaction.TransactionSelector;
 import com.emmanuelfinance.transaction.TransactionTestDataBuilder;
-import com.emmanuelfinance.transaction.dtos.CreateTransactionDTO;
-import com.emmanuelfinance.transaction.dtos.ResponseTransactionDTO;
-import com.emmanuelfinance.transaction.dtos.TransactionFiltersDTO;
-import com.emmanuelfinance.transaction.dtos.UpdateTransactionDTO;
-import com.emmanuelfinance.transaction.exceptions.TransactionDomainException;
-import com.emmanuelfinance.transaction.exceptions.TransactionErrorCode;
-import com.emmanuelfinance.transaction.outbox.OutboxService;
-import com.emmanuelfinance.transaction.services.scheduler.TransactionSchedulerService;
+import com.emmanuelfinance.transaction.transaction.dtos.CreateTransactionDTO;
+import com.emmanuelfinance.transaction.transaction.dtos.ResponseTransactionDTO;
+import com.emmanuelfinance.transaction.transaction.dtos.UpdateTransactionDTO;
+import com.emmanuelfinance.transaction.transaction.exceptions.TransactionDomainException;
+import com.emmanuelfinance.transaction.transaction.exceptions.TransactionErrorCode;
+import com.emmanuelfinance.transaction.transaction.outbox.OutboxService;
+import com.emmanuelfinance.transaction.transaction.services.IdempotencyService;
+import com.emmanuelfinance.transaction.transaction.services.TransactionEventsService;
+import com.emmanuelfinance.transaction.transaction.services.TransactionService;
+import com.emmanuelfinance.transaction.transaction.services.TransactionValidatorService;
+import com.emmanuelfinance.transaction.transaction.services.scheduler.TransactionSchedulerService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -32,15 +34,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;

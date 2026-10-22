@@ -5,6 +5,7 @@ import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnu
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionUpdatedEvent;
+import com.emmanuelfinance.transaction.transaction.kafka.TransactionProducer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

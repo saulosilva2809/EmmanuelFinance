@@ -2,10 +2,12 @@ package com.emmanuelfinance.transaction.outbox;
 
 import com.emmanuelfinance.shared.enums.TypeEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
-import com.emmanuelfinance.transaction.outbox.enums.TransactionEventOutboxEventType;
-import com.emmanuelfinance.transaction.outbox.enums.TransactionOutboxEventType;
-import com.emmanuelfinance.transaction.query.TransactionDocument;
-import com.emmanuelfinance.transaction.query.TransactionProjector;
+import com.emmanuelfinance.transaction.transaction.outbox.OutboxEvent;
+import com.emmanuelfinance.transaction.transaction.outbox.TransactionOutboxDispatcher;
+import com.emmanuelfinance.transaction.transaction.outbox.enums.TransactionEventOutboxEventType;
+import com.emmanuelfinance.transaction.transaction.outbox.enums.TransactionOutboxEventType;
+import com.emmanuelfinance.transaction.transaction.query.TransactionDocument;
+import com.emmanuelfinance.transaction.transaction.query.TransactionProjector;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.Test;
