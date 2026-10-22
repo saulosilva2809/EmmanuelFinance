@@ -1,5 +1,7 @@
 package com.emmanuelfinance.transaction;
 
+import com.emmanuelfinance.transaction.transaction.Transaction;
+import com.emmanuelfinance.transaction.transaction.TransactionRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

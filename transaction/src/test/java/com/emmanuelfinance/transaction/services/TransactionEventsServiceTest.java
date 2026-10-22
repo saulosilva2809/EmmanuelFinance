@@ -5,9 +5,10 @@ import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnu
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionUpdatedEvent;
-import com.emmanuelfinance.transaction.Transaction;
+import com.emmanuelfinance.transaction.transaction.Transaction;
 import com.emmanuelfinance.transaction.TransactionTestDataBuilder;
-import com.emmanuelfinance.transaction.outbox.OutboxService;
+import com.emmanuelfinance.transaction.transaction.outbox.OutboxService;
+import com.emmanuelfinance.transaction.transaction.services.TransactionEventsService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

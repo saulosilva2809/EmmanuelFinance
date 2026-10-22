@@ -2,14 +2,14 @@ package com.emmanuelfinance.transaction.query;
 
 import com.emmanuelfinance.shared.enums.TypeEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
-import com.emmanuelfinance.transaction.dtos.TransactionFiltersDTO;
+import com.emmanuelfinance.transaction.transaction.dtos.TransactionFiltersDTO;
+import com.emmanuelfinance.transaction.transaction.query.TransactionSpecification;
 import org.bson.Document;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.mongodb.core.query.Query;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;

@@ -2,9 +2,10 @@ package com.emmanuelfinance.transaction.services;
 
 import com.emmanuelfinance.shared.enums.TypeEnum;
 import com.emmanuelfinance.transaction.TransactionTestDataBuilder;
-import com.emmanuelfinance.transaction.dtos.CreateTransactionDTO;
-import com.emmanuelfinance.transaction.exceptions.TransactionDomainException;
-import com.emmanuelfinance.transaction.exceptions.TransactionErrorCode;
+import com.emmanuelfinance.transaction.transaction.dtos.CreateTransactionDTO;
+import com.emmanuelfinance.transaction.transaction.exceptions.TransactionDomainException;
+import com.emmanuelfinance.transaction.transaction.exceptions.TransactionErrorCode;
+import com.emmanuelfinance.transaction.transaction.services.IdempotencyService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
