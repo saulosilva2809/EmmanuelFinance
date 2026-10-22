@@ -10,6 +10,7 @@ import com.emmanuelfinance.creditcard.invoice.exceptions.InvoiceDomainException;
 import com.emmanuelfinance.creditcard.invoice.exceptions.InvoiceErrorCode;
 import com.emmanuelfinance.creditcard.invoice.repositories.InvoiceRepository;
 import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceSelector;
+import com.emmanuelfinance.creditcard.payment.dto.PaymentPartialDTO;
 import com.emmanuelfinance.creditcard.payment.dto.PaymentTotalDTO;
 import com.emmanuelfinance.creditcard.payment.exceptions.PaymentDomainException;
 import com.emmanuelfinance.creditcard.payment.exceptions.PaymentErrorCode;
@@ -256,18 +257,240 @@ public class PaymentServiceTest {
         }
 
         @Test
-        @DisplayName("Deve lançar CreditCardNotFound e não consultar a conta nem publicar nada quando o cartão não for do usuário")
+        @DisplayName("Deve lançar CreditCardNotFound e não buscar a fatura quando o cartão não for do usuário")
         void shouldThrowWhenCardDoesNotBelongToTheUser() {
             UUID cardId = UUID.randomUUID();
-            Invoice invoice = invoice(userId, cardId, "300.00", InvoiceStatusEnum.OPEN);
-            when(invoiceSelector.getByIdExcludingDeleted(invoice.getId())).thenReturn(invoice);
             when(securityUtils.getCurrentUserId()).thenReturn(userId);
             when(creditCardSelector.getCreditCardById(cardId, userId)).thenThrow(new CreditCardNotFound());
 
             assertThrows(CreditCardNotFound.class,
-                    () -> paymentService.totalInvoicePayment(cardId, invoice.getId(), paymentDTO));
+                    () -> paymentService.totalInvoicePayment(cardId, UUID.randomUUID(), paymentDTO));
 
-            verifyNoInteractions(accountClientCacheService, accountOwnershipValidator, outboxService);
+            verifyNoInteractions(invoiceSelector, accountClientCacheService, outboxService);
+        }
+    }
+
+    @Nested
+    @DisplayName("Pagamento parcial")
+    class PartialPaymentTests {
+
+        private PaymentPartialDTO partial(String amount) {
+            return new PaymentPartialDTO(accountId, new BigDecimal(amount));
+        }
+
+        @Test
+        @DisplayName("Deve registrar o valor pago, manter a fatura aberta, devolver só esse valor ao limite e publicar o evento")
+        void shouldPayPartOfTheInvoice() {
+            Invoice invoice = invoice(userId, card.getId(), "300.00", InvoiceStatusEnum.CLOSED);
+            stubCardAndInvoice(invoice);
+            stubBalance("1000.00");
+
+            paymentService.partialInvoicePayment(card.getId(), invoice.getId(), partial("100.00"));
+
+            assertEquals(new BigDecimal("100.00"), invoice.getAmountPaid());
+            assertEquals(new BigDecimal("300.00"), invoice.getTotalAmount());
+            assertEquals(InvoiceStatusEnum.OPEN, invoice.getStatus());
+            assertEquals(new BigDecimal("5100.00"), card.getAvailableLimit());
+
+            ArgumentCaptor<InvoicePaymentDTO> captor = ArgumentCaptor.forClass(InvoicePaymentDTO.class);
+            InOrder inOrder = inOrder(invoiceRepository, outboxService);
+            inOrder.verify(invoiceRepository).saveAndFlush(invoice);
+            inOrder.verify(outboxService).invoiceChanged(invoice);
+            inOrder.verify(outboxService).invoicePayment(captor.capture());
+
+            InvoicePaymentDTO event = captor.getValue();
+            assertEquals(accountId, event.accountId());
+            assertEquals(invoice.getId(), event.invoiceId());
+            assertEquals(new BigDecimal("100.00"), event.totalPaid());
+            assertNotNull(event.paymentId());
+            verify(outboxService, times(1)).creditCardChanged(card);
+        }
+
+        @Test
+        @DisplayName("Deve marcar a fatura como paga quando o valor parcial for igual ao total")
+        void shouldMarkAsPaidWhenAmountEqualsTheTotal() {
+            Invoice invoice = invoice(userId, card.getId(), "300.00", InvoiceStatusEnum.OPEN);
+            stubCardAndInvoice(invoice);
+            stubBalance("1000.00");
+
+            paymentService.partialInvoicePayment(card.getId(), invoice.getId(), partial("300.00"));
+
+            assertEquals(InvoiceStatusEnum.PAID, invoice.getStatus());
+            assertEquals(new BigDecimal("300.00"), invoice.getAmountPaid());
+        }
+
+        @Test
+        @DisplayName("Deve aceitar quando o saldo cobre o valor parcial mas não cobriria a fatura inteira")
+        void shouldAcceptBalanceThatCoversOnlyThePartialAmount() {
+            Invoice invoice = invoice(userId, card.getId(), "300.00", InvoiceStatusEnum.OPEN);
+            stubCardAndInvoice(invoice);
+            stubBalance("150.00");
+
+            assertDoesNotThrow(() -> paymentService.partialInvoicePayment(card.getId(), invoice.getId(), partial("100.00")));
+
+            assertEquals(InvoiceStatusEnum.OPEN, invoice.getStatus());
+        }
+
+        @Test
+        @DisplayName("Deve somar o segundo pagamento parcial ao primeiro, sem apagar o que já foi pago")
+        void shouldAccumulateTheAmountPaid() {
+            Invoice invoice = invoice(userId, card.getId(), "300.00", InvoiceStatusEnum.OPEN);
+            invoice.setAmountPaid(new BigDecimal("100.00"));
+            stubCardAndInvoice(invoice);
+            stubBalance("1000.00");
+
+            paymentService.partialInvoicePayment(card.getId(), invoice.getId(), partial("50.00"));
+
+            assertEquals(new BigDecimal("150.00"), invoice.getAmountPaid());
+            assertEquals(InvoiceStatusEnum.OPEN, invoice.getStatus());
+        }
+
+        @Test
+        @DisplayName("Deve marcar a fatura como paga quando os parciais somam o total")
+        void shouldMarkAsPaidWhenThePartialsAddUpToTheTotal() {
+            Invoice invoice = invoice(userId, card.getId(), "300.00", InvoiceStatusEnum.OPEN);
+            invoice.setAmountPaid(new BigDecimal("100.00"));
+            stubCardAndInvoice(invoice);
+            stubBalance("1000.00");
+
+            paymentService.partialInvoicePayment(card.getId(), invoice.getId(), partial("200.00"));
+
+            assertEquals(new BigDecimal("300.00"), invoice.getAmountPaid());
+            assertEquals(InvoiceStatusEnum.PAID, invoice.getStatus());
+        }
+
+        @Test
+        @DisplayName("Deve lançar DATA_INVALID_VALUE (400) e não alterar nada quando o valor passar do que falta pagar")
+        void shouldThrowWhenAmountIsGreaterThanTheRemaining() {
+            Invoice invoice = invoice(userId, card.getId(), "300.00", InvoiceStatusEnum.OPEN);
+            invoice.setAmountPaid(new BigDecimal("100.00"));
+            stubCardAndInvoice(invoice);
+
+            PaymentDomainException exception = assertThrows(PaymentDomainException.class,
+                    () -> paymentService.partialInvoicePayment(card.getId(), invoice.getId(), partial("200.01")));
+
+            assertEquals(PaymentErrorCode.DATA_INVALID_VALUE, exception.getErrorCode());
+            assertEquals(new BigDecimal("100.00"), invoice.getAmountPaid());
+            verifyNoInteractions(accountClientCacheService, accountOwnershipValidator);
+            assertNothingWasChargedOrPublished();
+        }
+
+        @Test
+        @DisplayName("Deve lançar INSUFFICIENT_BALANCE (422) quando o saldo não cobrir o valor parcial")
+        void shouldThrowWhenBalanceDoesNotCoverThePartialAmount() {
+            Invoice invoice = invoice(userId, card.getId(), "300.00", InvoiceStatusEnum.OPEN);
+            stubCardAndInvoice(invoice);
+            stubBalance("99.99");
+
+            PaymentDomainException exception = assertThrows(PaymentDomainException.class,
+                    () -> paymentService.partialInvoicePayment(card.getId(), invoice.getId(), partial("100.00")));
+
+            assertEquals(PaymentErrorCode.INSUFFICIENT_BALANCE, exception.getErrorCode());
+            assertEquals(new BigDecimal("5000.00"), card.getAvailableLimit());
+            assertNothingWasChargedOrPublished();
+        }
+
+        @Test
+        @DisplayName("Deve lançar INVOICE_NOT_FOUND quando a fatura for de outro usuário")
+        void shouldThrowWhenInvoiceBelongsToAnotherUser() {
+            Invoice invoice = invoice(UUID.randomUUID(), card.getId(), "300.00", InvoiceStatusEnum.OPEN);
+            stubCardAndInvoice(invoice);
+
+            InvoiceDomainException exception = assertThrows(InvoiceDomainException.class,
+                    () -> paymentService.partialInvoicePayment(card.getId(), invoice.getId(), partial("100.00")));
+
+            assertEquals(InvoiceErrorCode.INVOICE_NOT_FOUND, exception.getErrorCode());
+            assertNothingWasChargedOrPublished();
+        }
+
+        @Test
+        @DisplayName("Deve lançar INVOICE_ALREADY_PAID (409) quando a fatura já estiver paga")
+        void shouldThrowWhenInvoiceIsAlreadyPaid() {
+            Invoice invoice = invoice(userId, card.getId(), "300.00", InvoiceStatusEnum.PAID);
+            stubCardAndInvoice(invoice);
+
+            PaymentDomainException exception = assertThrows(PaymentDomainException.class,
+                    () -> paymentService.partialInvoicePayment(card.getId(), invoice.getId(), partial("100.00")));
+
+            assertEquals(PaymentErrorCode.INVOICE_ALREADY_PAID, exception.getErrorCode());
+            assertNothingWasChargedOrPublished();
+        }
+
+        @Test
+        @DisplayName("Deve lançar INVOICE_NOTHING_TO_PAY (422) quando o total da fatura for zero")
+        void shouldThrowWhenInvoiceHasNothingToPay() {
+            Invoice invoice = invoice(userId, card.getId(), "0.00", InvoiceStatusEnum.OPEN);
+            stubCardAndInvoice(invoice);
+
+            PaymentDomainException exception = assertThrows(PaymentDomainException.class,
+                    () -> paymentService.partialInvoicePayment(card.getId(), invoice.getId(), partial("10.00")));
+
+            assertEquals(PaymentErrorCode.INVOICE_NOTHING_TO_PAY, exception.getErrorCode());
+            assertNothingWasChargedOrPublished();
+        }
+    }
+
+    @Nested
+    @DisplayName("Pagamento total depois de pagamentos parciais")
+    class TotalAfterPartialTests {
+
+        @Test
+        @DisplayName("Deve pagar só o que falta da fatura, e não o total de novo")
+        void shouldPayOnlyTheRemainingAmount() {
+            Invoice invoice = invoice(userId, card.getId(), "300.00", InvoiceStatusEnum.OPEN);
+            invoice.setAmountPaid(new BigDecimal("100.00"));
+            stubCardAndInvoice(invoice);
+            stubBalance("1000.00");
+
+            paymentService.totalInvoicePayment(card.getId(), invoice.getId(), paymentDTO);
+
+            assertEquals(new BigDecimal("300.00"), invoice.getAmountPaid());
+            assertEquals(InvoiceStatusEnum.PAID, invoice.getStatus());
+            assertEquals(new BigDecimal("5200.00"), card.getAvailableLimit());
+
+            ArgumentCaptor<InvoicePaymentDTO> captor = ArgumentCaptor.forClass(InvoicePaymentDTO.class);
+            verify(outboxService).invoicePayment(captor.capture());
+            assertEquals(new BigDecimal("200.00"), captor.getValue().totalPaid());
+        }
+
+        @Test
+        @DisplayName("Deve conferir o saldo contra o que falta pagar, e não contra o total")
+        void shouldCheckTheBalanceAgainstTheRemainingAmount() {
+            Invoice invoice = invoice(userId, card.getId(), "300.00", InvoiceStatusEnum.OPEN);
+            invoice.setAmountPaid(new BigDecimal("100.00"));
+            stubCardAndInvoice(invoice);
+            stubBalance("200.00");
+
+            assertDoesNotThrow(() -> paymentService.totalInvoicePayment(card.getId(), invoice.getId(), paymentDTO));
+        }
+
+        @Test
+        @DisplayName("Deve lançar INVOICE_NOTHING_TO_PAY (422) quando a fatura aberta já está toda paga")
+        void shouldThrowWhenNothingIsLeftToPay() {
+            Invoice invoice = invoice(userId, card.getId(), "300.00", InvoiceStatusEnum.OPEN);
+            invoice.setAmountPaid(new BigDecimal("300.00"));
+            stubCardAndInvoice(invoice);
+
+            PaymentDomainException exception = assertThrows(PaymentDomainException.class,
+                    () -> paymentService.totalInvoicePayment(card.getId(), invoice.getId(), paymentDTO));
+
+            assertEquals(PaymentErrorCode.INVOICE_NOTHING_TO_PAY, exception.getErrorCode());
+            assertNothingWasChargedOrPublished();
+        }
+
+        @Test
+        @DisplayName("Cada pagamento da mesma fatura deve sair com um id diferente")
+        void shouldUseADifferentPaymentIdForEachPayment() {
+            Invoice invoice = invoice(userId, card.getId(), "300.00", InvoiceStatusEnum.OPEN);
+            stubCardAndInvoice(invoice);
+            stubBalance("1000.00");
+
+            paymentService.partialInvoicePayment(card.getId(), invoice.getId(), new PaymentPartialDTO(accountId, new BigDecimal("100.00")));
+            paymentService.totalInvoicePayment(card.getId(), invoice.getId(), paymentDTO);
+
+            ArgumentCaptor<InvoicePaymentDTO> captor = ArgumentCaptor.forClass(InvoicePaymentDTO.class);
+            verify(outboxService, times(2)).invoicePayment(captor.capture());
+            assertNotEquals(captor.getAllValues().get(0).paymentId(), captor.getAllValues().get(1).paymentId());
         }
     }
 }

@@ -30,7 +30,7 @@ public class PaymentProducerTest {
     private InvoicePaymentDTO newEvent() {
         return new InvoicePaymentDTO(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Cartão C6",
-                UUID.randomUUID(), 10, 2026, new BigDecimal("300.00")
+                UUID.randomUUID(), 10, 2026, new BigDecimal("300.00"), UUID.randomUUID()
         );
     }
 

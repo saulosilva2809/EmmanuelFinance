@@ -39,6 +39,13 @@ public class PaymentService {
     private final CreditCardRepository creditCardRepository;
     private final OutboxService outboxService;
 
+    // quanto ainda falta pagar da fatura: o total menos o que já foi pago
+    private BigDecimal remainingAmount(Invoice invoice) {
+        BigDecimal amountPaid = invoice.getAmountPaid() != null ? invoice.getAmountPaid() : BigDecimal.ZERO;
+
+        return invoice.getTotalAmount().subtract(amountPaid);
+    }
+
     private void validateInvoice(Invoice invoice, UUID userId, UUID creditCardId) {
         boolean belongsToUserAndCard = userId.equals(invoice.getUserId())
                 && creditCardId.equals(invoice.getCreditCardId());
@@ -53,8 +60,8 @@ public class PaymentService {
             throw new PaymentDomainException(PaymentErrorCode.INVOICE_ALREADY_PAID);
         }
 
-        // se o valor é 0
-        if (invoice.getTotalAmount() == null || invoice.getTotalAmount().compareTo(BigDecimal.ZERO) <= 0) {
+        // se não tem nada a pagar: total zerado, ou tudo já pago
+        if (invoice.getTotalAmount() == null || remainingAmount(invoice).compareTo(BigDecimal.ZERO) <= 0) {
             throw new PaymentDomainException(PaymentErrorCode.INVOICE_NOTHING_TO_PAY);
         }
     }
@@ -62,7 +69,7 @@ public class PaymentService {
     private void giveLimitBack(CreditCard creditCard, BigDecimal amount) {
         // limite atual
         BigDecimal currentLimit = creditCard.getAvailableLimit() != null ? creditCard.getAvailableLimit() : BigDecimal.ZERO;
-        // novo limite = limite atual + amount (amount pode ser o valor total da fatura ou um valor parcial)
+        // novo limite = limite atual + amount (amount pode ser o restante da fatura ou um valor parcial)
         BigDecimal newLimit = currentLimit.add(amount);
 
         // verifica se o novo limite seria maior que o limite máximo do cartão
@@ -76,18 +83,21 @@ public class PaymentService {
         outboxService.creditCardChanged(creditCard);
     }
 
-    private void baseInvoicePayment(
-            UUID creditCardId,
-            Invoice invoice,
-            UUID accountId,
-            BigDecimal amount
-    ) {
+    private void invoicePayment(UUID creditCardId, UUID invoiceId, UUID accountId, BigDecimal requestedAmount) {
         UUID userId = securityUtils.getCurrentUserId();
 
         CreditCard creditCard = creditCardSelector.getCreditCardById(creditCardId, userId);
+        Invoice invoice = invoiceSelector.getByIdExcludingDeleted(invoiceId);
 
         // valida invoice
         validateInvoice(invoice, userId, creditCardId);
+
+        // o valor pago nunca passa do que falta pagar
+        BigDecimal remaining = remainingAmount(invoice);
+        BigDecimal amount = requestedAmount != null ? requestedAmount : remaining;
+        if (amount.compareTo(remaining) > 0) {
+            throw new PaymentDomainException(PaymentErrorCode.DATA_INVALID_VALUE);
+        }
 
         // valida se o usuário fazendo a request é o dono da conta
         accountOwnershipValidator.validate(accountId);
@@ -98,8 +108,9 @@ public class PaymentService {
             throw new PaymentDomainException(PaymentErrorCode.INSUFFICIENT_BALANCE);
         }
 
-        // partial ou total
-        invoice.setAmountPaid(amount);
+        // soma ao que já foi pago, para um segundo pagamento não apagar o primeiro
+        BigDecimal amountPaid = invoice.getAmountPaid() != null ? invoice.getAmountPaid() : BigDecimal.ZERO;
+        invoice.setAmountPaid(amountPaid.add(amount));
 
         // se o valor total da fatura é igual o valor pago
         if (invoice.getTotalAmount().compareTo(invoice.getAmountPaid()) == 0) {
@@ -122,25 +133,18 @@ public class PaymentService {
                 invoice.getId(),
                 invoice.getMonth(),
                 invoice.getYear(),
-                amount
+                amount,
+                UUID.randomUUID() // id do pagamento
         ));
     }
 
     @Transactional
     public void totalInvoicePayment(UUID creditCardId, UUID invoiceId, PaymentTotalDTO data) {
-        Invoice invoice = invoiceSelector.getByIdExcludingDeleted(invoiceId);
-
-        baseInvoicePayment(creditCardId, invoice, data.accountId(), invoice.getTotalAmount());
+        invoicePayment(creditCardId, invoiceId, data.accountId(), null);
     }
 
     @Transactional
     public void partialInvoicePayment(UUID creditCardId, UUID invoiceId, PaymentPartialDTO data) {
-        Invoice invoice = invoiceSelector.getByIdExcludingDeleted(invoiceId);
-
-        if (data.amount().compareTo(invoice.getTotalAmount()) > 0) {
-            throw new PaymentDomainException(PaymentErrorCode.DATA_INVALID_VALUE);
-        }
-
-        baseInvoicePayment(creditCardId, invoice, data.accountId(), data.amount());
+        invoicePayment(creditCardId, invoiceId, data.accountId(), data.amount());
     }
 }

@@ -76,7 +76,7 @@ public class TransactionListenerTest {
 
         private final InvoicePaymentDTO payment = new InvoicePaymentDTO(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Cartão C6",
-                UUID.randomUUID(), 3, 2026, new BigDecimal("100.00")
+                UUID.randomUUID(), 3, 2026, new BigDecimal("100.00"), UUID.randomUUID()
         );
 
         @Test

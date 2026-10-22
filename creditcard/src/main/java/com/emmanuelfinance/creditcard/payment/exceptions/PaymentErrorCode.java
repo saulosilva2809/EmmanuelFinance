@@ -19,7 +19,7 @@ public enum PaymentErrorCode {
     ),
     DATA_INVALID_VALUE(
             HttpStatus.BAD_REQUEST,
-            "The amount you entered should be equal to or less than the total bill."
+            "The amount you entered should be equal to or less than the remaining amount of the invoice."
     );
 
     private final HttpStatus status;

@@ -123,11 +123,12 @@ public class TransactionServiceInternalTest {
 
         private final UUID userId = UUID.randomUUID();
         private final UUID invoiceId = UUID.randomUUID();
+        private final UUID paymentId = UUID.randomUUID();
 
         private InvoicePaymentDTO payment() {
             return new InvoicePaymentDTO(
                     UUID.randomUUID(), userId, UUID.randomUUID(), "Cartão C6",
-                    invoiceId, 3, 2026, new BigDecimal("450.75")
+                    invoiceId, 3, 2026, new BigDecimal("450.75"), paymentId
             );
         }
 
@@ -135,7 +136,7 @@ public class TransactionServiceInternalTest {
         @DisplayName("Deve criar a despesa paga com os dados do pagamento e registrar a foto e o aviso no Outbox")
         void shouldCreatePaidExpenseAndPublishEvent() {
             InvoicePaymentDTO payment = payment();
-            when(idempotencyService.generateInvoicePaymentKey(userId, invoiceId)).thenReturn("chave-fatura");
+            when(idempotencyService.generateInvoicePaymentKey(userId, paymentId)).thenReturn("chave-fatura");
             when(transactionRepository.existsByIdempotencyKey("chave-fatura")).thenReturn(false);
             when(transactionMapper.toEntity(any(CreateTransactionDTO.class))).thenAnswer(invocation ->
                     TransactionTestDataBuilder.entityFromDTO(invocation.getArgument(0))
@@ -164,7 +165,7 @@ public class TransactionServiceInternalTest {
         @Test
         @DisplayName("Deve descrever a transação com o mês, o ano e o nome do cartão")
         void shouldBuildTheDescriptionWithMonthYearAndCardName() {
-            when(idempotencyService.generateInvoicePaymentKey(userId, invoiceId)).thenReturn("chave-fatura");
+            when(idempotencyService.generateInvoicePaymentKey(userId, paymentId)).thenReturn("chave-fatura");
             when(transactionMapper.toEntity(any(CreateTransactionDTO.class))).thenAnswer(invocation ->
                     TransactionTestDataBuilder.entityFromDTO(invocation.getArgument(0))
             );
@@ -182,7 +183,7 @@ public class TransactionServiceInternalTest {
         @Test
         @DisplayName("Não deve criar outra transação quando o pagamento da fatura já foi processado")
         void shouldIgnoreAlreadyProcessedPayment() {
-            when(idempotencyService.generateInvoicePaymentKey(userId, invoiceId)).thenReturn("chave-fatura");
+            when(idempotencyService.generateInvoicePaymentKey(userId, paymentId)).thenReturn("chave-fatura");
             when(transactionRepository.existsByIdempotencyKey("chave-fatura")).thenReturn(true);
 
             transactionServiceInternal.createTransactionRelatedToInvoicePayment(payment());

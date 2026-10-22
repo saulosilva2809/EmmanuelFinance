@@ -54,10 +54,12 @@ faturas (geradas a partir das compras feitas no cartão) e do pagamento da fatur
 - **Restaurar:** só vale para cartão excluído e cuja conta não esteja excluída.
 - **Compra no cartão:** o valor sai do limite disponível. Uma compra parcelada em `n` vezes vira `n` itens, e a
   parcela `i` cai na fatura do mês da compra mais `i` meses (o valor é dividido com 2 casas decimais).
-- **Pagar a fatura:** total ou parcial, e só se o saldo da conta cobrir o valor pago. No pagamento parcial o valor não
-  pode passar do total da fatura (senão `DATA_INVALID_VALUE`, 400); a fatura vira `PAID` quando o valor pago é igual
-  ao total e continua `OPEN` quando é menor. O limite
-  é devolvido, sem passar do limite total do cartão.
+- **Pagar a fatura:** total ou parcial, e só se o saldo da conta cobrir o valor pago. O pagamento total paga o que
+  ainda falta (o total menos o que já foi pago). No pagamento parcial o valor precisa ser maior que zero e não pode
+  passar do que falta pagar (senão `DATA_INVALID_VALUE`, 400). Os pagamentos se somam em `amountPaid`; a fatura vira
+  `PAID` quando o valor pago chega ao total e continua `OPEN` enquanto falta. O limite é devolvido na mesma medida,
+  sem passar do limite total do cartão. Cada pagamento sai com um `paymentId` próprio, que o serviço `transaction`
+  usa para registrar o pagamento uma única vez (sem confundir dois pagamentos da mesma fatura).
 
 ---
 

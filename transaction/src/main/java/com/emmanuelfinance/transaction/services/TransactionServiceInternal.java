@@ -20,8 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-// serviço das chamadas entre serviços e dos pagamentos de fatura que chegam pelo kafka. lê do postgres, que é a fonte
-// da verdade, e nunca do mongo: o mongo pode estar atrasado e quem chama aqui decide coisas com os dados
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -55,7 +53,7 @@ public class TransactionServiceInternal {
 
     @Transactional
     public void createTransactionRelatedToInvoicePayment(InvoicePaymentDTO data) {
-        String idempotencyKey = idempotencyService.generateInvoicePaymentKey(data.userId(), data.invoiceId());
+        String idempotencyKey = idempotencyService.generateInvoicePaymentKey(data.userId(), data.paymentId());
 
         // o kafka pode entregar o mesmo pagamento duas vezes: a chave da fatura mostra se ele já foi processado
         if (transactionRepository.existsByIdempotencyKey(idempotencyKey)) {
@@ -85,7 +83,6 @@ public class TransactionServiceInternal {
         transaction.setStatus(StatusTransactionEnum.PAID);
         transaction.setIdempotencyKey(idempotencyKey);
 
-        // a transação nasce junto com o aviso para a conta descontar o saldo: os dois vão pelo outbox e só saem se esta transação confirmar
         transactionRepository.save(transaction);
         outboxService.transactionChanged(transaction);
         transactionEventsService.publishInvoicePaymentCreatedEvent(transaction);

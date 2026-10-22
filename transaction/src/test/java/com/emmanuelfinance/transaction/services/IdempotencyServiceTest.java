@@ -158,27 +158,27 @@ public class IdempotencyServiceTest {
     class InvoicePaymentKeyTests {
 
         @Test
-        @DisplayName("Deve gerar sempre a mesma chave para o mesmo usuário e a mesma fatura")
-        void shouldBeStablePerInvoice() {
+        @DisplayName("Deve gerar sempre a mesma chave para o mesmo usuário e o mesmo pagamento (reentrega do evento)")
+        void shouldBeStablePerPayment() {
             UUID userId = UUID.randomUUID();
-            UUID invoiceId = UUID.randomUUID();
+            UUID paymentId = UUID.randomUUID();
 
-            String key1 = idempotencyService.generateInvoicePaymentKey(userId, invoiceId);
-            String key2 = idempotencyService.generateInvoicePaymentKey(userId, invoiceId);
+            String key1 = idempotencyService.generateInvoicePaymentKey(userId, paymentId);
+            String key2 = idempotencyService.generateInvoicePaymentKey(userId, paymentId);
 
             assertEquals(key1, key2);
             assertTrue(key1.matches("[0-9a-f]{64}"));
         }
 
         @Test
-        @DisplayName("Deve gerar chaves diferentes para faturas ou usuários diferentes")
-        void shouldDifferPerInvoiceAndUser() {
+        @DisplayName("Deve gerar chaves diferentes para pagamentos ou usuários diferentes (dois parciais da mesma fatura não se confundem)")
+        void shouldDifferPerPaymentAndUser() {
             UUID userId = UUID.randomUUID();
-            UUID invoiceId = UUID.randomUUID();
-            String base = idempotencyService.generateInvoicePaymentKey(userId, invoiceId);
+            UUID paymentId = UUID.randomUUID();
+            String base = idempotencyService.generateInvoicePaymentKey(userId, paymentId);
 
             assertNotEquals(base, idempotencyService.generateInvoicePaymentKey(userId, UUID.randomUUID()));
-            assertNotEquals(base, idempotencyService.generateInvoicePaymentKey(UUID.randomUUID(), invoiceId));
+            assertNotEquals(base, idempotencyService.generateInvoicePaymentKey(UUID.randomUUID(), paymentId));
         }
     }
 }

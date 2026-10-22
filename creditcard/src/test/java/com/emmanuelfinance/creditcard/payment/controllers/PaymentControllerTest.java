@@ -2,6 +2,7 @@ package com.emmanuelfinance.creditcard.payment.controllers;
 
 import com.emmanuelfinance.creditcard.invoice.exceptions.InvoiceDomainException;
 import com.emmanuelfinance.creditcard.invoice.exceptions.InvoiceErrorCode;
+import com.emmanuelfinance.creditcard.payment.dto.PaymentPartialDTO;
 import com.emmanuelfinance.creditcard.payment.dto.PaymentTotalDTO;
 import com.emmanuelfinance.creditcard.payment.exceptions.PaymentDomainException;
 import com.emmanuelfinance.creditcard.payment.exceptions.PaymentErrorCode;
@@ -18,6 +19,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -33,6 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class PaymentControllerTest {
 
     private static final String URL = "/credit-card/{creditCardId}/payment/{invoiceId}/total";
+    private static final String PARTIAL_URL = "/credit-card/{creditCardId}/payment/{invoiceId}/partial";
 
     @Autowired
     private MockMvc mockMvc;
@@ -110,5 +113,81 @@ public class PaymentControllerTest {
                 .when(paymentService).totalInvoicePayment(eq(cardId), eq(invoiceId), any(PaymentTotalDTO.class));
 
         pay(new PaymentTotalDTO(accountId)).andExpect(status().isUnprocessableEntity());
+    }
+
+    private org.springframework.test.web.servlet.ResultActions payPartial(Object body) throws Exception {
+        return mockMvc.perform(post(PARTIAL_URL, cardId, invoiceId)
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)));
+    }
+
+    @Test
+    @DisplayName("Parcial: deve retornar 204 No Content e repassar os ids e o valor ao service")
+    void shouldReturn204WhenPartialPaymentIsSuccessful() throws Exception {
+        PaymentPartialDTO body = new PaymentPartialDTO(accountId, new BigDecimal("100.00"));
+
+        payPartial(body).andExpect(status().isNoContent());
+
+        verify(paymentService, times(1)).partialInvoicePayment(cardId, invoiceId, body);
+    }
+
+    @Test
+    @DisplayName("Parcial: deve retornar 400 Bad Request quando o accountId não for informado")
+    void shouldReturn400WhenPartialAccountIdIsMissing() throws Exception {
+        payPartial(new PaymentPartialDTO(null, new BigDecimal("100.00"))).andExpect(status().isBadRequest());
+
+        verifyNoInteractions(paymentService);
+    }
+
+    @Test
+    @DisplayName("Parcial: deve retornar 400 Bad Request quando o valor não for informado")
+    void shouldReturn400WhenAmountIsMissing() throws Exception {
+        payPartial(new PaymentPartialDTO(accountId, null)).andExpect(status().isBadRequest());
+
+        verifyNoInteractions(paymentService);
+    }
+
+    @Test
+    @DisplayName("Parcial: deve retornar 400 Bad Request quando o valor for zero")
+    void shouldReturn400WhenAmountIsZero() throws Exception {
+        payPartial(new PaymentPartialDTO(accountId, BigDecimal.ZERO)).andExpect(status().isBadRequest());
+
+        verifyNoInteractions(paymentService);
+    }
+
+    @Test
+    @DisplayName("Parcial: deve retornar 400 Bad Request quando o valor for negativo")
+    void shouldReturn400WhenAmountIsNegative() throws Exception {
+        payPartial(new PaymentPartialDTO(accountId, new BigDecimal("-10.00"))).andExpect(status().isBadRequest());
+
+        verifyNoInteractions(paymentService);
+    }
+
+    @Test
+    @DisplayName("Parcial: deve retornar 400 Bad Request quando o valor passar do que falta pagar")
+    void shouldReturn400WhenAmountIsGreaterThanTheRemaining() throws Exception {
+        doThrow(new PaymentDomainException(PaymentErrorCode.DATA_INVALID_VALUE))
+                .when(paymentService).partialInvoicePayment(eq(cardId), eq(invoiceId), any(PaymentPartialDTO.class));
+
+        payPartial(new PaymentPartialDTO(accountId, new BigDecimal("999.00"))).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Parcial: deve retornar 404 Not Found quando a fatura não existir")
+    void shouldReturn404WhenPartialInvoiceIsNotFound() throws Exception {
+        doThrow(new InvoiceDomainException(InvoiceErrorCode.INVOICE_NOT_FOUND))
+                .when(paymentService).partialInvoicePayment(eq(cardId), eq(invoiceId), any(PaymentPartialDTO.class));
+
+        payPartial(new PaymentPartialDTO(accountId, new BigDecimal("100.00"))).andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("Parcial: deve retornar 422 quando o saldo da conta for insuficiente")
+    void shouldReturn422WhenPartialBalanceIsInsufficient() throws Exception {
+        doThrow(new PaymentDomainException(PaymentErrorCode.INSUFFICIENT_BALANCE))
+                .when(paymentService).partialInvoicePayment(eq(cardId), eq(invoiceId), any(PaymentPartialDTO.class));
+
+        payPartial(new PaymentPartialDTO(accountId, new BigDecimal("100.00"))).andExpect(status().isUnprocessableEntity());
     }
 }
