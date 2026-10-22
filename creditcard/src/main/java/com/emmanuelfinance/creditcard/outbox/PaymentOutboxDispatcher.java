@@ -28,15 +28,6 @@ public class PaymentOutboxDispatcher implements OutboxDispatcher {
     public void dispatch(BaseOutboxEvent event) throws JsonProcessingException {
         InvoicePaymentDTO invoicePaymentDTO = objectMapper.treeToValue(event.getPayload(), InvoicePaymentDTO.class);
 
-        paymentProducer.publishInvoicePaymentCreated(new InvoicePaymentDTO(
-                invoicePaymentDTO.accountId(),
-                invoicePaymentDTO.userId(),
-                invoicePaymentDTO.creditCardId(),
-                invoicePaymentDTO.creditCardName(),
-                invoicePaymentDTO.invoiceId(),
-                invoicePaymentDTO.month(),
-                invoicePaymentDTO.year(),
-                invoicePaymentDTO.totalPaid()
-        ));
+        paymentProducer.publishInvoicePaymentCreated(invoicePaymentDTO);
     }
 }

@@ -11,5 +11,6 @@ public record InvoicePaymentDTO(
         UUID invoiceId,
         int month,
         int year,
-        BigDecimal totalPaid
+        BigDecimal totalPaid,
+        UUID paymentId
 ) {}

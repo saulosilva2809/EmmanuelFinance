@@ -1,5 +1,6 @@
 package com.emmanuelfinance.creditcard.payment.controllers;
 
+import com.emmanuelfinance.creditcard.payment.dto.PaymentPartialDTO;
 import com.emmanuelfinance.creditcard.payment.dto.PaymentTotalDTO;
 import com.emmanuelfinance.creditcard.payment.services.PaymentService;
 import jakarta.validation.Valid;
@@ -23,6 +24,16 @@ public class PaymentController {
             @Valid @RequestBody PaymentTotalDTO data
     ) {
         paymentService.totalInvoicePayment(creditCardId, invoiceId, data);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("{creditCardId}/payment/{invoiceId}/partial")
+    public ResponseEntity<Void> partialInvoicePayment(
+            @PathVariable UUID creditCardId,
+            @PathVariable UUID invoiceId,
+            @Valid @RequestBody PaymentPartialDTO data
+    ) {
+        paymentService.partialInvoicePayment(creditCardId, invoiceId, data);
         return ResponseEntity.noContent().build();
     }
 }

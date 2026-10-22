@@ -54,8 +54,12 @@ faturas (geradas a partir das compras feitas no cartão) e do pagamento da fatur
 - **Restaurar:** só vale para cartão excluído e cuja conta não esteja excluída.
 - **Compra no cartão:** o valor sai do limite disponível. Uma compra parcelada em `n` vezes vira `n` itens, e a
   parcela `i` cai na fatura do mês da compra mais `i` meses (o valor é dividido com 2 casas decimais).
-- **Pagar a fatura:** só o pagamento total, e só se o saldo da conta cobrir a fatura. A fatura vira `PAID`, e o limite
-  é devolvido, sem passar do limite total do cartão.
+- **Pagar a fatura:** total ou parcial, e só se o saldo da conta cobrir o valor pago. O pagamento total paga o que
+  ainda falta (o total menos o que já foi pago). No pagamento parcial o valor precisa ser maior que zero e não pode
+  passar do que falta pagar (senão `DATA_INVALID_VALUE`, 400). Os pagamentos se somam em `amountPaid`; a fatura vira
+  `PAID` quando o valor pago chega ao total e continua `OPEN` enquanto falta. O limite é devolvido na mesma medida,
+  sem passar do limite total do cartão. Cada pagamento sai com um `paymentId` próprio, que o serviço `transaction`
+  usa para registrar o pagamento uma única vez (sem confundir dois pagamentos da mesma fatura).
 
 ---
 
@@ -82,6 +86,7 @@ Todos os endpoints exigem JWT (Keycloak), e o dono do cartão é sempre o usuár
 | `GET` | `/credit-card/invoices` | lista as faturas, com filtros e paginação |
 | `GET` | `/credit-card/invoice-item/{invoiceId}` | lista os itens de uma fatura |
 | `POST` | `/credit-card/{creditCardId}/payment/{invoiceId}/total` | paga a fatura inteira |
+| `POST` | `/credit-card/{creditCardId}/payment/{invoiceId}/partial` | paga parte da fatura (corpo com `accountId` e `amount`) |
 
 ### Interna (`/internal/credit-card`, usada entre serviços)
 

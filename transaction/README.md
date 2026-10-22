@@ -6,7 +6,7 @@ fatura.
 
 - Porta local: `8006`
 - Stack: Java 21, Spring Boot 3.3, PostgreSQL (Neon), MongoDB (Atlas), Kafka, Redis e Keycloak (JWT)
-- Não está no `docker-compose.yml`: roda pelo IntelliJ ou pelo Maven
+- Não está no `docker-compose.yml`: roda pelo IntelliJ
 
 ---
 
@@ -183,7 +183,7 @@ nenhuma classe do lado de leitura (`query`).
 | `transaction-deleted-topic` | publica (pelo Outbox) | conta e cartão desfazem o efeito da transação |
 | `transaction-restore-topic` | publica (pelo Outbox) | conta e cartão refazem o efeito da transação |
 | `transaction-failed-topic` | consome | o cartão avisa que não conseguiu processar; a transação vira `FAILED` |
-| `created-invoice-payment-topic` | consome | o cartão avisou que uma fatura foi paga; cria a despesa do pagamento (uma só por fatura) |
+| `created-invoice-payment-topic` | consome | o cartão avisou que uma fatura foi paga; cria a despesa do pagamento (uma por pagamento, identificada pelo `paymentId`, então a reentrega não duplica e dois pagamentos da mesma fatura não se confundem) |
 
 ### Transações agendadas
 Cada transação agendada vira uma tarefa em memória (`ThreadPoolTaskScheduler`, 10 threads) para a data escolhida.
