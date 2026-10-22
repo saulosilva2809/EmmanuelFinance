@@ -104,6 +104,10 @@ atualizar o Mongo e avisar os outros serviços pelo Kafka.
 
 ### Pacotes
 
+O código da transação fica em `com.emmanuelfinance.transaction.transaction`; os próximos assuntos (transação
+recorrente e transferência) ganham o seu próprio subpacote ao lado, em `com.emmanuelfinance.transaction`. Os nomes
+abaixo são relativos a `transaction.transaction`.
+
 | Pacote | Papel |
 |--------|-------|
 | `transaction` | a entidade, o mapper, o repositório, o selector e a recuperação das agendadas ao iniciar |
