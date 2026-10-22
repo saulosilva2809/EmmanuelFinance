@@ -256,16 +256,18 @@ public class PaymentServiceTest {
         }
 
         @Test
-        @DisplayName("Deve lançar CreditCardNotFound e não buscar a fatura quando o cartão não for do usuário")
+        @DisplayName("Deve lançar CreditCardNotFound e não consultar a conta nem publicar nada quando o cartão não for do usuário")
         void shouldThrowWhenCardDoesNotBelongToTheUser() {
             UUID cardId = UUID.randomUUID();
+            Invoice invoice = invoice(userId, cardId, "300.00", InvoiceStatusEnum.OPEN);
+            when(invoiceSelector.getByIdExcludingDeleted(invoice.getId())).thenReturn(invoice);
             when(securityUtils.getCurrentUserId()).thenReturn(userId);
             when(creditCardSelector.getCreditCardById(cardId, userId)).thenThrow(new CreditCardNotFound());
 
             assertThrows(CreditCardNotFound.class,
-                    () -> paymentService.totalInvoicePayment(cardId, UUID.randomUUID(), paymentDTO));
+                    () -> paymentService.totalInvoicePayment(cardId, invoice.getId(), paymentDTO));
 
-            verifyNoInteractions(invoiceSelector, accountClientCacheService, outboxService);
+            verifyNoInteractions(accountClientCacheService, accountOwnershipValidator, outboxService);
         }
     }
 }

@@ -16,6 +16,10 @@ public enum PaymentErrorCode {
     INVOICE_NOTHING_TO_PAY(
             HttpStatus.UNPROCESSABLE_ENTITY,
             "This invoice has no amount to be paid."
+    ),
+    DATA_INVALID_VALUE(
+            HttpStatus.BAD_REQUEST,
+            "The amount you entered should be equal to or less than the total bill."
     );
 
     private final HttpStatus status;

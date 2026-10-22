@@ -8,6 +8,7 @@ import com.emmanuelfinance.creditcard.invoice.exceptions.InvoiceDomainException;
 import com.emmanuelfinance.creditcard.invoice.exceptions.InvoiceErrorCode;
 import com.emmanuelfinance.creditcard.invoice.repositories.InvoiceRepository;
 import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceSelector;
+import com.emmanuelfinance.creditcard.payment.dto.PaymentPartialDTO;
 import com.emmanuelfinance.creditcard.payment.dto.PaymentTotalDTO;
 import com.emmanuelfinance.creditcard.payment.exceptions.PaymentDomainException;
 import com.emmanuelfinance.creditcard.payment.exceptions.PaymentErrorCode;
@@ -42,24 +43,31 @@ public class PaymentService {
         boolean belongsToUserAndCard = userId.equals(invoice.getUserId())
                 && creditCardId.equals(invoice.getCreditCardId());
 
+        // se o userId não é o mesmo de invoice ou creditCard
         if (!belongsToUserAndCard) {
             throw new InvoiceDomainException(InvoiceErrorCode.INVOICE_NOT_FOUND);
         }
 
+        // se já esta paga
         if (InvoiceStatusEnum.PAID.equals(invoice.getStatus())) {
             throw new PaymentDomainException(PaymentErrorCode.INVOICE_ALREADY_PAID);
         }
 
+        // se o valor é 0
         if (invoice.getTotalAmount() == null || invoice.getTotalAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new PaymentDomainException(PaymentErrorCode.INVOICE_NOTHING_TO_PAY);
         }
     }
 
     private void giveLimitBack(CreditCard creditCard, BigDecimal amount) {
+        // limite atual
         BigDecimal currentLimit = creditCard.getAvailableLimit() != null ? creditCard.getAvailableLimit() : BigDecimal.ZERO;
+        // novo limite = limite atual + amount (amount pode ser o valor total da fatura ou um valor parcial)
         BigDecimal newLimit = currentLimit.add(amount);
 
+        // verifica se o novo limite seria maior que o limite máximo do cartão
         if (creditCard.getCreditLimit() != null && newLimit.compareTo(creditCard.getCreditLimit()) > 0) {
+            // atribui o novo limite ao limite do cartão
             newLimit = creditCard.getCreditLimit();
         }
 
@@ -68,38 +76,71 @@ public class PaymentService {
         outboxService.creditCardChanged(creditCard);
     }
 
-    @Transactional
-    public void totalInvoicePayment(UUID creditCardId, UUID invoiceId, PaymentTotalDTO data) {
+    private void baseInvoicePayment(
+            UUID creditCardId,
+            Invoice invoice,
+            UUID accountId,
+            BigDecimal amount
+    ) {
         UUID userId = securityUtils.getCurrentUserId();
 
         CreditCard creditCard = creditCardSelector.getCreditCardById(creditCardId, userId);
-        Invoice invoice = invoiceSelector.getByIdExcludingDeleted(invoiceId);
+
+        // valida invoice
         validateInvoice(invoice, userId, creditCardId);
 
-        accountOwnershipValidator.validate(data.accountId());
-        AccountSummaryInternalDTO accountSummary = accountClientCacheService.getInternalAccountById(data.accountId());
+        // valida se o usuário fazendo a request é o dono da conta
+        accountOwnershipValidator.validate(accountId);
+        AccountSummaryInternalDTO accountSummary = accountClientCacheService.getInternalAccountById(accountId);
 
-        BigDecimal totalAmount = invoice.getTotalAmount();
-        if (accountSummary.currentBalance().compareTo(totalAmount) < 0) {
+        // verifica se a conta tem saldo para fazer o pagamento da fatura
+        if (accountSummary.currentBalance().compareTo(amount) < 0) {
             throw new PaymentDomainException(PaymentErrorCode.INSUFFICIENT_BALANCE);
         }
 
-        invoice.setAmountPaid(totalAmount);
-        invoice.setStatus(InvoiceStatusEnum.PAID);
+        // partial ou total
+        invoice.setAmountPaid(amount);
+
+        // se o valor total da fatura é igual o valor pago
+        if (invoice.getTotalAmount().compareTo(invoice.getAmountPaid()) == 0) {
+            // marca a fatura como paga
+            invoice.setStatus(InvoiceStatusEnum.PAID);
+        } else {
+            // marca a fatura como aberta
+            invoice.setStatus(InvoiceStatusEnum.OPEN);
+        }
 
         invoiceRepository.saveAndFlush(invoice);
         outboxService.invoiceChanged(invoice);
-        giveLimitBack(creditCard, totalAmount);
+        giveLimitBack(creditCard, amount);
 
         outboxService.invoicePayment(new InvoicePaymentDTO(
-                data.accountId(),
+                accountId,
                 userId,
                 invoice.getCreditCardId(),
                 creditCard.getName(),
                 invoice.getId(),
                 invoice.getMonth(),
                 invoice.getYear(),
-                totalAmount
+                amount
         ));
+    }
+
+    @Transactional
+    public void totalInvoicePayment(UUID creditCardId, UUID invoiceId, PaymentTotalDTO data) {
+        Invoice invoice = invoiceSelector.getByIdExcludingDeleted(invoiceId);
+
+        baseInvoicePayment(creditCardId, invoice, data.accountId(), invoice.getTotalAmount());
+    }
+
+    @Transactional
+    public void partialInvoicePayment(UUID creditCardId, UUID invoiceId, PaymentPartialDTO data) {
+        Invoice invoice = invoiceSelector.getByIdExcludingDeleted(invoiceId);
+
+        if (data.amount().compareTo(invoice.getTotalAmount()) > 0) {
+            throw new PaymentDomainException(PaymentErrorCode.DATA_INVALID_VALUE);
+        }
+
+        baseInvoicePayment(creditCardId, invoice, data.accountId(), data.amount());
     }
 }
