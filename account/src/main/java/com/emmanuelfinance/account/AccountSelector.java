@@ -15,6 +15,7 @@ public class AccountSelector {
     private final AccountRepository accountRepository;
     private final SecurityUtils securityUtils;
 
+    // procura conta pelo id e o userId
     public Account getAccountByIdAndUserId(UUID accountId) {
         UUID userId = securityUtils.getCurrentUserId();
 
@@ -22,6 +23,7 @@ public class AccountSelector {
                 .orElseThrow(() -> new AccountDomainException(AccountErrorCode.ACCOUNT_NOT_FOUND));
     }
 
+    // procura conta pelo id e o userId, incluindo contas deletadas
     public Account getAccountByIdIncludingDeleted(UUID accountId) {
         UUID userId = securityUtils.getCurrentUserId();
 
@@ -31,6 +33,7 @@ public class AccountSelector {
         return account;
     }
 
+    // procura conta pelo id
     public Account getAccountByIdInternal(UUID accountId) {
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new AccountDomainException(AccountErrorCode.ACCOUNT_NOT_FOUND));

@@ -9,8 +9,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
-// Serviço das chamadas ENTRE serviços. Lê do Postgres (fonte da verdade), nunca do Mongo: o Mongo recebe
-// os dados pelo Outbox e pode estar atrasado, e quem chama aqui usa o saldo para tomar decisões.
 @Service
 @RequiredArgsConstructor
 public class AccountInternalService {
