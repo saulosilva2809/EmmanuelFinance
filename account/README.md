@@ -178,6 +178,10 @@ Assim não há consulta a cada segundo: em repouso é uma a cada 30 segundos, e 
 pelo próprio commit. Como uma única thread processa tudo na ordem de criação, as mensagens de uma mesma conta
 nunca se invertem.
 
+Se um destino falha (por exemplo, o Mongo fora do ar), a linha continua pendente e só as próximas do mesmo destino
+e da mesma conta esperam por ela, para manter a ordem. As linhas dos outros destinos seguem normalmente: um Mongo
+fora do ar não trava os avisos do Kafka. Cada linha presa é tentada de novo na varredura seguinte.
+
 ---
 
 ## 6. Configuração
