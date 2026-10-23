@@ -14,6 +14,7 @@ public class AccountValidatorService {
 
     private final AccountRepository accountRepository;
 
+    // verifica se existe uma conta com tal id e userId (vindo de Jwt)
     @Transactional(readOnly = true)
     public boolean checkAccountOwner(UUID accountId, Jwt jwt) {
         if (jwt == null) {

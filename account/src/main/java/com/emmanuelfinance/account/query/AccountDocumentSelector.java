@@ -15,6 +15,7 @@ public class AccountDocumentSelector {
     private final AccountDocumentRepository accountDocumentRepository;
     private final SecurityUtils securityUtils;
 
+    // procura a conta pelo id, userId e deleted false
     public AccountDocument getByIdAndUserIdAndDeletedFalse(UUID accountId) {
         UUID userId = securityUtils.getCurrentUserId();
 

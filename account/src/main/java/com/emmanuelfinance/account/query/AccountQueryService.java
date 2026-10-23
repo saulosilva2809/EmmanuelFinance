@@ -40,15 +40,23 @@ public class AccountQueryService {
     }
 
     private PageResponseDTO<ResponseAccountDTO> search(AccountFiltersDTO filters, Pageable pageable, boolean deleted) {
+        // captura o userId
         UUID userId = securityUtils.getCurrentUserId();
 
+        // cria uma query (json) com os parametros passados
         Query query = AccountSpecification.withFilter(filters, userId, deleted);
+
+        // conta o total de registros que atendem o critério
         long total = mongoTemplate.count(query, AccountDocument.class);
 
+        // faz a busca dos documentos usando mongoTemplate (mais flexível para buscas com filtros)
         List<AccountDocument> documents = mongoTemplate.find(query.with(pageable), AccountDocument.class);
+
+        // cria a estrutura da página e converte cada documento em um DTO de resposta do mesmo
         Page<ResponseAccountDTO> page = new PageImpl<>(documents, pageable, total)
                 .map(accountMapper::toResponseDTO);
 
+        // converte a página em um DTO
         return PageResponseDTO.from(page);
     }
 }
