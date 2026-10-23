@@ -89,7 +89,7 @@ perde.
 | `services` | regras de escrita: `AccountService`, `AccountBalanceService`, `AccountInternalService`, `AccountValidatorService` |
 | `query` | lado de leitura: `AccountQueryService` (consultas), `AccountSpecification` (filtros da listagem), `AccountDocument` (modelo do Mongo) e `AccountProjector` (grava no Mongo) |
 | `outbox` | `OutboxService` (registra), `OutboxEventFactory` (monta as linhas), `AccountOutboxDispatcher` (entrega cada linha ao destino), `OutboxEvent` (registro da tabela) e `OutboxConfig` (liga o relay) |
-| `kafka` | consumo dos eventos de transação e tratamento de erros |
+| `kafka` | `AccountProducer` (publica os avisos da conta no Kafka, esperando a confirmação), consumo dos eventos de transação e tratamento de erros |
 | `dto`, `enums`, `exceptions` | contratos de entrada e saída, tipos e erros de domínio |
 
 ---
@@ -117,6 +117,11 @@ linha ao destino e a apaga.
 
 Cada linha tem um único destino, e uma operação registra até três, porque os destinatários precisam de coisas
 diferentes:
+
+Os tipos de linha são `ACCOUNT_CREATED`, `ACCOUNT_DELETED` e `ACCOUNT_RESTORED` (aviso para o Kafka, um por evento),
+`ACCOUNT_CHANGED` (foto para o Mongo) e `ACCOUNT_OWNER_CACHED` (dono da conta no Redis). O envio ao Kafka não fica
+no dispatcher: ele chama o `AccountProducer`, que espera a confirmação do Kafka (até 5 segundos) e deixa o erro
+subir, e assim a linha continua pendente se o Kafka falhar.
 
 | Operação | Aviso para o Kafka (`account-events`) | Foto da conta para o Mongo | Dono da conta no Redis |
 |----------|---------------------------------------|----------------------------|------------------------|

@@ -26,15 +26,39 @@ class OutboxEventFactoryTest {
             new OutboxEventFactory(objectMapper, Mappers.getMapper(AccountMapper.class));
 
     @Test
-    void shouldBuildTheShortEventForTheOtherServices() throws Exception {
+    void shouldBuildTheCreatedEventForTheOtherServices() throws Exception {
         Account account = newAccount();
 
-        OutboxEvent row = outboxEventFactory.accountEvent(account, StatusEventEnum.CREATED);
+        OutboxEvent row = outboxEventFactory.accountCreatedEvent(account);
 
-        assertEquals(AccountOutboxEventType.ACCOUNT_EVENT, row.getType());
+        assertEquals(AccountOutboxEventType.ACCOUNT_CREATED, row.getType());
         assertEquals(account.getId().toString(), row.getAggregateId());
         assertNotNull(row.getCreatedAt());
         assertEquals(new AccountEventDTO(account.getId(), account.getUserId(), StatusEventEnum.CREATED),
+                objectMapper.treeToValue(row.getPayload(), AccountEventDTO.class));
+    }
+
+    @Test
+    void shouldBuildTheDeletedEventForTheOtherServices() throws Exception {
+        Account account = newAccount();
+
+        OutboxEvent row = outboxEventFactory.accountDeletedEvent(account);
+
+        assertEquals(AccountOutboxEventType.ACCOUNT_DELETED, row.getType());
+        assertEquals(account.getId().toString(), row.getAggregateId());
+        assertEquals(new AccountEventDTO(account.getId(), account.getUserId(), StatusEventEnum.DELETED),
+                objectMapper.treeToValue(row.getPayload(), AccountEventDTO.class));
+    }
+
+    @Test
+    void shouldBuildTheRestoredEventForTheOtherServices() throws Exception {
+        Account account = newAccount();
+
+        OutboxEvent row = outboxEventFactory.accountRestoredEvent(account);
+
+        assertEquals(AccountOutboxEventType.ACCOUNT_RESTORED, row.getType());
+        assertEquals(account.getId().toString(), row.getAggregateId());
+        assertEquals(new AccountEventDTO(account.getId(), account.getUserId(), StatusEventEnum.RESTORE),
                 objectMapper.treeToValue(row.getPayload(), AccountEventDTO.class));
     }
 

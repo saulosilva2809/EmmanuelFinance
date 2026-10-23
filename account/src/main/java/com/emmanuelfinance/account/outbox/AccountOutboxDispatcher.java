@@ -1,5 +1,6 @@
 package com.emmanuelfinance.account.outbox;
 
+import com.emmanuelfinance.account.kafka.AccountProducer;
 import com.emmanuelfinance.account.outbox.dto.AccountOwnerDTO;
 import com.emmanuelfinance.account.outbox.enums.AccountOutboxEventType;
 import com.emmanuelfinance.account.query.AccountDocument;
@@ -13,27 +14,24 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class AccountOutboxDispatcher implements OutboxDispatcher {
 
-    private static final String ACCOUNT_EVENTS_TOPIC = "account-events";
-    private static final long KAFKA_TIMEOUT_SECONDS = 5;
-
     private static final List<OutboxEventType> SUPPORTED_TYPES = List.of(
-            AccountOutboxEventType.ACCOUNT_EVENT,
+            AccountOutboxEventType.ACCOUNT_CREATED,
+            AccountOutboxEventType.ACCOUNT_DELETED,
+            AccountOutboxEventType.ACCOUNT_RESTORED,
             AccountOutboxEventType.ACCOUNT_CHANGED,
             AccountOutboxEventType.ACCOUNT_OWNER_CACHED
     );
 
-    private final KafkaTemplate<String, AccountEventDTO> kafkaTemplate;
+    private final AccountProducer accountProducer;
     private final AccountProjector accountProjector;
     private final AccountCache accountCache;
     private final ObjectMapper objectMapper;
@@ -46,16 +44,12 @@ public class AccountOutboxDispatcher implements OutboxDispatcher {
     @Override
     public void dispatch(BaseOutboxEvent outboxEvent) throws JsonProcessingException {
         switch (outboxEvent.getType()) {
-            case AccountOutboxEventType.ACCOUNT_EVENT -> {
-                AccountEventDTO payload = objectMapper.treeToValue(outboxEvent.getPayload(), AccountEventDTO.class);
-
-                kafkaTemplate.send(ACCOUNT_EVENTS_TOPIC, outboxEvent.getAggregateId(), payload)
-                        .orTimeout(KAFKA_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                        .join();
-
-                log.info("Outbox: aviso {} da conta {} confirmado pelo Kafka (tópico {})",
-                        payload.status(), outboxEvent.getAggregateId(), ACCOUNT_EVENTS_TOPIC);
-            }
+            case AccountOutboxEventType.ACCOUNT_CREATED ->
+                    accountProducer.publishAccountCreated(accountEvent(outboxEvent));
+            case AccountOutboxEventType.ACCOUNT_DELETED ->
+                    accountProducer.publishAccountDeleted(accountEvent(outboxEvent));
+            case AccountOutboxEventType.ACCOUNT_RESTORED ->
+                    accountProducer.publishAccountRestored(accountEvent(outboxEvent));
             case AccountOutboxEventType.ACCOUNT_CHANGED -> {
                 AccountDocument snapshot = objectMapper.treeToValue(outboxEvent.getPayload(), AccountDocument.class);
                 accountProjector.project(snapshot);
@@ -68,5 +62,9 @@ public class AccountOutboxDispatcher implements OutboxDispatcher {
             }
             default -> throw new IllegalArgumentException("Tipo de evento não suportado por este dispatcher: " + outboxEvent.getType());
         }
+    }
+
+    private AccountEventDTO accountEvent(BaseOutboxEvent outboxEvent) throws JsonProcessingException {
+        return objectMapper.treeToValue(outboxEvent.getPayload(), AccountEventDTO.class);
     }
 }

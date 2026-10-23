@@ -21,9 +21,16 @@ public class OutboxEventFactory {
     private final ObjectMapper objectMapper;
     private final AccountMapper accountMapper;
 
-    public OutboxEvent accountEvent(Account account, StatusEventEnum status) {
-        return create(AccountOutboxEventType.ACCOUNT_EVENT, account.getId(),
-                new AccountEventDTO(account.getId(), account.getUserId(), status));
+    public OutboxEvent accountCreatedEvent(Account account) {
+        return accountEvent(AccountOutboxEventType.ACCOUNT_CREATED, account, StatusEventEnum.CREATED);
+    }
+
+    public OutboxEvent accountDeletedEvent(Account account) {
+        return accountEvent(AccountOutboxEventType.ACCOUNT_DELETED, account, StatusEventEnum.DELETED);
+    }
+
+    public OutboxEvent accountRestoredEvent(Account account) {
+        return accountEvent(AccountOutboxEventType.ACCOUNT_RESTORED, account, StatusEventEnum.RESTORE);
     }
 
     public OutboxEvent accountSnapshot(Account account, boolean deleted) {
@@ -36,6 +43,10 @@ public class OutboxEventFactory {
     public OutboxEvent accountOwner(Account account) {
         return create(AccountOutboxEventType.ACCOUNT_OWNER_CACHED, account.getId(),
                 new AccountOwnerDTO(account.getId(), account.getUserId()));
+    }
+
+    private OutboxEvent accountEvent(AccountOutboxEventType type, Account account, StatusEventEnum status) {
+        return create(type, account.getId(), new AccountEventDTO(account.getId(), account.getUserId(), status));
     }
 
     private OutboxEvent create(AccountOutboxEventType type, UUID accountId, Object payload) {

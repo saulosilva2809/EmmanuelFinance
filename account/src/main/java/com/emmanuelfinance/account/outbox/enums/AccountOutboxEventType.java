@@ -4,7 +4,9 @@ import com.emmanuelfinance.shared.outbox.enums.OutboxEventType;
 
 public enum AccountOutboxEventType implements OutboxEventType {
 
-    ACCOUNT_EVENT,
+    ACCOUNT_CREATED,
+    ACCOUNT_DELETED,
+    ACCOUNT_RESTORED,
     ACCOUNT_CHANGED,
     ACCOUNT_OWNER_CACHED
 }
