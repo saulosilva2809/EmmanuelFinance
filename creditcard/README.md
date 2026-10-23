@@ -206,7 +206,9 @@ leitura (`query`). A regra vale para consultas que mostram dados (Mongo) versus 
 - **Exclusão lógica** com `@SQLDelete` para cartões, faturas e itens, e listagem separada dos cartões excluídos.
 - **Migrations** versionadas com Flyway (`V1` a `V11`) e `ddl-auto: validate`.
 - **DTOs** imutáveis (`record`), Bean Validation na borda e MapStruct nos mapeamentos.
-- **Segurança:** OAuth2 Resource Server (JWT), com tudo bloqueado por padrão.
+- **Segurança:** OAuth2 Resource Server (JWT), com tudo bloqueado por padrão. A configuração é a `JwtSecurityConfig` do
+  módulo `shared` (sem CSRF, sem sessão): o token precisa ter assinatura e validade corretas e ter sido emitido pelo
+  `issuer-uri` configurado. Só o `auth` tem uma configuração própria, porque libera o login.
 - **Cache no Redis** dos resumos de conta e de cartão que os serviços consultam entre si.
 
 ---

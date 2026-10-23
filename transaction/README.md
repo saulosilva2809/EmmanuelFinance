@@ -199,7 +199,9 @@ são executadas na hora.
 - **Exclusão lógica** com `@SQLDelete`, e listagem separada das excluídas.
 - **Migrations** versionadas com Flyway (`V1` a `V7`) e `ddl-auto: validate`.
 - **DTOs** imutáveis (`record`), Bean Validation na borda e MapStruct nos mapeamentos.
-- **Segurança:** OAuth2 Resource Server (JWT), com tudo bloqueado por padrão.
+- **Segurança:** OAuth2 Resource Server (JWT), com tudo bloqueado por padrão. A configuração é a `JwtSecurityConfig` do
+  módulo `shared` (sem CSRF, sem sessão): o token precisa ter assinatura e validade corretas e ter sido emitido pelo
+  `issuer-uri` configurado. Só o `auth` tem uma configuração própria, porque libera o login.
 - **Cache no Redis** dos resumos de conta, cartão e categoria que os serviços consultam entre si.
 
 ---
@@ -214,7 +216,7 @@ Variáveis de ambiente (nas *run configurations* do IntelliJ):
 | `MONGODB_URI`, `MONGODB_DATABASE` | MongoDB |
 | `KAFKA_BOOTSTRAP_SERVER` | Kafka |
 | `REDIS_HOST`, `REDIS_PORT` | Redis |
-| `KC_AUTH_SERVER_URL`, `KC_REALM` | validação do JWT |
+| `KC_AUTH_SERVER_URL`, `KC_EXTERNAL_AUTH_SERVER_URL`, `KC_REALM` | validação do JWT (o `KC_EXTERNAL_AUTH_SERVER_URL` é o emissor que o token precisa ter) |
 | `ACCOUNT_SERVICE_URL`, `CREDIT_CARD_SERVICE_URL`, `CATEGORY_SERVICE_URL` | chamadas para os outros serviços |
 
 ## 6. Como rodar e testar

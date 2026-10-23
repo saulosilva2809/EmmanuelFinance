@@ -155,7 +155,9 @@ Kafka só marcam ou removem dados.
 - **Controle otimista** (`@Version`): dois ajustes simultâneos no mesmo saldo não se sobrescrevem em silêncio.
 - **Migrations** versionadas com Flyway (`V1` a `V5`) e `ddl-auto: validate`.
 - **DTOs** imutáveis (`record`), Bean Validation na borda e MapStruct nos mapeamentos.
-- **Segurança:** OAuth2 Resource Server (JWT), com tudo bloqueado por padrão.
+- **Segurança:** OAuth2 Resource Server (JWT), com tudo bloqueado por padrão. A configuração é a `JwtSecurityConfig` do
+  módulo `shared` (sem CSRF, sem sessão): o token precisa ter assinatura e validade corretas e ter sido emitido pelo
+  `issuer-uri` configurado. Só o `auth` tem uma configuração própria, porque libera o login.
 
 ---
 
