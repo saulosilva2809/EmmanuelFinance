@@ -1,17 +1,12 @@
 package com.emmanuelfinance.category.services;
 
 import com.emmanuelfinance.category.*;
-import com.emmanuelfinance.category.dto.CategoryFiltersDTO;
 import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
-import com.emmanuelfinance.shared.annotation.WithDeletedFilter;
+import com.emmanuelfinance.category.outbox.OutboxService;
 import com.emmanuelfinance.category.dto.CreateCategoryDTO;
 import com.emmanuelfinance.category.dto.ResponseCategoryDTO;
-import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,7 +21,9 @@ public class CategoryService {
     private final SecurityUtils securityUtils;
     private final CategorySelector categorySelector;
     private final CategoryValidatorService categoryValidatorService;
+    private final OutboxService outboxService;
 
+    @Transactional
     public ResponseCategoryDTO create(CreateCategoryDTO data) {
         UUID userId = securityUtils.getCurrentUserId();
         categoryValidatorService.checkCategoryExists(data);
@@ -34,44 +31,9 @@ public class CategoryService {
         Category category = categoryMapper.toEntity(data);
         category.setUserId(userId);
 
-        Category savedCategory = categoryRepository.save(category);
+        Category savedCategory = categoryRepository.saveAndFlush(category);
+        outboxService.categoryChanged(savedCategory);
         return categoryMapper.toResponseDTO(savedCategory);
-    }
-
-    public ResponseCategoryDTO view(UUID id) {
-        Category category = categorySelector.getCategoryById(id);
-        return categoryMapper.toResponseDTO(category);
-    }
-
-    @Transactional(readOnly = true)
-    @WithDeletedFilter(enabled = true)
-    public PageResponseDTO<ResponseCategoryDTO> list(CategoryFiltersDTO filters, Pageable pageable) {
-        UUID userId = securityUtils.getCurrentUserId();
-
-        Specification<Category> specification = CategorySpecification.withFilter(filters, userId, false);
-        Page<Category> page = categoryRepository.findAll(
-                specification,
-                pageable
-        );
-
-        Page<ResponseCategoryDTO> dtoPage = page.map(categoryMapper::toResponseDTO);
-
-        return PageResponseDTO.from(dtoPage);
-    }
-
-    @WithDeletedFilter(enabled = false)
-    public PageResponseDTO<ResponseCategoryDTO> listDeleted(CategoryFiltersDTO filters, Pageable pageable) {
-        UUID userId = securityUtils.getCurrentUserId();
-
-        Specification<Category> specification = CategorySpecification.withFilter(filters, userId, true);
-        Page<Category> page = categoryRepository.findAll(
-                specification,
-                pageable
-        );
-
-        Page<ResponseCategoryDTO> dtoPage = page.map(categoryMapper::toResponseDTO);
-
-        return PageResponseDTO.from(dtoPage);
     }
 
     @Transactional()
@@ -80,7 +42,8 @@ public class CategoryService {
 
         categoryMapper.updateCategoryFromDTO(data, category);
 
-        Category savedCategory = categoryRepository.save(category);
+        Category savedCategory = categoryRepository.saveAndFlush(category);
+        outboxService.categoryChanged(savedCategory);
         return categoryMapper.toResponseDTO(savedCategory);
     }
 
@@ -88,6 +51,7 @@ public class CategoryService {
     public void delete(UUID id) {
         Category category = categorySelector.getCategoryById(id);
         categoryRepository.delete(category);
+        outboxService.categoryDeleted(category);
     }
 
     @Transactional
@@ -97,6 +61,7 @@ public class CategoryService {
         categoryValidatorService.verifyIsDeleted(category);
 
         category.setDeleted(false);
-        categoryRepository.save(category);
+        categoryRepository.saveAndFlush(category);
+        outboxService.categoryChanged(category);
     }
 }

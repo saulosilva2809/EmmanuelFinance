@@ -3,6 +3,7 @@ package com.emmanuelfinance.category;
 import com.emmanuelfinance.category.dto.CreateCategoryDTO;
 import com.emmanuelfinance.category.dto.ResponseCategoryDTO;
 import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
+import com.emmanuelfinance.category.query.CategoryDocument;
 import org.mapstruct.*;
 
 @Mapper(componentModel = "spring")
@@ -16,6 +17,8 @@ public abstract class CategoryMapper {
     public abstract Category toEntity(CreateCategoryDTO data);
 
     public abstract ResponseCategoryDTO toResponseDTO(Category entity);
+    public abstract ResponseCategoryDTO toResponseDTO(CategoryDocument document);
+    public abstract CategoryDocument toDocument(Category entity);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     public abstract void updateCategoryFromDTO(UpdateCategoryDTO data, @MappingTarget Category entity);

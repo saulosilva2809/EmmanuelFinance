@@ -8,6 +8,7 @@ import com.emmanuelfinance.category.dto.ResponseCategoryDTO;
 import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
 import com.emmanuelfinance.category.exceptions.CategoryDomainException;
 import com.emmanuelfinance.category.exceptions.CategoryErrorCode;
+import com.emmanuelfinance.category.query.CategoryQueryService;
 import com.emmanuelfinance.category.services.CategoryService;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.enums.TypeEnum;
@@ -51,6 +52,9 @@ public class CategoryControllerTest {
 
     @MockBean
     private CategoryService categoryService;
+
+    @MockBean
+    private CategoryQueryService categoryQueryService;
 
     @MockBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
@@ -127,14 +131,14 @@ public class CategoryControllerTest {
         void shouldReturn404WhenTheCategoryIsNotFound() throws Exception {
             UUID notFoundId = UUID.randomUUID();
 
-            when(categoryService.view(notFoundId)).thenThrow(new CategoryNotFound());
+            when(categoryQueryService.view(notFoundId)).thenThrow(new CategoryNotFound());
 
             mockMvc.perform(get("/categories/{id}", notFoundId)
                             .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isNotFound());
 
-            verify(categoryService, times(1)).view(notFoundId);
+            verify(categoryQueryService, times(1)).view(notFoundId);
         }
 
         @Test
@@ -144,7 +148,7 @@ public class CategoryControllerTest {
             Category category = CategoryTestDataBuilder.categoryEntity(createDTO, userId, false);
             ResponseCategoryDTO responseDTO = CategoryTestDataBuilder.responseCategoryDTO(category);
 
-            when(categoryService.view(category.getId())).thenReturn(responseDTO);
+            when(categoryQueryService.view(category.getId())).thenReturn(responseDTO);
 
             mockMvc.perform(get("/categories/{id}", category.getId())
                             .with(csrf())
@@ -153,7 +157,7 @@ public class CategoryControllerTest {
                     .andExpect(jsonPath("$.id").value(responseDTO.id().toString()))
                     .andExpect(jsonPath("$.name").value(responseDTO.name()));
 
-            verify(categoryService, times(1)).view(category.getId());
+            verify(categoryQueryService, times(1)).view(category.getId());
         }
     }
 
@@ -176,7 +180,7 @@ public class CategoryControllerTest {
                     1
             );
 
-            when(categoryService.list(any(CategoryFiltersDTO.class), any(Pageable.class)))
+            when(categoryQueryService.list(any(CategoryFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(pageResponse);
 
             mockMvc.perform(get("/categories")
@@ -193,7 +197,7 @@ public class CategoryControllerTest {
                     .andExpect(jsonPath("$.totalElements").value(1))
                     .andExpect(jsonPath("$.totalPages").value(1));
 
-            verify(categoryService, times(1)).list(any(CategoryFiltersDTO.class), any(Pageable.class));
+            verify(categoryQueryService, times(1)).list(any(CategoryFiltersDTO.class), any(Pageable.class));
         }
 
         @Test
@@ -207,7 +211,7 @@ public class CategoryControllerTest {
                     0
             );
 
-            when(categoryService.list(any(CategoryFiltersDTO.class), any(Pageable.class)))
+            when(categoryQueryService.list(any(CategoryFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(emptyPageResponse);
 
             mockMvc.perform(get("/categories")
@@ -218,7 +222,7 @@ public class CategoryControllerTest {
                     .andExpect(jsonPath("$.content").isEmpty())
                     .andExpect(jsonPath("$.totalElements").value(0));
 
-            verify(categoryService, times(1)).list(any(CategoryFiltersDTO.class), any(Pageable.class));
+            verify(categoryQueryService, times(1)).list(any(CategoryFiltersDTO.class), any(Pageable.class));
         }
 
         @Test
@@ -229,7 +233,7 @@ public class CategoryControllerTest {
                             .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isBadRequest());
 
-            verify(categoryService, atMostOnce()).list(any(CategoryFiltersDTO.class), any(Pageable.class));
+            verify(categoryQueryService, atMostOnce()).list(any(CategoryFiltersDTO.class), any(Pageable.class));
         }
     }
 
@@ -252,7 +256,7 @@ public class CategoryControllerTest {
                     1
             );
 
-            when(categoryService.listDeleted(any(CategoryFiltersDTO.class), any(Pageable.class)))
+            when(categoryQueryService.listDeleted(any(CategoryFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(pageResponse);
 
             mockMvc.perform(get("/categories/deleted")
@@ -269,7 +273,7 @@ public class CategoryControllerTest {
                     .andExpect(jsonPath("$.totalElements").value(1))
                     .andExpect(jsonPath("$.totalPages").value(1));
 
-            verify(categoryService, times(1)).listDeleted(any(CategoryFiltersDTO.class), any(Pageable.class));
+            verify(categoryQueryService, times(1)).listDeleted(any(CategoryFiltersDTO.class), any(Pageable.class));
         }
 
         @Test
@@ -283,7 +287,7 @@ public class CategoryControllerTest {
                     0
             );
 
-            when(categoryService.listDeleted(any(CategoryFiltersDTO.class), any(Pageable.class)))
+            when(categoryQueryService.listDeleted(any(CategoryFiltersDTO.class), any(Pageable.class)))
                     .thenReturn(emptyPageResponse);
 
             mockMvc.perform(get("/categories/deleted")
@@ -294,7 +298,7 @@ public class CategoryControllerTest {
                     .andExpect(jsonPath("$.content").isEmpty())
                     .andExpect(jsonPath("$.totalElements").value(0));
 
-            verify(categoryService, times(1)).listDeleted(any(CategoryFiltersDTO.class), any(Pageable.class));
+            verify(categoryQueryService, times(1)).listDeleted(any(CategoryFiltersDTO.class), any(Pageable.class));
         }
 
         @Test
@@ -305,7 +309,7 @@ public class CategoryControllerTest {
                             .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isBadRequest());
 
-            verify(categoryService, atMostOnce()).listDeleted(any(CategoryFiltersDTO.class), any(Pageable.class));
+            verify(categoryQueryService, atMostOnce()).listDeleted(any(CategoryFiltersDTO.class), any(Pageable.class));
         }
     }
 
