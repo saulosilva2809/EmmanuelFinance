@@ -1,15 +1,14 @@
 package com.emmanuelfinance.category.services;
 
 import com.emmanuelfinance.category.*;
-import com.emmanuelfinance.category.dto.CategoryFiltersDTO;
 import com.emmanuelfinance.category.dto.CreateCategoryDTO;
 import com.emmanuelfinance.category.dto.ResponseCategoryDTO;
 import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
 import com.emmanuelfinance.category.exceptions.CategoryDomainException;
 import com.emmanuelfinance.category.exceptions.CategoryErrorCode;
+import com.emmanuelfinance.category.outbox.OutboxService;
 import com.emmanuelfinance.shared.enums.TypeEnum;
 import com.emmanuelfinance.shared.modules.category.exceptions.CategoryNotFound;
-import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -21,14 +20,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -53,6 +45,9 @@ class CategoryServiceTest {
     @Mock
     private CategoryValidatorService categoryValidatorService;
 
+    @Mock
+    private OutboxService outboxService;
+
     @InjectMocks
     private CategoryService categoryService;
 
@@ -60,8 +55,8 @@ class CategoryServiceTest {
 
     @BeforeEach
     void setUp() {
-        when(securityUtils.getCurrentUserId()).thenReturn(UUID.randomUUID());
-        userId = securityUtils.getCurrentUserId();
+        userId = UUID.randomUUID();
+        lenient().when(securityUtils.getCurrentUserId()).thenReturn(userId);
     }
 
     @Nested
@@ -82,7 +77,8 @@ class CategoryServiceTest {
             assertEquals(CategoryErrorCode.CATEGORY_ALREADY_EXISTS, exception.getErrorCode());
 
             verify(categoryValidatorService, times(1)).checkCategoryExists(inputDto);
-            verify(categoryRepository, never()).save(any(Category.class));
+            verify(categoryRepository, never()).saveAndFlush(any(Category.class));
+            verifyNoInteractions(outboxService);
         }
 
         @Test
@@ -91,7 +87,7 @@ class CategoryServiceTest {
             Category categoryEntity = CategoryTestDataBuilder.categoryEntity(inputDto, userId, false);
             ResponseCategoryDTO expectedResponse = CategoryTestDataBuilder.responseCategoryDTO(categoryEntity);
 
-            when(categoryRepository.save(any(Category.class)))
+            when(categoryRepository.saveAndFlush(any(Category.class)))
                     .thenReturn(categoryEntity);
 
             ResponseCategoryDTO response = categoryService.create(inputDto);
@@ -101,144 +97,22 @@ class CategoryServiceTest {
             assertEquals(expectedResponse.name(), response.name());
 
             verify(categoryValidatorService, times(1)).checkCategoryExists(inputDto);
-            verify(categoryRepository, times(1)).save(any(Category.class));
-        }
-    }
-
-    @Nested
-    @DisplayName("Tests of view method")
-    class ViewMethodTests {
-
-        @Test
-        void shouldGiveCategoryNotFoundError() {
-            UUID categoryNotFoundId = UUID.randomUUID();
-
-            when(categorySelector.getCategoryById(categoryNotFoundId))
-                    .thenThrow(new CategoryNotFound());
-
-            assertThrows(CategoryNotFound.class, () -> {
-                categoryService.view(categoryNotFoundId);
-            });
-
-            verify(categorySelector, times(1)).getCategoryById(categoryNotFoundId);
+            verify(categoryRepository, times(1)).saveAndFlush(any(Category.class));
+            verify(outboxService, times(1)).categoryChanged(categoryEntity);
         }
 
         @Test
-        void shouldReturnACategorySuccessfully() {
-            CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
-            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO, userId, false);
-            ResponseCategoryDTO expectedResponse = CategoryTestDataBuilder.responseCategoryDTO(categoryEntity);
+        void shouldSaveTheCategoryForTheCurrentUser() {
+            CreateCategoryDTO inputDto = CategoryTestDataBuilder.createCategoryDTO();
+            when(categoryRepository.saveAndFlush(any(Category.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
 
-            when(categorySelector.getCategoryById(categoryEntity.getId()))
-                    .thenReturn(categoryEntity);
+            categoryService.create(inputDto);
 
-            ResponseCategoryDTO response = categoryService.view(expectedResponse.id());
-
-            assertNotNull(response);
-            assertEquals(expectedResponse.id(), response.id());
-            assertEquals(expectedResponse.name(), response.name());
-
-            verify(categorySelector, times(1)).getCategoryById(expectedResponse.id());
-        }
-    }
-
-    @Nested
-    @DisplayName("Tests of list method")
-    class ListMethodTests {
-
-        @Test
-        void shouldReturnABlankPage() {
-            CategoryFiltersDTO filters = new CategoryFiltersDTO(
-                    null,
-                    TypeEnum.EXPENSE
-            );
-            Pageable pageable = PageRequest.of(0, 10);
-            Page<Category> categoryPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
-
-            when(categoryRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(categoryPage);
-
-            PageResponseDTO<ResponseCategoryDTO> result = categoryService.list(filters, pageable);
-
-            assertNotNull(result);
-            assertTrue(result.content().isEmpty());
-
-            verify(categoryRepository, times(1)).findAll(any(Specification.class), eq(pageable));
-        }
-
-        @Test
-        void shouldListTheAccountsSuccessfully() {
-            CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
-            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO, userId, false);
-
-            CategoryFiltersDTO filters = new CategoryFiltersDTO(
-                    "Salá",
-                    TypeEnum.INCOME
-            );
-            Pageable pageable = PageRequest.of(0, 10);
-            List<Category> categoryList = List.of(categoryEntity);
-            Page<Category> categoryPage = new PageImpl<>(categoryList, pageable, categoryList.size());
-
-            when(categoryRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(categoryPage);
-
-            PageResponseDTO<ResponseCategoryDTO> result = categoryService.list(filters, pageable);
-
-            assertNotNull(result);
-            assertNotNull(result.content());
-            assertEquals(1, result.content().size());
-            assertEquals(categoryEntity.getId(), result.content().get(0).id());
-            assertEquals("Salário", result.content().get(0).name());
-
-            verify(categoryRepository, times(1)).findAll(any(Specification.class), eq(pageable));
-        }
-    }
-
-    @Nested
-    @DisplayName("Tests of listDeleted method")
-    class ListDeletedMethodTests {
-
-        @Test
-        void shouldReturnABlankPage() {
-            CategoryFiltersDTO filters = new CategoryFiltersDTO(
-                    null,
-                    TypeEnum.EXPENSE
-            );
-            Pageable pageable = PageRequest.of(0, 10);
-            Page<Category> categoryPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
-
-            when(categoryRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(categoryPage);
-
-            PageResponseDTO<ResponseCategoryDTO> result = categoryService.listDeleted(filters, pageable);
-
-            assertNotNull(result);
-            assertTrue(result.content().isEmpty());
-
-            verify(categoryRepository, times(1)).findAll(any(Specification.class), eq(pageable));
-        }
-
-        @Test
-        void shouldListTheAccountsSuccessfully() {
-            CreateCategoryDTO categoryDTO = CategoryTestDataBuilder.createCategoryDTO();
-            Category categoryEntity = CategoryTestDataBuilder.categoryEntity(categoryDTO, userId, true);
-
-            CategoryFiltersDTO filters = new CategoryFiltersDTO(
-                    "Salá",
-                    TypeEnum.INCOME
-            );
-            Pageable pageable = PageRequest.of(0, 10);
-            List<Category> categoryList = List.of(categoryEntity);
-            Page<Category> categoryPage = new PageImpl<>(categoryList, pageable, categoryList.size());
-
-            when(categoryRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(categoryPage);
-
-            PageResponseDTO<ResponseCategoryDTO> result = categoryService.listDeleted(filters, pageable);
-
-            assertNotNull(result);
-            assertNotNull(result.content());
-            assertEquals(1, result.content().size());
-            assertEquals(categoryEntity.getId(), result.content().get(0).id());
-            assertEquals(categoryEntity.getName(), result.content().get(0).name());
-
-            verify(categoryRepository, times(1)).findAll(any(Specification.class), eq(pageable));
+            verify(categoryRepository).saveAndFlush(argThat(category ->
+                    userId.equals(category.getUserId())
+                            && inputDto.name().equals(category.getName())
+                            && inputDto.type() == category.getType()));
         }
     }
 
@@ -267,7 +141,8 @@ class CategoryServiceTest {
             });
 
             verify(categorySelector, times(1)).getCategoryById(categoryEntity.getId());
-            verify(categoryRepository, never()).save(categoryEntity);
+            verify(categoryRepository, never()).saveAndFlush(any(Category.class));
+            verifyNoInteractions(outboxService);
         }
 
         @Test
@@ -282,7 +157,7 @@ class CategoryServiceTest {
 
             when(categorySelector.getCategoryById(categoryEntity.getId()))
                     .thenReturn(categoryEntity);
-            when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            when(categoryRepository.saveAndFlush(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             ResponseCategoryDTO result = categoryService.update(categoryEntity.getId(), updateDTO);
 
@@ -290,7 +165,8 @@ class CategoryServiceTest {
             assertEquals(updateDTO.type(), result.type());
 
             verify(categorySelector, times(1)).getCategoryById(categoryEntity.getId());
-            verify(categoryRepository, times(1)).save(any(Category.class));
+            verify(categoryRepository, times(1)).saveAndFlush(any(Category.class));
+            verify(outboxService, times(1)).categoryChanged(categoryEntity);
         }
     }
 
@@ -311,6 +187,7 @@ class CategoryServiceTest {
 
             verify(categorySelector, times(1)).getCategoryById(categoryEntity.getId());
             verify(categoryRepository, never()).delete(categoryEntity);
+            verifyNoInteractions(outboxService);
         }
 
         @Test
@@ -324,7 +201,9 @@ class CategoryServiceTest {
             assertDoesNotThrow(() -> categoryService.delete(categoryEntity.getId()));
 
             verify(categorySelector, times(1)).getCategoryById(categoryEntity.getId());
-            verify(categoryRepository, times(1)).delete(any(Category.class));
+            verify(categoryRepository, times(1)).delete(categoryEntity);
+            verify(outboxService, times(1)).categoryDeleted(categoryEntity);
+            verify(outboxService, never()).categoryChanged(any(Category.class));
         }
     }
 
@@ -344,7 +223,8 @@ class CategoryServiceTest {
             });
 
             verify(categorySelector, times(1)).getCategoryByIdIncludingDeleted(categoryNotFoundId);
-            verify(categoryRepository, never()).save(any(Category.class));
+            verify(categoryRepository, never()).saveAndFlush(any(Category.class));
+            verifyNoInteractions(outboxService);
         }
 
         @Test
@@ -368,7 +248,8 @@ class CategoryServiceTest {
             assertEquals(CategoryErrorCode.RESTORE_CATEGORY_NOT_DELETED, exception.getErrorCode());
 
             verify(categorySelector, times(1)).getCategoryByIdIncludingDeleted(categoryEntity.getId());
-            verify(categoryRepository, never()).save(any(Category.class));
+            verify(categoryRepository, never()).saveAndFlush(any(Category.class));
+            verifyNoInteractions(outboxService);
         }
 
         @Test
@@ -388,7 +269,8 @@ class CategoryServiceTest {
             assertFalse(categoryEntity.isDeleted());
             verify(categoryValidatorService, times(1)).verifyIsDeleted(categoryEntity);
             verify(categorySelector, times(1)).getCategoryByIdIncludingDeleted(categoryEntity.getId());
-            verify(categoryRepository, times(1)).save(any(Category.class));
+            verify(categoryRepository, times(1)).saveAndFlush(categoryEntity);
+            verify(outboxService, times(1)).categoryChanged(categoryEntity);
         }
     }
 }

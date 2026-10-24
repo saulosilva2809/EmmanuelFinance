@@ -4,6 +4,7 @@ import com.emmanuelfinance.category.dto.CategoryFiltersDTO;
 import com.emmanuelfinance.category.dto.CreateCategoryDTO;
 import com.emmanuelfinance.category.dto.ResponseCategoryDTO;
 import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
+import com.emmanuelfinance.category.query.CategoryQueryService;
 import com.emmanuelfinance.category.services.CategoryService;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import jakarta.validation.Valid;
@@ -22,6 +23,7 @@ import java.util.UUID;
 public class CategoryController {
 
     private final CategoryService categoryService;
+    private final CategoryQueryService categoryQueryService;
 
     @PostMapping
     public ResponseEntity<ResponseCategoryDTO> create(@Valid @RequestBody CreateCategoryDTO data) {
@@ -31,7 +33,7 @@ public class CategoryController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ResponseCategoryDTO> view(@PathVariable UUID id) {
-        ResponseCategoryDTO response = categoryService.view(id);
+        ResponseCategoryDTO response = categoryQueryService.view(id);
         return ResponseEntity.ok().body(response);
     }
 
@@ -44,7 +46,7 @@ public class CategoryController {
             )
             Pageable pageable
     ) {
-        PageResponseDTO<ResponseCategoryDTO> response = categoryService.list(filters, pageable);
+        PageResponseDTO<ResponseCategoryDTO> response = categoryQueryService.list(filters, pageable);
         return ResponseEntity.ok().body(response);
     }
 
@@ -57,7 +59,7 @@ public class CategoryController {
             )
             Pageable pageable
     ) {
-        PageResponseDTO<ResponseCategoryDTO> response = categoryService.listDeleted(filters, pageable);
+        PageResponseDTO<ResponseCategoryDTO> response = categoryQueryService.listDeleted(filters, pageable);
         return ResponseEntity.ok().body(response);
     }
 

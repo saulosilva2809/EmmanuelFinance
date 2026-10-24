@@ -21,6 +21,12 @@ spring:
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVER:localhost:9092}
 
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/category-test
+      database: category-test
+      uuid-representation: standard
+
   security:
     oauth2:
       resourceserver:
