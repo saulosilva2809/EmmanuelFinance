@@ -3,7 +3,6 @@ package com.emmanuelfinance.account.outbox;
 import com.emmanuelfinance.account.Account;
 import com.emmanuelfinance.account.AccountMapper;
 import com.emmanuelfinance.account.enums.TypeEnum;
-import com.emmanuelfinance.account.outbox.dto.AccountOwnerDTO;
 import com.emmanuelfinance.account.outbox.enums.AccountOutboxEventType;
 import com.emmanuelfinance.account.query.AccountDocument;
 import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
@@ -84,29 +83,6 @@ class OutboxEventFactoryTest {
         OutboxEvent row = outboxEventFactory.accountSnapshot(newAccount(), true);
 
         assertTrue(objectMapper.treeToValue(row.getPayload(), AccountDocument.class).isDeleted());
-    }
-
-    @Test
-    void shouldBuildTheOwnerCacheRow() throws Exception {
-        Account account = newAccount();
-
-        OutboxEvent row = outboxEventFactory.accountOwner(account);
-
-        assertEquals(AccountOutboxEventType.ACCOUNT_OWNER_CACHED, row.getType());
-        assertEquals(new AccountOwnerDTO(account.getId(), account.getUserId()),
-                objectMapper.treeToValue(row.getPayload(), AccountOwnerDTO.class));
-    }
-
-    @Test
-    void shouldBuildTheOwnerRemovalRowWithTheSamePayloadAsTheCacheRow() throws Exception {
-        Account account = newAccount();
-
-        OutboxEvent row = outboxEventFactory.accountOwnerRemoved(account);
-
-        assertEquals(AccountOutboxEventType.ACCOUNT_OWNER_REMOVED, row.getType());
-        assertEquals(account.getId().toString(), row.getAggregateId());
-        assertEquals(new AccountOwnerDTO(account.getId(), account.getUserId()),
-                objectMapper.treeToValue(row.getPayload(), AccountOwnerDTO.class));
     }
 
     private Account newAccount() {

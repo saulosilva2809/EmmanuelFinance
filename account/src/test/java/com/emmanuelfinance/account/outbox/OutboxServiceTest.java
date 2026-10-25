@@ -46,13 +46,12 @@ class OutboxServiceTest {
     }
 
     @Test
-    void shouldRegisterTheEventTheSnapshotAndTheOwnerCacheWhenTheAccountIsCreated() {
+    void shouldRegisterTheEventAndTheSnapshotWhenTheAccountIsCreated() {
         outboxService.accountCreated(newAccount());
 
         assertEquals(List.of(
                 AccountOutboxEventType.ACCOUNT_CREATED,
-                AccountOutboxEventType.ACCOUNT_CHANGED,
-                AccountOutboxEventType.ACCOUNT_OWNER_CACHED
+                AccountOutboxEventType.ACCOUNT_CHANGED
         ), registeredTypes());
     }
 
@@ -64,14 +63,10 @@ class OutboxServiceTest {
     }
 
     @Test
-    void shouldRegisterTheEventTheSnapshotAndTheOwnerRemovalWhenTheAccountIsDeleted() {
+    void shouldRegisterTheEventAndTheSnapshotWhenTheAccountIsDeleted() {
         outboxService.accountDeleted(newAccount());
 
-        assertEquals(List.of(
-                AccountOutboxEventType.ACCOUNT_DELETED,
-                AccountOutboxEventType.ACCOUNT_CHANGED,
-                AccountOutboxEventType.ACCOUNT_OWNER_REMOVED
-        ), registeredTypes());
+        assertEquals(List.of(AccountOutboxEventType.ACCOUNT_DELETED, AccountOutboxEventType.ACCOUNT_CHANGED), registeredTypes());
     }
 
     @Test

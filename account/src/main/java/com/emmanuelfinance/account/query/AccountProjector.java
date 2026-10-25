@@ -16,8 +16,9 @@ public class AccountProjector implements BaseProjector<AccountDocument> {
 
     @Override
     @Caching(evict = {
-            @CacheEvict(value = "accounts", key = "#snapshot.id"),
-            @CacheEvict(value = "accounts-internal", key = "#snapshot.id"),
+            @CacheEvict(value = "accounts", key = "#snapshot.userId + ':' + #snapshot.id"),
+            @CacheEvict(value = "accounts-internal", key = "#snapshot.userId + ':' + #snapshot.id"),
+            @CacheEvict(value = "account_owner", key = "#snapshot.id + ':' + #snapshot.userId"),
             @CacheEvict(value = "account_view", key = "#snapshot.userId + ':' + #snapshot.id"),
             @CacheEvict(value = "account_list", allEntries = true)
     })
