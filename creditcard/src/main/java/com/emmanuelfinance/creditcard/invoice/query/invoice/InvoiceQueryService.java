@@ -7,6 +7,7 @@ import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.modules.creditcard.CreditCardClientCacheService;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +27,7 @@ public class InvoiceQueryService {
     private final InvoiceMapper invoiceMapper;
     private final CreditCardClientCacheService creditCardClientCacheService;
 
+    @Cacheable(value = "invoice_list", key = "'active:' + @securityUtils.currentUserId + ':' + #filters + ':' + #pageable")
     public PageResponseDTO<ResponseInvoiceDTO> list(InvoiceFiltersDTO filters, Pageable pageable) {
         UUID userId = securityUtils.getCurrentUserId();
 

@@ -1,11 +1,11 @@
 package com.emmanuelfinance.creditcard.invoice;
 
+import com.emmanuelfinance.creditcard.creditcard.CreditCard;
 import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceDTO;
 import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceItemDTO;
 import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceSummaryDTO;
 import com.emmanuelfinance.shared.enums.TypeEnum;
 import com.emmanuelfinance.shared.modules.category.dtos.CategorySummaryDTO;
-import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardInternalSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.enums.InvoiceStatusEnum;
 import com.emmanuelfinance.shared.modules.transaction.dtos.TransactionSummaryDTO;
@@ -116,14 +116,12 @@ public class InvoiceTestDataBuilder {
         );
     }
 
-    public static CreditCardInternalSummaryDTO creditCardInternalSummaryDTO(UUID creditCardId) {
-        return new CreditCardInternalSummaryDTO(
-                creditCardId,
-                UUID.randomUUID(),
-                new BigDecimal("10000.00"),
-                DUE_DATE,
-                CLOSING_DATE
-        );
+    public static CreditCard creditCardEntity(UUID creditCardId) {
+        CreditCard creditCard = new CreditCard();
+        creditCard.setId(creditCardId);
+        creditCard.setDueDay(DUE_DATE);
+        creditCard.setClosingDay(CLOSING_DATE);
+        return creditCard;
     }
 
     public static CreditCardSummaryDTO creditCardSummaryDTO(UUID creditCardId) {

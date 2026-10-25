@@ -5,9 +5,6 @@ spring:
   application:
     name: creditcard
 
-  flyway:
-    out-of-order: true
-
   devtools:
     restart:
       enabled: true
@@ -20,28 +17,27 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
 
+  flyway:
+    out-of-order: true
+
   jpa:
     hibernate:
       ddl-auto: validate
 
   data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      timeout: 2000ms
-
     mongodb:
       uri: ${MONGODB_URI}
       database: ${MONGODB_DATABASE}
       uuid-representation: standard
       auto-index-creation: true
 
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${KC_EXTERNAL_AUTH_SERVER_URL}/realms/${KC_REALM}
-          jwk-set-uri: ${KC_AUTH_SERVER_URL}/realms/${KC_REALM}/protocol/openid-connect/certs
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+
+  cache:
+    type: redis
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVER}
@@ -59,8 +55,15 @@ spring:
         spring.json.trusted.packages: "*"
         spring.json.use.type.headers: true
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KC_EXTERNAL_AUTH_SERVER_URL}/realms/${KC_REALM}
+          jwk-set-uri: ${KC_AUTH_SERVER_URL}/realms/${KC_REALM}/protocol/openid-connect/certs
+
 application:
-    config:
-      account-service-url: ${ACCOUNT_SERVICE_URL}
-      credit-card-service-url: ${CREDIT_CARD_SERVICE_URL}
-      transaction-service-url: ${TRANSACTION_SERVICE_URL}
+  config:
+    account-service-url: ${ACCOUNT_SERVICE_URL}
+    credit-card-service-url: ${CREDIT_CARD_SERVICE_URL}
+    transaction-service-url: ${TRANSACTION_SERVICE_URL}
