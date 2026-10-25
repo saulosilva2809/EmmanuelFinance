@@ -129,6 +129,31 @@ O serviço que escreve nunca chama o Mongo direto. O `OutboxService` só aceita 
 (`MANDATORY`), e por isso os métodos de `CategoryService` usam `saveAndFlush` antes de registrar a foto: assim o
 `updatedAt` e os outros campos já estão preenchidos quando a foto é tirada.
 
+### Cache (Redis)
+Todos os caches são do Spring (`@Cacheable`), gravados na primeira consulta, com validade de 10 horas (`RedisConfig`, no
+módulo `config`), e apagados num lugar só: o `CategoryProjector`, depois que a foto é gravada no Mongo.
+
+| Cache | Chave no Redis | Quem grava | Quem apaga |
+|-------|----------------|------------|------------|
+| Resposta de `GET /categories/{id}` | `category_view::<userId>:<id>` | `CategoryQueryService` | `CategoryProjector` |
+| Respostas de `GET /categories` e `/categories/deleted` | `category_list::<ativas ou excluídas>:<userId>:<filtros>:<página>` | `CategoryQueryService` | `CategoryProjector` (todas as listas) |
+| Resumos da categoria no `transaction` | `category_summary::<userId>:<id>` e `category_internal_summary::<userId>:<id>` | `CategoryClientCacheService` (`shared`) | `CategoryProjector` |
+
+- **O `userId` e o id da categoria entram na chave**, para que um usuário nunca receba a resposta de outro e uma
+  categoria nunca receba a de outra.
+- **Por que a limpeza fica no projector:** ele roda depois do commit, quando o Outbox entrega a foto ao Mongo, em toda
+  mudança (criar, editar, excluir e restaurar). Limpar antes deixaria uma leitura recolocar o dado antigo. Se o Mongo
+  estiver fora do ar, a limpeza espera junto com a foto.
+- **O resumo interno** (`category_internal_summary`) traz o tipo da categoria, que o `transaction` confere ao criar uma
+  transação, por isso ele é apagado a cada mudança da categoria.
+- **Os resumos levam o `userId` na chave** porque o `category` só devolve a categoria ao seu dono: com a chave só pelo
+  id, outro usuário que soubesse o id leria a resposta guardada.
+- **Respostas de outros serviços que mostram a categoria:** a categoria aparece no nome que o `transaction` mostra nas
+  transações (`transaction_view` e `transaction_list`) e nos itens de fatura do `creditcard` (`invoice_item_list`).
+  Como a categoria muda pouco, o `CategoryProjector` também apaga esses três, para que um nome alterado apareça logo.
+- **Por que as listas são apagadas todas de uma vez:** não dá para saber quais filtros e páginas incluem a categoria que
+  mudou.
+
 ### Outros
 - **Exclusão lógica** com `@SQLDelete`, e listagem separada das categorias excluídas.
 - **Migrations** versionadas com Flyway (`V1` a `V11`) e `ddl-auto: validate`. A `V10` criou a tabela do Outbox com uma

@@ -17,7 +17,7 @@ public class TransactionClientCacheService {
 
     private final TransactionClient transactionClient;
 
-    @Cacheable(value = "transaction_summary", key = "#id")
+    @Cacheable(value = "transaction_summary", key = "@securityUtils.currentUserId + ':' + #id")
     public TransactionSummaryDTO getTransactionSummaryDTO(UUID id) {
         log.info("Buscando transaction via transaction server (cache miss)", id);
         return transactionClient.getTransactionSummary(id);

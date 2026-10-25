@@ -7,6 +7,7 @@ import com.emmanuelfinance.transaction.transaction.TransactionMapper;
 import com.emmanuelfinance.transaction.transaction.dtos.ResponseTransactionDTO;
 import com.emmanuelfinance.transaction.transaction.dtos.TransactionFiltersDTO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +29,8 @@ public class TransactionQueryService {
     private final SecurityUtils securityUtils;
     private final MongoTemplate mongoTemplate;
 
+    // a chave leva o dono da transação: sem ele, um usuário poderia receber a resposta em cache de outro
+    @Cacheable(value = "transaction_view", key = "@securityUtils.currentUserId + ':' + #transactionId")
     public ResponseTransactionDTO view(UUID transactionId) {
         UUID userId = securityUtils.getCurrentUserId();
 
@@ -38,10 +41,13 @@ public class TransactionQueryService {
         return transactionMapper.toResponseDTO(document);
     }
 
+    // cada combinação de dono, filtros e página tem a sua entrada, e qualquer mudança em transação limpa todas
+    @Cacheable(value = "transaction_list", key = "'active:' + @securityUtils.currentUserId + ':' + #filters + ':' + #pageable")
     public PageResponseDTO<ResponseTransactionDTO> list(TransactionFiltersDTO filters, Pageable pageable) {
         return search(filters, pageable, false);
     }
 
+    @Cacheable(value = "transaction_list", key = "'deleted:' + @securityUtils.currentUserId + ':' + #filters + ':' + #pageable")
     public PageResponseDTO<ResponseTransactionDTO> listDeleted(TransactionFiltersDTO filters, Pageable pageable) {
         return search(filters, pageable, true);
     }

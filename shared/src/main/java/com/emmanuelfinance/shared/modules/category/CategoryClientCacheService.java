@@ -20,13 +20,13 @@ public class CategoryClientCacheService {
 
     private final CategoryClient categoryClient;
 
-    @Cacheable(value = "category_summary", key = "#id")
+    @Cacheable(value = "category_summary", key = "@securityUtils.currentUserId + ':' + #id")
     public CategorySummaryDTO getCategorySummaryDTO(UUID id) {
         log.info("Buscando category via category server (cache miss)", id);
         return categoryClient.getCategorySummary(id);
     }
 
-    @Cacheable(value = "category_internal_summary", key = "#id")
+    @Cacheable(value = "category_internal_summary", key = "@securityUtils.currentUserId + ':' + #id")
     public CategoryInternalSummaryDTO getCategoryInternalSummaryDTO(UUID id) {
         log.info("Buscando category via category server (cache miss)", id);
         return categoryClient.getCategoryInternalSummary(id);

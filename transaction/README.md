@@ -195,6 +195,29 @@ Quando a data chega, a transação vira `PAID` e o aviso sai pelo Outbox. Como a
 o serviço (`RecoverScheduledTransactions`) as pendentes futuras são agendadas de novo, e as que já passaram da data
 são executadas na hora.
 
+### Cache (Redis)
+Todos os caches são do Spring (`@Cacheable`), gravados na primeira consulta, com validade de 10 horas (`RedisConfig`, no
+módulo `config`), e apagados num lugar só: o `TransactionProjector`, depois que a foto é gravada no Mongo. A trava de
+idempotência (2 minutos) é outra coisa: é uma chave do Redis com prazo curto, e não um cache de leitura.
+
+| Cache | Chave no Redis | Quem grava | Quem apaga |
+|-------|----------------|------------|------------|
+| Resposta de `GET /transactions/{id}` | `transaction_view::<userId>:<id>` | `TransactionQueryService` | `TransactionProjector` |
+| Respostas das listas de transações (ativas e excluídas) | `transaction_list::<ativas ou excluídas>:<userId>:<filtros>:<página>` | `TransactionQueryService` | `TransactionProjector` (todas as listas) |
+| Resumo da transação no `creditcard` | `transaction_summary::<userId>:<id>` | `TransactionClientCacheService` (`shared`) | `TransactionProjector` |
+
+- **O `userId` e o id da transação entram na chave**, para que um usuário nunca receba a resposta de outro e uma
+  transação nunca receba a de outra.
+- **A limpeza roda em toda mudança de transação**, inclusive quando uma agendada passa a paga. Se o Mongo estiver fora
+  do ar, ela espera junto com a foto.
+- **Resumos só por quem os consulta:** os resumos de conta, cartão e categoria levam o `userId` na chave porque os
+  serviços de origem só devolvem o dado ao dono. Eles dependem do token do usuário, então só funcionam em chamadas HTTP.
+- **Respostas montadas:** a resposta de uma transação traz o resumo da conta, do cartão e da categoria. O cartão e a
+  categoria, quando mudam, apagam `transaction_view` e `transaction_list` (cada projector deles faz isso).
+- **Limitação conhecida:** se a **conta** for renomeada, o `transaction` não é avisado (o `account` só publica
+  criação, exclusão e restauração, e apagar a cada mudança de saldo esvaziaria o cache o tempo todo), e a resposta
+  antiga pode aparecer por até 10 horas.
+
 ### Outros
 - **Exclusão lógica** com `@SQLDelete`, e listagem separada das excluídas.
 - **Migrations** versionadas com Flyway (`V1` a `V7`) e `ddl-auto: validate`.
@@ -202,7 +225,7 @@ são executadas na hora.
 - **Segurança:** OAuth2 Resource Server (JWT), com tudo bloqueado por padrão. A configuração é a `JwtSecurityConfig` do
   módulo `shared` (sem CSRF, sem sessão): o token precisa ter assinatura e validade corretas e ter sido emitido pelo
   `issuer-uri` configurado. Só o `auth` tem uma configuração própria, porque libera o login.
-- **Cache no Redis** dos resumos de conta, cartão e categoria que os serviços consultam entre si.
+- **Cache no Redis** (veja a seção abaixo) das leituras do `GET` e dos resumos que os serviços consultam entre si.
 
 ---
 
