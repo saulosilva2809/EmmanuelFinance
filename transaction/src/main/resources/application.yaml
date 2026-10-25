@@ -22,23 +22,19 @@ spring:
       ddl-auto: validate
 
   data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      timeout: 2000ms
-
     mongodb:
       uri: ${MONGODB_URI}
       database: ${MONGODB_DATABASE}
       uuid-representation: standard
       auto-index-creation: true
 
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${KC_EXTERNAL_AUTH_SERVER_URL}/realms/${KC_REALM}
-          jwk-set-uri: ${KC_AUTH_SERVER_URL}/realms/${KC_REALM}/protocol/openid-connect/certs
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+
+  cache:
+    type: redis
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVER}
@@ -55,6 +51,13 @@ spring:
         spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
         spring.json.trusted.packages: "*"
         spring.json.use.type.headers: true
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KC_EXTERNAL_AUTH_SERVER_URL}/realms/${KC_REALM}
+          jwk-set-uri: ${KC_AUTH_SERVER_URL}/realms/${KC_REALM}/protocol/openid-connect/certs
 
 application:
   config:
