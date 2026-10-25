@@ -10,7 +10,7 @@ import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceItemSelector;
 import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceSelector;
 import com.emmanuelfinance.creditcard.outbox.OutboxService;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
-import com.emmanuelfinance.shared.modules.creditcard.CreditCardClientCacheService;
+import com.emmanuelfinance.creditcard.creditcard.CreditCardSelector;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.enums.InvoiceStatusEnum;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
@@ -49,7 +49,7 @@ public class InvoiceServiceTest {
     private InvoiceSelector invoiceSelector;
 
     @Mock
-    private CreditCardClientCacheService creditCardClientCacheService;
+    private CreditCardSelector creditCardSelector;
 
     @Mock
     private InvoiceRepository invoiceRepository;
@@ -77,8 +77,8 @@ public class InvoiceServiceTest {
         private final UUID creditCardId = UUID.randomUUID();
 
         private void stubCreditCard() {
-            when(creditCardClientCacheService.getCreditCardInternalSummaryDTO(creditCardId))
-                    .thenReturn(InvoiceTestDataBuilder.creditCardInternalSummaryDTO(creditCardId));
+            when(creditCardSelector.getCreditCardByIdInternal(creditCardId))
+                    .thenReturn(InvoiceTestDataBuilder.creditCardEntity(creditCardId));
         }
 
         private void stubSaveGeneratingId() {
@@ -194,7 +194,7 @@ public class InvoiceServiceTest {
             assertEquals(new BigDecimal("250.00"), existing.getTotalAmount());
             verify(invoiceRepository, times(2)).saveAndFlush(any(Invoice.class));
             verify(outboxService, times(2)).invoiceChanged(any(Invoice.class));
-            verify(creditCardClientCacheService, never()).getCreditCardInternalSummaryDTO(any());
+            verify(creditCardSelector, never()).getCreditCardByIdInternal(any());
             verify(invoiceItemService, times(1)).createInvoiceItem(
                     event, existing.getId(), 1, new BigDecimal("50.00")
             );

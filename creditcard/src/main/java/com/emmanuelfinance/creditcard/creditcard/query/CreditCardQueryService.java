@@ -6,6 +6,7 @@ import com.emmanuelfinance.creditcard.creditcard.dto.ResponseCreditCardDTO;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -25,16 +26,19 @@ public class CreditCardQueryService {
     private final SecurityUtils securityUtils;
     private final MongoTemplate mongoTemplate;
 
+    @Cacheable(value = "credit_card_view", key = "@securityUtils.currentUserId + ':' + #creditCardId")
     public ResponseCreditCardDTO view(UUID creditCardId) {
         CreditCardDocument document = creditCardDocumentSelector.getByIdAndUserIdAndDeletedFalse(creditCardId);
 
         return creditCardMapper.toResponseDTO(document);
     }
 
+    @Cacheable(value = "credit_card_list", key = "'active:' + @securityUtils.currentUserId + ':' + #filters + ':' + #pageable")
     public PageResponseDTO<ResponseCreditCardDTO> list(CreditCardFiltersDTO filters, Pageable pageable) {
         return search(filters, pageable, false);
     }
 
+    @Cacheable(value = "credit_card_list", key = "'deleted:' + @securityUtils.currentUserId + ':' + #filters + ':' + #pageable")
     public PageResponseDTO<ResponseCreditCardDTO> listDeleted(CreditCardFiltersDTO filters, Pageable pageable) {
         return search(filters, pageable, true);
     }

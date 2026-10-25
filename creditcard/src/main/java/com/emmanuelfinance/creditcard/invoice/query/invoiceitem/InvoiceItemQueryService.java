@@ -10,6 +10,7 @@ import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.modules.transaction.TransactionClientCacheService;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +31,7 @@ public class InvoiceItemQueryService {
     private final InvoiceDocumentRepository invoiceDocumentRepository;
     private final TransactionClientCacheService transactionClientCacheService;
 
+    @Cacheable(value = "invoice_item_list", key = "'active:' + @securityUtils.currentUserId + ':' + #invoiceId + ':' + #pageable")
     public PageResponseDTO<ResponseInvoiceItemDTO> listByInvoiceId(UUID invoiceId, Pageable pageable) {
         UUID userId = securityUtils.getCurrentUserId();
 

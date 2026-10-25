@@ -1,13 +1,13 @@
 package com.emmanuelfinance.creditcard.invoice.services;
 
+import com.emmanuelfinance.creditcard.creditcard.CreditCard;
+import com.emmanuelfinance.creditcard.creditcard.CreditCardSelector;
 import com.emmanuelfinance.creditcard.invoice.Invoice;
 import com.emmanuelfinance.creditcard.invoice.InvoiceItem;
 import com.emmanuelfinance.creditcard.invoice.repositories.InvoiceRepository;
 import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceItemSelector;
 import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceSelector;
 import com.emmanuelfinance.creditcard.outbox.OutboxService;
-import com.emmanuelfinance.shared.modules.creditcard.CreditCardClientCacheService;
-import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardInternalSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.enums.InvoiceStatusEnum;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
@@ -29,20 +29,17 @@ import java.util.UUID;
 public class InvoiceService {
 
     private final InvoiceSelector invoiceSelector;
-    private final CreditCardClientCacheService creditCardClientCacheService;
+    private final CreditCardSelector creditCardSelector;
     private final InvoiceRepository invoiceRepository;
     private final InvoiceItemService invoiceItemService;
     private final InvoiceItemSelector invoiceItemSelector;
     private final InvoiceAmountService invoiceAmountService;
     private final OutboxService outboxService;
 
-    private CreditCardInternalSummaryDTO getCreditCardInternal(UUID creditCardId) {
-        return creditCardClientCacheService.getCreditCardInternalSummaryDTO(creditCardId);
-    }
-
     @Transactional
     private Invoice createInvoice(TransactionCreatedEvent event, LocalDate targetDate, BigDecimal installmentAmount) {
-        CreditCardInternalSummaryDTO creditCard = getCreditCardInternal(event.creditCardId());
+        // vem do evento do kafka, que não tem usuário logado nem token: lê do banco daqui, sem chamar o próprio serviço por http
+        CreditCard creditCard = creditCardSelector.getCreditCardByIdInternal(event.creditCardId());
 
         Invoice invoice = new Invoice();
         invoice.setUserId(event.userId());
@@ -50,8 +47,8 @@ public class InvoiceService {
         invoice.setMonth(targetDate.getMonthValue());
         invoice.setYear(targetDate.getYear());
 
-        invoice.setDueDate(creditCard.dueDate());
-        invoice.setClosingDate(creditCard.closingDate());
+        invoice.setDueDate(creditCard.getDueDay());
+        invoice.setClosingDate(creditCard.getClosingDay());
 
         invoice.setTotalAmount(installmentAmount);
         invoice.setStatus(InvoiceStatusEnum.OPEN);

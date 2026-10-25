@@ -202,6 +202,35 @@ leitura (`query`). A regra vale para consultas que mostram dados (Mongo) versus 
 | `transaction-failed-topic` | publica | avisa que não foi possível processar a transação (compensação no `transaction`) |
 | `created-invoice-payment-topic` | publica (pelo Outbox) | o `transaction` registra a transação do pagamento e publica `invoice-payment-created-topic`, que o `account` consome para descontar o saldo |
 
+### Cache (Redis)
+Todos os caches são do Spring (`@Cacheable`), gravados na primeira consulta, com validade de 10 horas (`RedisConfig`, no
+módulo `config`), e apagados num lugar só: o *projector* de cada tipo, depois que a foto é gravada no Mongo.
+
+| Cache | Chave no Redis | Quem grava | Quem apaga |
+|-------|----------------|------------|------------|
+| Resposta de `GET /credit-card/{id}` | `credit_card_view::<userId>:<cartão>` | `CreditCardQueryService` | `CreditCardProjector` |
+| Respostas das listas de cartões (ativos e excluídos) | `credit_card_list::<ativos ou excluídos>:<userId>:<filtros>:<página>` | `CreditCardQueryService` | `CreditCardProjector` (todas as listas) |
+| Respostas da lista de faturas | `invoice_list::active:<userId>:<filtros>:<página>` | `InvoiceQueryService` | `InvoiceProjector` e `CreditCardProjector` |
+| Respostas da lista de itens de uma fatura | `invoice_item_list::active:<userId>:<fatura>:<página>` | `InvoiceItemQueryService` | `InvoiceItemProjector` e `InvoiceProjector` |
+| Resumos do cartão nos outros serviços | `credit_card_summary::<userId>:<id>` e `credit_card_internal_summary::<userId>:<id>` | `CreditCardClientCacheService` (`shared`), no `transaction` e aqui | `CreditCardProjector` |
+
+- **O `userId` entra na chave** das leituras, para que um usuário nunca receba a resposta de outro. O id do cartão e o
+  id da fatura também, senão a segunda consulta receberia a resposta da primeira.
+- **Quem apaga o quê:** o cartão muda o nome que aparece nas faturas, então ele também limpa `invoice_list`, e o que
+  aparece nas transações, então ele também limpa `transaction_view` e `transaction_list` (caches do `transaction`). A fatura
+  muda o total e o status que os itens trazem junto, então ela também limpa `invoice_item_list`.
+- **Limite do cartão:** o `credit_card_internal_summary` traz o limite disponível, que o `transaction` usa para aceitar
+  ou barrar uma compra. Por isso o `CreditCardProjector` o apaga a cada mudança do cartão. Se o Mongo estiver fora do ar,
+  a limpeza espera junto com a foto.
+- **Resumos só por quem os consulta:** os resumos levam o `userId` na chave porque o serviço de origem só devolve o
+  dado ao dono. Eles só funcionam em chamadas HTTP, que levam o token do usuário. A criação da fatura roda a partir de
+  um evento do Kafka, sem usuário nem token, então ela lê o cartão direto do banco daqui (`CreditCardSelector`) em vez
+  de chamar o próprio serviço por HTTP.
+- **Limitação conhecida:** a resposta de um cartão traz o resumo da conta, que é de outro serviço. Se a conta for
+  renomeada, o `creditcard` não é avisado (o `account` só publica criação, exclusão e restauração), e a resposta antiga
+  pode aparecer por até 10 horas. O nome da categoria e o cartão nos itens e nas transações já são limpos pelos seus
+  donos.
+
 ### Outros
 - **Exclusão lógica** com `@SQLDelete` para cartões, faturas e itens, e listagem separada dos cartões excluídos.
 - **Migrations** versionadas com Flyway (`V1` a `V11`) e `ddl-auto: validate`.
@@ -209,7 +238,7 @@ leitura (`query`). A regra vale para consultas que mostram dados (Mongo) versus 
 - **Segurança:** OAuth2 Resource Server (JWT), com tudo bloqueado por padrão. A configuração é a `JwtSecurityConfig` do
   módulo `shared` (sem CSRF, sem sessão): o token precisa ter assinatura e validade corretas e ter sido emitido pelo
   `issuer-uri` configurado. Só o `auth` tem uma configuração própria, porque libera o login.
-- **Cache no Redis** dos resumos de conta e de cartão que os serviços consultam entre si.
+- **Cache no Redis** (veja a seção abaixo) das leituras do `GET` e dos resumos que os serviços consultam entre si.
 
 ---
 
