@@ -119,15 +119,16 @@ Cada linha tem um único destino, e uma operação registra até três, porque o
 diferentes:
 
 Os tipos de linha são `ACCOUNT_CREATED`, `ACCOUNT_DELETED` e `ACCOUNT_RESTORED` (aviso para o Kafka, um por evento),
-`ACCOUNT_CHANGED` (foto para o Mongo) e `ACCOUNT_OWNER_CACHED` (dono da conta no Redis). O envio ao Kafka não fica
+`ACCOUNT_CHANGED` (foto para o Mongo), `ACCOUNT_OWNER_CACHED` e `ACCOUNT_OWNER_REMOVED` (gravar e tirar o dono da
+conta no Redis). O envio ao Kafka não fica
 no dispatcher: ele chama o `AccountProducer`, que espera a confirmação do Kafka (até 5 segundos) e deixa o erro
 subir, e assim a linha continua pendente se o Kafka falhar.
 
 | Operação | Aviso para o Kafka (`account-events`) | Foto da conta para o Mongo | Dono da conta no Redis |
 |----------|---------------------------------------|----------------------------|------------------------|
-| Criar | `CREATED` | sim | sim |
+| Criar | `CREATED` | sim | sim, grava a chave |
 | Editar | não | sim | não |
-| Excluir | `DELETED` | sim, com `deleted = true` | não |
+| Excluir | `DELETED` | sim, com `deleted = true` | sim, remove a chave |
 | Restaurar | `RESTORE` | sim, com `deleted = false` | não |
 | Saldo alterado | não | sim | não |
 
@@ -137,11 +138,32 @@ subir, e assim a linha continua pendente se o Kafka falhar.
   mesma foto duas vezes não muda nada, e uma foto perdida é corrigida pela seguinte.
 - O **dono da conta** é gravado no Redis (`AccountCache`) para que os outros serviços validem a posse sem
   consultar o `account`. Como passa pelo Outbox, só é gravado depois do commit e é repetido se o Redis estiver fora
-  do ar.
+  do ar. Na exclusão, o próprio Outbox remove a chave (`ACCOUNT_OWNER_REMOVED`), sem passar pelo Kafka. Por garantia,
+  a chave também expira em 24 horas; depois de expirar, o validador consulta o `account` e grava de novo.
 
 O relay só apaga a linha depois que o destino confirma. Se o serviço cair entre entregar e apagar, a linha é
 entregue de novo. Por isso os destinos aceitam repetição: o Mongo e o Redis gravam por cima, e os consumidores do
 Kafka só marcam ou removem dados.
+
+### Cache (Redis)
+Há dois tipos de cache, e é importante não confundi-los, porque cada um é apagado de um jeito:
+
+| Cache | Chave no Redis | Quem grava | Validade | Quem apaga |
+|-------|----------------|------------|----------|------------|
+| Dono da conta | `account:<id>` | Outbox (`AccountCache`) e o validador de posse do `shared` | 24 h | o Outbox (`ACCOUNT_OWNER_REMOVED`), na exclusão |
+| Resposta de `GET /accounts/{id}` | `account_view::<userId>:<id>` | `AccountQueryService` | 10 h | o `AccountProjector` |
+| Respostas de `GET /accounts` e `/accounts/deleted` | `account_list::<ativas ou excluídas>:<userId>:<filtros>:<página>` | `AccountQueryService` | 10 h | o `AccountProjector` (apaga todas as listas) |
+| Resumos da conta nos outros serviços | `accounts::<id>` e `accounts-internal::<id>` | `AccountClientCacheService` (`shared`), no `creditcard` e no `transaction` | 10 h | o `AccountProjector` |
+
+- **Por que a limpeza fica no `AccountProjector`:** ele roda depois do commit, quando o Outbox entrega a foto da conta
+  ao Mongo, e isso acontece em toda mudança (criar, editar, excluir, restaurar e alterar o saldo). Limpar o cache antes
+  disso deixaria uma leitura recolocar o dado antigo no cache. Se o Mongo estiver fora do ar, a limpeza espera junto
+  com a foto e acontece quando ela for entregue.
+- **O dono entra na chave** do `view` e das listas, para que um usuário nunca receba a resposta em cache de outro.
+- **Por que as listas são apagadas todas de uma vez:** não dá para saber quais filtros e páginas incluem a conta que
+  mudou. Em troca, o cache das listas é descartado a cada mudança em qualquer conta.
+- A validade de 10 horas (`RedisConfig`, no módulo `config`) vale para todos os caches do Spring. A resposta não encontrada
+  (404) não é guardada.
 
 ### Event-driven com Kafka
 - **Publica** `account-events` (`CREATED`, `DELETED` e `RESTORE`).
