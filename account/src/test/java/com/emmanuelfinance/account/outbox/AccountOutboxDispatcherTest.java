@@ -2,11 +2,9 @@ package com.emmanuelfinance.account.outbox;
 
 import com.emmanuelfinance.account.enums.TypeEnum;
 import com.emmanuelfinance.account.kafka.AccountProducer;
-import com.emmanuelfinance.account.outbox.dto.AccountOwnerDTO;
 import com.emmanuelfinance.account.outbox.enums.AccountOutboxEventType;
 import com.emmanuelfinance.account.query.AccountDocument;
 import com.emmanuelfinance.account.query.AccountProjector;
-import com.emmanuelfinance.shared.modules.account.AccountCache;
 import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
 import com.emmanuelfinance.shared.modules.account.kafka.account.enums.StatusEventEnum;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,9 +32,6 @@ class AccountOutboxDispatcherTest {
     @Mock
     private AccountProjector accountProjector;
 
-    @Mock
-    private AccountCache accountCache;
-
     @Spy
     private ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
 
@@ -59,7 +54,7 @@ class AccountOutboxDispatcherTest {
 
         verify(accountProducer).publishAccountCreated(event);
         verifyNoMoreInteractions(accountProducer);
-        verifyNoInteractions(accountProjector, accountCache);
+        verifyNoInteractions(accountProjector);
     }
 
     @Test
@@ -95,37 +90,7 @@ class AccountOutboxDispatcherTest {
         verify(accountProjector).project(argThat(received ->
                 received.getId().equals(snapshot.getId())
                         && received.getCurrentBalance().equals(new BigDecimal("50.00"))));
-        verifyNoInteractions(accountProducer, accountCache);
-    }
-
-    @Test
-    void shouldSaveTheOwnerInTheCache() throws Exception {
-        AccountOwnerDTO owner = new AccountOwnerDTO(UUID.randomUUID(), UUID.randomUUID());
-
-        dispatcher.dispatch(row(AccountOutboxEventType.ACCOUNT_OWNER_CACHED, owner.accountId(), owner));
-
-        verify(accountCache).saveAccountOwner(owner.accountId(), owner.userId());
-        verifyNoInteractions(accountProducer, accountProjector);
-    }
-
-    @Test
-    void shouldRemoveTheOwnerFromTheCache() throws Exception {
-        AccountOwnerDTO owner = new AccountOwnerDTO(UUID.randomUUID(), UUID.randomUUID());
-
-        dispatcher.dispatch(row(AccountOutboxEventType.ACCOUNT_OWNER_REMOVED, owner.accountId(), owner));
-
-        verify(accountCache).deleteAccountOwner(owner.accountId());
-        verifyNoMoreInteractions(accountCache);
-        verifyNoInteractions(accountProducer, accountProjector);
-    }
-
-    @Test
-    void shouldLetTheFailureOfRedisGoUpSoTheRowStaysPending() {
-        AccountOwnerDTO owner = new AccountOwnerDTO(UUID.randomUUID(), UUID.randomUUID());
-        doThrow(new IllegalStateException("redis fora do ar")).when(accountCache).deleteAccountOwner(any());
-
-        assertThrows(IllegalStateException.class, () ->
-                dispatcher.dispatch(row(AccountOutboxEventType.ACCOUNT_OWNER_REMOVED, owner.accountId(), owner)));
+        verifyNoInteractions(accountProducer);
     }
 
     @Test

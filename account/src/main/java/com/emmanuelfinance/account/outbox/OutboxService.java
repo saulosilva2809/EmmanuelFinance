@@ -28,9 +28,7 @@ public class OutboxService {
                 // dispara um evento de conta criada
                 outboxEventFactory.accountCreatedEvent(account),
                 // dispara um evento de "foto" para o mongo
-                outboxEventFactory.accountSnapshot(account, false),
-                // dispara um evento para salvar em cache a conta e o userId (account:account_uuid=userId)
-                outboxEventFactory.accountOwner(account)
+                outboxEventFactory.accountSnapshot(account, false)
         );
     }
 
@@ -42,9 +40,7 @@ public class OutboxService {
         register(
                 // evento de conta deletada
                 outboxEventFactory.accountDeletedEvent(account),
-                outboxEventFactory.accountSnapshot(account, true),
-                // tira do cache o dono da conta, para os outros serviços não aceitarem mais essa conta
-                outboxEventFactory.accountOwnerRemoved(account)
+                outboxEventFactory.accountSnapshot(account, true)
         );
     }
 

@@ -220,15 +220,29 @@ class AccountCachingTest {
     void shouldDropTheSummariesThatOtherServicesKeepOfTheAccount() {
         AccountDocument document = newDocument(userId);
         AccountDocument other = newDocument(userId);
-        cacheManager.getCache("accounts").put(document.getId(), "resumo");
-        cacheManager.getCache("accounts-internal").put(document.getId(), "resumo interno");
-        cacheManager.getCache("accounts").put(other.getId(), "resumo de outra conta");
+        cacheManager.getCache("accounts").put(userId + ":" + document.getId(), "resumo");
+        cacheManager.getCache("accounts-internal").put(userId + ":" + document.getId(), "resumo interno");
+        cacheManager.getCache("accounts").put(userId + ":" + other.getId(), "resumo de outra conta");
 
         accountProjector.project(document);
 
-        assertNull(cacheManager.getCache("accounts").get(document.getId()));
-        assertNull(cacheManager.getCache("accounts-internal").get(document.getId()));
-        assertNotNull(cacheManager.getCache("accounts").get(other.getId()));
+        assertNull(cacheManager.getCache("accounts").get(userId + ":" + document.getId()));
+        assertNull(cacheManager.getCache("accounts-internal").get(userId + ":" + document.getId()));
+        assertNotNull(cacheManager.getCache("accounts").get(userId + ":" + other.getId()));
+    }
+
+    // o "é dono" que os outros serviços guardam deixa de valer quando a conta é excluída
+    @Test
+    void shouldDropTheOwnerAnswerKeptByOtherServicesOnlyForThatUserAndAccount() {
+        AccountDocument document = newDocument(userId);
+        AccountDocument other = newDocument(userId);
+        cacheManager.getCache("account_owner").put(document.getId() + ":" + userId, true);
+        cacheManager.getCache("account_owner").put(other.getId() + ":" + userId, true);
+
+        accountProjector.project(document);
+
+        assertNull(cacheManager.getCache("account_owner").get(document.getId() + ":" + userId));
+        assertNotNull(cacheManager.getCache("account_owner").get(other.getId() + ":" + userId));
     }
 
     private AccountDocument newDocument(UUID owner) {

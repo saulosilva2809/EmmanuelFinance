@@ -2,7 +2,6 @@ package com.emmanuelfinance.account.outbox;
 
 import com.emmanuelfinance.account.Account;
 import com.emmanuelfinance.account.AccountMapper;
-import com.emmanuelfinance.account.outbox.dto.AccountOwnerDTO;
 import com.emmanuelfinance.account.outbox.enums.AccountOutboxEventType;
 import com.emmanuelfinance.account.query.AccountDocument;
 import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
@@ -38,16 +37,6 @@ public class OutboxEventFactory {
         snapshot.setDeleted(deleted);
 
         return create(AccountOutboxEventType.ACCOUNT_CHANGED, account.getId(), snapshot);
-    }
-
-    public OutboxEvent accountOwner(Account account) {
-        return create(AccountOutboxEventType.ACCOUNT_OWNER_CACHED, account.getId(),
-                new AccountOwnerDTO(account.getId(), account.getUserId()));
-    }
-
-    public OutboxEvent accountOwnerRemoved(Account account) {
-        return create(AccountOutboxEventType.ACCOUNT_OWNER_REMOVED, account.getId(),
-                new AccountOwnerDTO(account.getId(), account.getUserId()));
     }
 
     private OutboxEvent accountEvent(AccountOutboxEventType type, Account account, StatusEventEnum status) {

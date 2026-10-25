@@ -73,10 +73,10 @@ perde.
                                       │ commit
                                       ▼
                                  OutboxRelay
-                     ┌────────────────┼─────────────────┐
-                     ▼                ▼                 ▼
-            Kafka: account-events  AccountProjector  AccountCache
-            (shared, creditcard...)   ──▶ MongoDB      ──▶ Redis
+                          ┌─────────────┴─────────────┐
+                          ▼                           ▼
+                 Kafka: account-events        AccountProjector
+                 (shared, creditcard...)   ──▶ MongoDB + limpa o cache (Redis)
 
  Kafka (transaction-*) ──▶ AccountListener ──▶ AccountBalanceService ──▶ atualiza o saldo (mesmo caminho acima)
 ```
@@ -115,50 +115,50 @@ A solução é gravar, na mesma transação da conta, linhas na tabela `outbox_e
 acontecer. Conta e linhas são confirmadas juntas, ou nenhuma é. Depois do commit, o `OutboxRelay` entrega cada
 linha ao destino e a apaga.
 
-Cada linha tem um único destino, e uma operação registra até três, porque os destinatários precisam de coisas
+Cada linha tem um único destino, e uma operação registra até duas, porque os destinatários precisam de coisas
 diferentes:
 
 Os tipos de linha são `ACCOUNT_CREATED`, `ACCOUNT_DELETED` e `ACCOUNT_RESTORED` (aviso para o Kafka, um por evento),
-`ACCOUNT_CHANGED` (foto para o Mongo), `ACCOUNT_OWNER_CACHED` e `ACCOUNT_OWNER_REMOVED` (gravar e tirar o dono da
-conta no Redis). O envio ao Kafka não fica
-no dispatcher: ele chama o `AccountProducer`, que espera a confirmação do Kafka (até 5 segundos) e deixa o erro
-subir, e assim a linha continua pendente se o Kafka falhar.
+e `ACCOUNT_CHANGED` (foto para o Mongo). O envio ao Kafka não fica no dispatcher: ele chama o `AccountProducer`, que
+espera a confirmação do Kafka (até 5 segundos) e deixa o erro subir, e assim a linha continua pendente se o Kafka
+falhar.
 
-| Operação | Aviso para o Kafka (`account-events`) | Foto da conta para o Mongo | Dono da conta no Redis |
-|----------|---------------------------------------|----------------------------|------------------------|
-| Criar | `CREATED` | sim | sim, grava a chave |
-| Editar | não | sim | não |
-| Excluir | `DELETED` | sim, com `deleted = true` | sim, remove a chave |
-| Restaurar | `RESTORE` | sim, com `deleted = false` | não |
-| Saldo alterado | não | sim | não |
+| Operação | Aviso para o Kafka (`account-events`) | Foto da conta para o Mongo |
+|----------|---------------------------------------|----------------------------|
+| Criar | `CREATED` | sim |
+| Editar | não | sim |
+| Excluir | `DELETED` | sim, com `deleted = true` |
+| Restaurar | `RESTORE` | sim, com `deleted = false` |
+| Saldo alterado | não | sim |
 
 - O **aviso** é curto (`accountId`, `userId` e `status`) e é o contrato com outros serviços, como o `creditcard`,
   que desativa os cartões de uma conta excluída.
 - A **foto** (*snapshot*) é a conta inteira naquele instante. O Mongo apenas sobrescreve o documento, então receber a
   mesma foto duas vezes não muda nada, e uma foto perdida é corrigida pela seguinte.
-- O **dono da conta** é gravado no Redis (`AccountCache`) para que os outros serviços validem a posse sem
-  consultar o `account`. Como passa pelo Outbox, só é gravado depois do commit e é repetido se o Redis estiver fora
-  do ar. Na exclusão, o próprio Outbox remove a chave (`ACCOUNT_OWNER_REMOVED`), sem passar pelo Kafka. Por garantia,
-  a chave também expira em 24 horas; depois de expirar, o validador consulta o `account` e grava de novo.
 
 O relay só apaga a linha depois que o destino confirma. Se o serviço cair entre entregar e apagar, a linha é
-entregue de novo. Por isso os destinos aceitam repetição: o Mongo e o Redis gravam por cima, e os consumidores do
-Kafka só marcam ou removem dados.
+entregue de novo. Por isso os destinos aceitam repetição: o Mongo grava por cima, e os consumidores do Kafka só
+marcam ou removem dados.
 
 ### Cache (Redis)
-Há dois tipos de cache, e é importante não confundi-los, porque cada um é apagado de um jeito:
+Todos os caches são do Spring (`@Cacheable`), gravados na primeira consulta e apagados num lugar só, o
+`AccountProjector`:
 
 | Cache | Chave no Redis | Quem grava | Validade | Quem apaga |
 |-------|----------------|------------|----------|------------|
-| Dono da conta | `account:<id>` | Outbox (`AccountCache`) e o validador de posse do `shared` | 24 h | o Outbox (`ACCOUNT_OWNER_REMOVED`), na exclusão |
+| Dono da conta | `account_owner::<id>:<userId>` | `AccountClientCacheService` (`shared`), quando o `creditcard` ou o `transaction` valida a posse | 10 h | o `AccountProjector` |
 | Resposta de `GET /accounts/{id}` | `account_view::<userId>:<id>` | `AccountQueryService` | 10 h | o `AccountProjector` |
 | Respostas de `GET /accounts` e `/accounts/deleted` | `account_list::<ativas ou excluídas>:<userId>:<filtros>:<página>` | `AccountQueryService` | 10 h | o `AccountProjector` (apaga todas as listas) |
-| Resumos da conta nos outros serviços | `accounts::<id>` e `accounts-internal::<id>` | `AccountClientCacheService` (`shared`), no `creditcard` e no `transaction` | 10 h | o `AccountProjector` |
+| Resumos da conta nos outros serviços | `accounts::<userId>:<id>` e `accounts-internal::<userId>:<id>` | `AccountClientCacheService` (`shared`), no `creditcard` e no `transaction` | 10 h | o `AccountProjector` |
 
 - **Por que a limpeza fica no `AccountProjector`:** ele roda depois do commit, quando o Outbox entrega a foto da conta
   ao Mongo, e isso acontece em toda mudança (criar, editar, excluir, restaurar e alterar o saldo). Limpar o cache antes
   disso deixaria uma leitura recolocar o dado antigo no cache. Se o Mongo estiver fora do ar, a limpeza espera junto
-  com a foto e acontece quando ela for entregue.
+  com a foto e acontece quando ela for entregue. Isso vale também para o saldo e para a posse: com o Mongo fora do ar,
+  eles podem ficar desatualizados até ele voltar (ou até o cache expirar).
+- **Só o "sim" da posse é guardado.** Quem não é dono pergunta de novo ao `account`, para que uma conta recém-criada
+  nunca pareça alheia. A conta não é gravada no Redis na criação: a primeira validação de posse faz uma chamada ao
+  `account` e as seguintes saem do cache.
 - **O dono entra na chave** do `view` e das listas, para que um usuário nunca receba a resposta em cache de outro.
 - **Por que as listas são apagadas todas de uma vez:** não dá para saber quais filtros e páginas incluem a conta que
   mudou. Em troca, o cache das listas é descartado a cada mudança em qualquer conta.
