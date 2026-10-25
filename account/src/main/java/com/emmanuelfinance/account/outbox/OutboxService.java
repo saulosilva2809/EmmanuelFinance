@@ -42,7 +42,9 @@ public class OutboxService {
         register(
                 // evento de conta deletada
                 outboxEventFactory.accountDeletedEvent(account),
-                outboxEventFactory.accountSnapshot(account, true)
+                outboxEventFactory.accountSnapshot(account, true),
+                // tira do cache o dono da conta, para os outros serviços não aceitarem mais essa conta
+                outboxEventFactory.accountOwnerRemoved(account)
         );
     }
 

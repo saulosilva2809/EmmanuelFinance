@@ -64,10 +64,14 @@ class OutboxServiceTest {
     }
 
     @Test
-    void shouldRegisterTheEventAndTheSnapshotWhenTheAccountIsDeleted() {
+    void shouldRegisterTheEventTheSnapshotAndTheOwnerRemovalWhenTheAccountIsDeleted() {
         outboxService.accountDeleted(newAccount());
 
-        assertEquals(List.of(AccountOutboxEventType.ACCOUNT_DELETED, AccountOutboxEventType.ACCOUNT_CHANGED), registeredTypes());
+        assertEquals(List.of(
+                AccountOutboxEventType.ACCOUNT_DELETED,
+                AccountOutboxEventType.ACCOUNT_CHANGED,
+                AccountOutboxEventType.ACCOUNT_OWNER_REMOVED
+        ), registeredTypes());
     }
 
     @Test

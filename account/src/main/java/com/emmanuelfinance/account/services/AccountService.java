@@ -12,7 +12,6 @@ import com.emmanuelfinance.account.exceptions.AccountErrorCode;
 import com.emmanuelfinance.account.outbox.OutboxService;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,7 +42,6 @@ public class AccountService {
     }
 
     @Transactional
-    @CacheEvict(value = "accounts", key = "#uuid")
     public ResponseAccountDTO update(UUID uuid, UpdateAccountDTO data) {
         Account account = accountSelector.getAccountByIdAndUserId(uuid);
 
@@ -55,7 +53,6 @@ public class AccountService {
     }
 
     @Transactional
-    @CacheEvict(value = "accounts", key = "#id")
     public void delete(UUID id) {
         Account account = accountSelector.getAccountByIdAndUserId(id);
 
@@ -64,7 +61,6 @@ public class AccountService {
     }
 
     @Transactional
-    @CacheEvict(value = "accounts", key = "#id")
     public void restore(UUID id) {
         Account account = accountSelector.getAccountByIdIncludingDeleted(id);
 

@@ -6,6 +6,7 @@ import com.emmanuelfinance.account.dto.ResponseAccountDTO;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -25,16 +26,21 @@ public class AccountQueryService {
     private final AccountMapper accountMapper;
     private final SecurityUtils securityUtils;
 
+    // a chave leva o dono da conta: sem ele, um usuário poderia receber a resposta em cache de outro
+    @Cacheable(value = "account_view", key = "@securityUtils.currentUserId + ':' + #id")
     public ResponseAccountDTO view(UUID id) {
         AccountDocument document = accountDocumentSelector.getByIdAndUserIdAndDeletedFalse(id);
 
         return accountMapper.toResponseDTO(document);
     }
 
+    // cada combinação de dono, filtros e página tem a sua entrada, e qualquer mudança em conta limpa todas
+    @Cacheable(value = "account_list", key = "'active:' + @securityUtils.currentUserId + ':' + #filters + ':' + #pageable")
     public PageResponseDTO<ResponseAccountDTO> list(AccountFiltersDTO filters, Pageable pageable) {
         return search(filters, pageable, false);
     }
 
+    @Cacheable(value = "account_list", key = "'deleted:' + @securityUtils.currentUserId + ':' + #filters + ':' + #pageable")
     public PageResponseDTO<ResponseAccountDTO> listDeleted(AccountFiltersDTO filters, Pageable pageable) {
         return search(filters, pageable, true);
     }

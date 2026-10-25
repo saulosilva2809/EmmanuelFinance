@@ -109,6 +109,26 @@ class AccountOutboxDispatcherTest {
     }
 
     @Test
+    void shouldRemoveTheOwnerFromTheCache() throws Exception {
+        AccountOwnerDTO owner = new AccountOwnerDTO(UUID.randomUUID(), UUID.randomUUID());
+
+        dispatcher.dispatch(row(AccountOutboxEventType.ACCOUNT_OWNER_REMOVED, owner.accountId(), owner));
+
+        verify(accountCache).deleteAccountOwner(owner.accountId());
+        verifyNoMoreInteractions(accountCache);
+        verifyNoInteractions(accountProducer, accountProjector);
+    }
+
+    @Test
+    void shouldLetTheFailureOfRedisGoUpSoTheRowStaysPending() {
+        AccountOwnerDTO owner = new AccountOwnerDTO(UUID.randomUUID(), UUID.randomUUID());
+        doThrow(new IllegalStateException("redis fora do ar")).when(accountCache).deleteAccountOwner(any());
+
+        assertThrows(IllegalStateException.class, () ->
+                dispatcher.dispatch(row(AccountOutboxEventType.ACCOUNT_OWNER_REMOVED, owner.accountId(), owner)));
+    }
+
+    @Test
     void shouldLetTheExceptionOfTheDestinationGoUpSoTheRowStaysPending() {
         AccountEventDTO event = new AccountEventDTO(UUID.randomUUID(), UUID.randomUUID(), StatusEventEnum.DELETED);
         doThrow(new IllegalStateException("kafka fora do ar")).when(accountProducer).publishAccountDeleted(any());
