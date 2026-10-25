@@ -45,6 +45,11 @@ public class OutboxEventFactory {
                 new AccountOwnerDTO(account.getId(), account.getUserId()));
     }
 
+    public OutboxEvent accountOwnerRemoved(Account account) {
+        return create(AccountOutboxEventType.ACCOUNT_OWNER_REMOVED, account.getId(),
+                new AccountOwnerDTO(account.getId(), account.getUserId()));
+    }
+
     private OutboxEvent accountEvent(AccountOutboxEventType type, Account account, StatusEventEnum status) {
         return create(type, account.getId(), new AccountEventDTO(account.getId(), account.getUserId(), status));
     }

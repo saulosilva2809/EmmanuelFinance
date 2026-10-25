@@ -97,6 +97,18 @@ class OutboxEventFactoryTest {
                 objectMapper.treeToValue(row.getPayload(), AccountOwnerDTO.class));
     }
 
+    @Test
+    void shouldBuildTheOwnerRemovalRowWithTheSamePayloadAsTheCacheRow() throws Exception {
+        Account account = newAccount();
+
+        OutboxEvent row = outboxEventFactory.accountOwnerRemoved(account);
+
+        assertEquals(AccountOutboxEventType.ACCOUNT_OWNER_REMOVED, row.getType());
+        assertEquals(account.getId().toString(), row.getAggregateId());
+        assertEquals(new AccountOwnerDTO(account.getId(), account.getUserId()),
+                objectMapper.treeToValue(row.getPayload(), AccountOwnerDTO.class));
+    }
+
     private Account newAccount() {
         Account account = new Account();
         account.setId(UUID.randomUUID());

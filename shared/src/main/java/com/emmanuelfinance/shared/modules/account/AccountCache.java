@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.UUID;
 
 @Component
@@ -12,10 +13,15 @@ public class AccountCache {
 
     private final StringRedisTemplate redisTemplate;
     private static final String REDIS_KEY_PREFIX = "account:";
+    private static final Duration OWNER_TTL = Duration.ofHours(24);
 
     public void saveAccountOwner(UUID accountId, UUID userId) {
         String redisKey = REDIS_KEY_PREFIX + accountId;
-        redisTemplate.opsForValue().set(redisKey, userId.toString());
+        redisTemplate.opsForValue().set(redisKey, userId.toString(), OWNER_TTL);
+    }
+
+    public void deleteAccountOwner(UUID accountId) {
+        redisTemplate.delete(REDIS_KEY_PREFIX + accountId);
     }
 
     public Boolean isAccountOwnedByUser(UUID accountId, UUID userId) {
