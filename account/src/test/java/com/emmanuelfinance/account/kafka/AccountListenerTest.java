@@ -1,7 +1,7 @@
 package com.emmanuelfinance.account.kafka;
 
 import com.emmanuelfinance.account.services.AccountBalanceService;
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
@@ -33,14 +33,14 @@ public class AccountListenerTest {
     private TransactionCreatedEvent createdEvent(UUID creditCardId) {
         return new TransactionCreatedEvent(
                 UUID.randomUUID(), UUID.randomUUID(), creditCardId, UUID.randomUUID(),
-                new BigDecimal("100.00"), 1, TypeEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.now()
+                new BigDecimal("100.00"), 1, TypeTransactionEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.now()
         );
     }
 
     private TransactionDeletedAndRestoreEvent deletedEvent() {
         return new TransactionDeletedAndRestoreEvent(
                 UUID.randomUUID(), UUID.randomUUID(), null, UUID.randomUUID(),
-                new BigDecimal("100.00"), 1, TypeEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.now()
+                new BigDecimal("100.00"), 1, TypeTransactionEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.now()
         );
     }
 
@@ -109,7 +109,7 @@ public class AccountListenerTest {
         void shouldHandleUpdated() {
             TransactionUpdatedEvent event = new TransactionUpdatedEvent(
                     UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                    BigDecimal.TEN, BigDecimal.ONE, TypeEnum.EXPENSE, TypeEnum.EXPENSE,
+                    BigDecimal.TEN, BigDecimal.ONE, TypeTransactionEnum.EXPENSE, TypeTransactionEnum.EXPENSE,
                     StatusTransactionEnum.PAID, StatusTransactionEnum.PAID
             );
 

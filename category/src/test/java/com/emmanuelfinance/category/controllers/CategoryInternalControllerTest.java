@@ -1,7 +1,7 @@
 package com.emmanuelfinance.category.controllers;
 
 import com.emmanuelfinance.category.services.CategoryInternalService;
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.category.dtos.CategoryInternalSummaryDTO;
 import com.emmanuelfinance.shared.modules.category.dtos.CategorySummaryDTO;
 import com.emmanuelfinance.shared.modules.category.exceptions.CategoryNotFound;
@@ -91,7 +91,7 @@ public class CategoryInternalControllerTest {
             UUID categoryId = UUID.randomUUID();
             CategoryInternalSummaryDTO internalSummaryDTO = new CategoryInternalSummaryDTO(
                     categoryId,
-                    TypeEnum.INCOME
+                    TypeTransactionEnum.INCOME
             );
 
             when(categoryInternalService.getCategoryInternalSummary(categoryId)).thenReturn(internalSummaryDTO);

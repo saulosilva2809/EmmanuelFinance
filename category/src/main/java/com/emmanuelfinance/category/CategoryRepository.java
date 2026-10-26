@@ -1,6 +1,6 @@
 package com.emmanuelfinance.category;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import feign.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -15,5 +15,5 @@ public interface CategoryRepository extends JpaRepository<Category, UUID>, JpaSp
     @Query(value = "SELECT * FROM category WHERE id = :id AND user_id = :userId", nativeQuery = true)
     Optional<Category> findByIdAndUserIdIncludingDeleted(@Param("id") UUID id, @org.springframework.data.repository.query.Param("userId") UUID userId);
 
-    boolean existsByNameIgnoreCaseAndTypeAndUserId(String name, TypeEnum type, UUID userId);
+    boolean existsByNameIgnoreCaseAndTypeAndUserId(String name, TypeTransactionEnum type, UUID userId);
 }

@@ -2,8 +2,8 @@ package com.emmanuelfinance.creditcard.creditcard.kafka;
 
 import com.emmanuelfinance.creditcard.creditcard.services.CreditCardBalanceKafkaService;
 import com.emmanuelfinance.creditcard.creditcard.services.CreditCardInternalService;
-import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
-import com.emmanuelfinance.shared.modules.account.kafka.account.enums.StatusEventEnum;
+import com.emmanuelfinance.shared.modules.account.dto.AccountEventDTO;
+import com.emmanuelfinance.shared.modules.account.enums.StatusEventEnum;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
 import lombok.RequiredArgsConstructor;
@@ -68,7 +68,7 @@ public class CreditCardListener {
         }
     }
 
-    @KafkaListener(topics = "transaction-restore-topic", groupId = "credit-card-group")
+    @KafkaListener(topics = "transaction-restore-topic", groupId = "credit-card-service-group")
     public void handleTransactionRestore(TransactionDeletedAndRestoreEvent event) {
         log.info(
                 "Recebido evento de transação recuperada no cartão (Transaction ID: {} Card ID: {})",

@@ -7,7 +7,7 @@ import com.emmanuelfinance.category.dto.UpdateCategoryDTO;
 import com.emmanuelfinance.category.exceptions.CategoryDomainException;
 import com.emmanuelfinance.category.exceptions.CategoryErrorCode;
 import com.emmanuelfinance.category.outbox.OutboxService;
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.category.exceptions.CategoryNotFound;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -130,7 +130,7 @@ class CategoryServiceTest {
 
             UpdateCategoryDTO updateDTO = new UpdateCategoryDTO(
                     "Conta Atualizada",
-                    TypeEnum.EXPENSE
+                    TypeTransactionEnum.EXPENSE
             );
 
             when(categorySelector.getCategoryById(categoryEntity.getId()))
@@ -152,7 +152,7 @@ class CategoryServiceTest {
 
             UpdateCategoryDTO updateDTO = new UpdateCategoryDTO(
                     "Conta Atualizada",
-                    TypeEnum.EXPENSE
+                    TypeTransactionEnum.EXPENSE
             );
 
             when(categorySelector.getCategoryById(categoryEntity.getId()))

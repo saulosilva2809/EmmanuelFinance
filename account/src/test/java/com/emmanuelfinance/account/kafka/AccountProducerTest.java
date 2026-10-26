@@ -1,7 +1,7 @@
 package com.emmanuelfinance.account.kafka;
 
-import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
-import com.emmanuelfinance.shared.modules.account.kafka.account.enums.StatusEventEnum;
+import com.emmanuelfinance.shared.modules.account.dto.AccountEventDTO;
+import com.emmanuelfinance.shared.modules.account.enums.StatusEventEnum;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

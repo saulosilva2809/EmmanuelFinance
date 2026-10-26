@@ -15,6 +15,7 @@ public class AccountProjector implements BaseProjector<AccountDocument> {
     private final AccountDocumentRepository accountDocumentRepository;
 
     @Override
+    // apaga os caches relacionados para não haver conflitos
     @Caching(evict = {
             @CacheEvict(value = "accounts", key = "#snapshot.userId + ':' + #snapshot.id"),
             @CacheEvict(value = "accounts-internal", key = "#snapshot.userId + ':' + #snapshot.id"),

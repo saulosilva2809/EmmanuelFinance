@@ -1,7 +1,7 @@
 package com.emmanuelfinance.category.query;
 
 import com.emmanuelfinance.category.dto.CategoryFiltersDTO;
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import org.bson.Document;
 import org.junit.jupiter.api.Test;
 
@@ -32,9 +32,9 @@ class CategorySpecificationTest {
 
     @Test
     void shouldFilterByType() {
-        Document conditions = conditions(new CategoryFiltersDTO(null, TypeEnum.EXPENSE), false);
+        Document conditions = conditions(new CategoryFiltersDTO(null, TypeTransactionEnum.EXPENSE), false);
 
-        assertEquals(TypeEnum.EXPENSE, conditions.get("type"));
+        assertEquals(TypeTransactionEnum.EXPENSE, conditions.get("type"));
     }
 
     @Test

@@ -4,7 +4,7 @@ import com.emmanuelfinance.category.CategoryMapper;
 import com.emmanuelfinance.category.dto.CategoryFiltersDTO;
 import com.emmanuelfinance.category.dto.ResponseCategoryDTO;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.category.exceptions.CategoryNotFound;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import org.junit.jupiter.api.Test;
@@ -116,7 +116,7 @@ class CategoryQueryServiceTest {
         document.setId(UUID.randomUUID());
         document.setUserId(userId);
         document.setName("Salário");
-        document.setType(TypeEnum.INCOME);
+        document.setType(TypeTransactionEnum.INCOME);
         return document;
     }
 

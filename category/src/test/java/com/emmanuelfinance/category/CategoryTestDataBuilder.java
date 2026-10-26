@@ -2,7 +2,7 @@ package com.emmanuelfinance.category;
 
 import com.emmanuelfinance.category.dto.CreateCategoryDTO;
 import com.emmanuelfinance.category.dto.ResponseCategoryDTO;
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -12,14 +12,14 @@ public class CategoryTestDataBuilder {
     public static CreateCategoryDTO createCategoryDTO() {
         return new CreateCategoryDTO(
                 "Salário",
-                TypeEnum.INCOME
+                TypeTransactionEnum.INCOME
         );
     }
 
     public static CreateCategoryDTO createCategoryDTO2() {
         return new CreateCategoryDTO(
                 "Compras",
-                TypeEnum.EXPENSE
+                TypeTransactionEnum.EXPENSE
         );
     }
 

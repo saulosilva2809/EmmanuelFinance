@@ -4,7 +4,7 @@ import com.emmanuelfinance.account.Account;
 import com.emmanuelfinance.account.AccountRepository;
 import com.emmanuelfinance.account.AccountSelector;
 import com.emmanuelfinance.account.outbox.OutboxService;
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
@@ -102,14 +102,14 @@ public class AccountBalanceService {
         outboxService.accountBalanceChanged(account);
     }
 
-    private void applyBalance(Account account, BigDecimal amount, TypeEnum type, boolean isReversal) {
+    private void applyBalance(Account account, BigDecimal amount, TypeTransactionEnum type, boolean isReversal) {
         // se a conta ou o tipo está nulo encerra
         if (amount == null || type == null) {
             return;
         }
 
         // variável para detectar se é uma receita
-        boolean isIncome = type == TypeEnum.INCOME;
+        boolean isIncome = type == TypeTransactionEnum.INCOME;
 
         // variável que define se deve somar ou subtrair
         // condição ? se_verdadeiro : se_falso

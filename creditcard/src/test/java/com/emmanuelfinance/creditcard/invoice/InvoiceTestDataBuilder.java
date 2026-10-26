@@ -4,7 +4,7 @@ import com.emmanuelfinance.creditcard.creditcard.CreditCard;
 import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceDTO;
 import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceItemDTO;
 import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceSummaryDTO;
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.category.dtos.CategorySummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.enums.InvoiceStatusEnum;
@@ -96,7 +96,7 @@ public class InvoiceTestDataBuilder {
                 userId,
                 amount,
                 installmentsCount,
-                TypeEnum.EXPENSE,
+                TypeTransactionEnum.EXPENSE,
                 StatusTransactionEnum.PENDING,
                 date
         );
@@ -110,7 +110,7 @@ public class InvoiceTestDataBuilder {
                 UUID.randomUUID(),
                 new BigDecimal("100.00"),
                 1,
-                TypeEnum.EXPENSE,
+                TypeTransactionEnum.EXPENSE,
                 StatusTransactionEnum.PENDING,
                 LocalDateTime.now()
         );
@@ -133,7 +133,7 @@ public class InvoiceTestDataBuilder {
                 new CategorySummaryDTO(UUID.randomUUID(), "Alimentação", false),
                 new BigDecimal("100.00"),
                 StatusTransactionEnum.PENDING,
-                TypeEnum.EXPENSE
+                TypeTransactionEnum.EXPENSE
         );
     }
 

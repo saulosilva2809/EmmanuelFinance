@@ -19,10 +19,12 @@ public class CreditCardValidatorService {
     private final AccountClientCacheService accountClientCacheService;
     private final AccountOwnershipValidator accountOwnershipValidator;
 
+    // valida se o usuário que fez a request é o dono da conta informada
     public void validateAccountOwnership(UUID accountId) {
         accountOwnershipValidator.validate(accountId);
     }
 
+    // valida se o banco do cartão é o mesmo banco da conta
     public void validateCardAndAccountBank(BanksEnum cardBank, UUID accountId) {
         AccountSummaryInternalDTO account = accountClientCacheService.getInternalAccountById(accountId);
 
@@ -31,12 +33,14 @@ public class CreditCardValidatorService {
         }
     }
 
+    // verifica se o cartão está deletado
     public void validateIsCardDeleted(CreditCard creditCard) {
         if (!creditCard.isDeleted()) {
             throw new CreditCardDomainException(CreditCardErrorCode.RESTORE_CARD_NOT_DELETED);
         }
     }
 
+    // verifica se a conta está deletada
     public void validateAccountNotDeleted(UUID accountId) {
         AccountSummaryInternalDTO account = accountClientCacheService.getInternalAccountById(accountId);
 
@@ -45,11 +49,13 @@ public class CreditCardValidatorService {
         }
     }
 
+    // validações de criação
     public void validateCreation(CreateCreditCardDTO data) {
         validateAccountOwnership(data.accountId());
         validateCardAndAccountBank(data.bank(), data.accountId());
     }
 
+    // validações de restauração
     public void validateRestoration(CreditCard creditCard) {
         validateIsCardDeleted(creditCard);
         validateAccountNotDeleted(creditCard.getAccountId());
