@@ -1,10 +1,8 @@
 package com.emmanuelfinance.category.dto;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
-
-import java.util.UUID;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 
 public record CategoryFiltersDTO (
         String name,
-        TypeEnum type
+        TypeTransactionEnum type
 ) {}

@@ -1,6 +1,7 @@
 package com.emmanuelfinance.transaction.transaction;
 
 import com.emmanuelfinance.shared.entity.BaseEntity;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -62,5 +63,5 @@ public class Transaction extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
-    private com.emmanuelfinance.shared.enums.TypeEnum type;
+    private TypeTransactionEnum type;
 }

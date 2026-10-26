@@ -6,7 +6,7 @@ import com.emmanuelfinance.transaction.transaction.TransactionRepository;
 import com.emmanuelfinance.transaction.transaction.TransactionSelector;
 import com.emmanuelfinance.transaction.TransactionTestDataBuilder;
 import com.emmanuelfinance.transaction.transaction.outbox.OutboxService;
-import com.emmanuelfinance.transaction.transaction.services.TransactionEventsService;
+import com.emmanuelfinance.transaction.transaction.services.TransactionOutboxEventsService;
 import com.emmanuelfinance.transaction.transaction.services.scheduler.TransactionExecutionService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,7 +25,7 @@ import static org.mockito.Mockito.*;
 public class TransactionExecutionServiceTest {
 
     @Mock
-    private TransactionEventsService transactionEventsService;
+    private TransactionOutboxEventsService transactionOutboxEventsService;
 
     @Mock
     private TransactionSelector transactionSelector;
@@ -54,7 +54,7 @@ public class TransactionExecutionServiceTest {
         assertEquals(StatusTransactionEnum.PAID, transaction.getStatus());
         verify(transactionRepository, times(1)).saveAndFlush(transaction);
         verify(outboxService, times(1)).transactionChanged(transaction);
-        verify(transactionEventsService, times(1)).publishTransactionCreatedEvent(transaction);
+        verify(transactionOutboxEventsService, times(1)).publishTransactionCreatedEventIfPaid(transaction);
     }
 
     @Test
@@ -67,7 +67,7 @@ public class TransactionExecutionServiceTest {
         transactionExecutionService.executeScheduledTransaction(transaction.getId());
 
         assertEquals(StatusTransactionEnum.PENDING, transaction.getStatus());
-        verifyNoInteractions(transactionRepository, transactionEventsService, outboxService);
+        verifyNoInteractions(transactionRepository, transactionOutboxEventsService, outboxService);
     }
 
     @Test
@@ -79,7 +79,7 @@ public class TransactionExecutionServiceTest {
 
         transactionExecutionService.executeScheduledTransaction(transaction.getId());
 
-        verifyNoInteractions(transactionRepository, transactionEventsService, outboxService);
+        verifyNoInteractions(transactionRepository, transactionOutboxEventsService, outboxService);
     }
 
     @Test
@@ -91,7 +91,7 @@ public class TransactionExecutionServiceTest {
         transactionExecutionService.executeScheduledTransaction(transaction.getId());
 
         assertEquals(StatusTransactionEnum.PENDING, transaction.getStatus());
-        verifyNoInteractions(transactionRepository, transactionEventsService, outboxService);
+        verifyNoInteractions(transactionRepository, transactionOutboxEventsService, outboxService);
     }
 
     @Test
@@ -100,7 +100,7 @@ public class TransactionExecutionServiceTest {
         Transaction transaction = pending(LocalDateTime.now().minusMinutes(1));
         when(transactionSelector.getTransactionByIdInternal(transaction.getId())).thenReturn(transaction);
         doThrow(new RuntimeException("kafka indisponível"))
-                .when(transactionEventsService).publishTransactionCreatedEvent(transaction);
+                .when(transactionOutboxEventsService).publishTransactionCreatedEventIfPaid(transaction);
 
         assertDoesNotThrow(() -> transactionExecutionService.executeScheduledTransaction(transaction.getId()));
 

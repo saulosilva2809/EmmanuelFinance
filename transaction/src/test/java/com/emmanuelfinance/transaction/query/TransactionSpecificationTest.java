@@ -1,6 +1,6 @@
 package com.emmanuelfinance.transaction.query;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.transaction.transaction.dtos.TransactionFiltersDTO;
 import com.emmanuelfinance.transaction.transaction.query.TransactionSpecification;
@@ -52,7 +52,7 @@ class TransactionSpecificationTest {
         UUID creditCardId = UUID.randomUUID();
         TransactionFiltersDTO filters = new TransactionFiltersDTO(
                 accountId, categoryId, creditCardId, null, null, true, null,
-                StatusTransactionEnum.PENDING, TypeEnum.EXPENSE
+                StatusTransactionEnum.PENDING, TypeTransactionEnum.EXPENSE
         );
 
         List<Document> conditions = conditions(filters, false);
@@ -62,7 +62,7 @@ class TransactionSpecificationTest {
         assertEquals(creditCardId, valueOf(conditions, "creditCardId"));
         assertEquals(true, valueOf(conditions, "scheduled"));
         assertEquals(StatusTransactionEnum.PENDING, valueOf(conditions, "status"));
-        assertEquals(TypeEnum.EXPENSE, valueOf(conditions, "type"));
+        assertEquals(TypeTransactionEnum.EXPENSE, valueOf(conditions, "type"));
     }
 
     @Test

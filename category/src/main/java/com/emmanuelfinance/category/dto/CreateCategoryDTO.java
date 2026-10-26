@@ -1,10 +1,8 @@
 package com.emmanuelfinance.category.dto;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-
-import java.util.UUID;
 
 public record CreateCategoryDTO(
 
@@ -12,5 +10,5 @@ public record CreateCategoryDTO(
         String name,
 
         @NotNull(message = "The type is required")
-        TypeEnum type
+        TypeTransactionEnum type
 ) {}

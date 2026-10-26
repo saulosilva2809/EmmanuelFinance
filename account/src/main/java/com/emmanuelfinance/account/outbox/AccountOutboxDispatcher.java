@@ -4,7 +4,7 @@ import com.emmanuelfinance.account.kafka.AccountProducer;
 import com.emmanuelfinance.account.outbox.enums.AccountOutboxEventType;
 import com.emmanuelfinance.account.query.AccountDocument;
 import com.emmanuelfinance.account.query.AccountProjector;
-import com.emmanuelfinance.shared.modules.account.kafka.account.AccountEventDTO;
+import com.emmanuelfinance.shared.modules.account.dto.AccountEventDTO;
 import com.emmanuelfinance.shared.outbox.BaseOutboxEvent;
 import com.emmanuelfinance.shared.outbox.OutboxDispatcher;
 import com.emmanuelfinance.shared.outbox.enums.OutboxEventType;

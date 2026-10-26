@@ -1,7 +1,7 @@
 package com.emmanuelfinance.transaction.services;
 
 import com.emmanuelfinance.config.exceptions.APIException;
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.modules.account.exceptions.AccountNotFound;
@@ -22,7 +22,7 @@ import com.emmanuelfinance.transaction.transaction.exceptions.TransactionDomainE
 import com.emmanuelfinance.transaction.transaction.exceptions.TransactionErrorCode;
 import com.emmanuelfinance.transaction.transaction.outbox.OutboxService;
 import com.emmanuelfinance.transaction.transaction.services.IdempotencyService;
-import com.emmanuelfinance.transaction.transaction.services.TransactionEventsService;
+import com.emmanuelfinance.transaction.transaction.services.TransactionOutboxEventsService;
 import com.emmanuelfinance.transaction.transaction.services.TransactionService;
 import com.emmanuelfinance.transaction.transaction.services.TransactionValidatorService;
 import com.emmanuelfinance.transaction.transaction.services.scheduler.TransactionSchedulerService;
@@ -68,7 +68,7 @@ public class TransactionServiceTest {
     private IdempotencyService idempotencyService;
 
     @Mock
-    private TransactionEventsService transactionEventsService;
+    private TransactionOutboxEventsService transactionOutboxEventsService;
 
     @Mock
     private TransactionSchedulerService transactionSchedulerService;
@@ -105,7 +105,7 @@ public class TransactionServiceTest {
                 transactionSelector,
                 idempotencyService,
                 validator,
-                transactionEventsService,
+                transactionOutboxEventsService,
                 transactionSchedulerService,
                 outboxService
         );
@@ -124,7 +124,7 @@ public class TransactionServiceTest {
         );
     }
 
-    private void stubCategory(UUID categoryId, TypeEnum type) {
+    private void stubCategory(UUID categoryId, TypeTransactionEnum type) {
         when(categoryClientCacheService.getCategoryInternalSummaryDTO(categoryId))
                 .thenReturn(TransactionTestDataBuilder.categoryInternalSummaryDTO(categoryId, type));
     }
@@ -177,7 +177,7 @@ public class TransactionServiceTest {
 
             verify(idempotencyService, times(1)).validateAndLock("chave-123");
             verify(outboxService, times(1)).transactionChanged(saved);
-            verify(transactionEventsService, times(1)).publishTransactionCreatedEvent(saved);
+            verify(transactionOutboxEventsService, times(1)).publishTransactionCreatedEventIfPaid(saved);
             verifyNoInteractions(transactionSchedulerService);
         }
 
@@ -197,7 +197,7 @@ public class TransactionServiceTest {
             assertEquals(StatusTransactionEnum.PENDING, saved.getStatus());
             verify(transactionSchedulerService, times(1)).schedule(saved.getId(), date);
             verify(outboxService, times(1)).transactionChanged(saved);
-            verify(transactionEventsService, times(1)).publishTransactionCreatedEvent(saved);
+            verify(transactionOutboxEventsService, times(1)).publishTransactionCreatedEventIfPaid(saved);
         }
 
         @Test
@@ -209,7 +209,7 @@ public class TransactionServiceTest {
 
             assertThrows(AccountNotFound.class, () -> transactionService.create(dto));
 
-            verifyNoInteractions(idempotencyService, transactionRepository, transactionEventsService, transactionSchedulerService);
+            verifyNoInteractions(idempotencyService, transactionRepository, transactionOutboxEventsService, transactionSchedulerService);
         }
 
         @Test
@@ -217,7 +217,7 @@ public class TransactionServiceTest {
         void shouldNotSaveWhenTransactionAlreadyExists() {
             CreateTransactionDTO dto = TransactionTestDataBuilder.createDTO(accountId, categoryId);
             when(securityUtils.getCurrentUserId()).thenReturn(userId);
-            stubCategory(categoryId, TypeEnum.EXPENSE);
+            stubCategory(categoryId, TypeTransactionEnum.EXPENSE);
             stubAccountBalance(accountId);
             when(idempotencyService.generateIdempotencyKey(userId, dto)).thenReturn("chave-123");
             doThrow(new TransactionDomainException(TransactionErrorCode.TRANSACTION_ALREADY_EXISTS))
@@ -225,7 +225,7 @@ public class TransactionServiceTest {
 
             assertDomainError(TransactionErrorCode.TRANSACTION_ALREADY_EXISTS, () -> transactionService.create(dto));
 
-            verifyNoInteractions(transactionRepository, transactionEventsService, transactionSchedulerService);
+            verifyNoInteractions(transactionRepository, transactionOutboxEventsService, transactionSchedulerService);
         }
     }
 
@@ -244,7 +244,7 @@ public class TransactionServiceTest {
             assertDomainError(TransactionErrorCode.CARD_TRANSACTIONS_CANNOT_BE_CHANGED,
                     () -> transactionService.update(transaction.getId(), TransactionTestDataBuilder.updateDTO()));
 
-            verifyNoInteractions(transactionRepository, transactionEventsService, transactionSchedulerService);
+            verifyNoInteractions(transactionRepository, transactionOutboxEventsService, transactionSchedulerService);
         }
 
         @Test
@@ -270,8 +270,8 @@ public class TransactionServiceTest {
             transactionService.update(transaction.getId(), dto);
 
             verify(accountOwnershipValidator, times(1)).validate(newAccountId);
-            verify(transactionEventsService, times(1)).publishTransactionUpdatedEvent(
-                    transaction, oldAccountId, oldAmount, TypeEnum.EXPENSE, StatusTransactionEnum.PAID
+            verify(transactionOutboxEventsService, times(1)).publishTransactionUpdatedEventIfPaid(
+                    transaction, oldAccountId, oldAmount, TypeTransactionEnum.EXPENSE, StatusTransactionEnum.PAID
             );
         }
 
@@ -296,8 +296,8 @@ public class TransactionServiceTest {
             assertEquals(StatusTransactionEnum.PAID, transaction.getStatus());
             verify(transactionSchedulerService, times(1)).cancel(transaction.getId());
             verify(transactionSchedulerService, never()).schedule(any(), any());
-            verify(transactionEventsService, times(1)).publishTransactionUpdatedEvent(
-                    transaction, transaction.getAccountId(), transaction.getAmount(), TypeEnum.EXPENSE,
+            verify(transactionOutboxEventsService, times(1)).publishTransactionUpdatedEventIfPaid(
+                    transaction, transaction.getAccountId(), transaction.getAmount(), TypeTransactionEnum.EXPENSE,
                     StatusTransactionEnum.PENDING
             );
         }
@@ -336,7 +336,7 @@ public class TransactionServiceTest {
             assertDomainError(TransactionErrorCode.CANNOT_SCHEDULE_UNSCHEDULED_TRANSACTION,
                     () -> transactionService.update(transaction.getId(), dto));
 
-            verifyNoInteractions(transactionMapper, transactionRepository, transactionEventsService, outboxService);
+            verifyNoInteractions(transactionMapper, transactionRepository, transactionOutboxEventsService, outboxService);
         }
     }
 
@@ -354,7 +354,7 @@ public class TransactionServiceTest {
 
             verify(transactionRepository, times(1)).delete(transaction);
             verify(outboxService, times(1)).transactionDeleted(transaction);
-            verify(transactionEventsService, times(1)).publishTransactionDeletedEvent(transaction);
+            verify(transactionOutboxEventsService, times(1)).publishTransactionDeletedEventIfPaid(transaction);
         }
 
         @Test
@@ -365,7 +365,7 @@ public class TransactionServiceTest {
 
             assertThrows(TransactionNotFound.class, () -> transactionService.delete(id));
 
-            verifyNoInteractions(transactionRepository, transactionEventsService, outboxService);
+            verifyNoInteractions(transactionRepository, transactionOutboxEventsService, outboxService);
         }
     }
 
@@ -384,7 +384,7 @@ public class TransactionServiceTest {
             assertFalse(transaction.isDeleted());
             verify(transactionRepository, times(1)).saveAndFlush(transaction);
             verify(outboxService, times(1)).transactionChanged(transaction);
-            verify(transactionEventsService, times(1)).publishTransactionRestoreEvent(transaction);
+            verify(transactionOutboxEventsService, times(1)).publishTransactionRestoreEventIfPaid(transaction);
         }
 
         @Test
@@ -396,7 +396,7 @@ public class TransactionServiceTest {
             assertDomainError(TransactionErrorCode.RESTORE_TRANSACTION_NOT_DELETED,
                     () -> transactionService.restore(transaction.getId()));
 
-            verifyNoInteractions(transactionRepository, transactionEventsService, outboxService);
+            verifyNoInteractions(transactionRepository, transactionOutboxEventsService, outboxService);
         }
 
         @Test
@@ -415,7 +415,7 @@ public class TransactionServiceTest {
                     () -> transactionService.restore(transaction.getId()));
 
             assertTrue(transaction.isDeleted());
-            verifyNoInteractions(transactionRepository, transactionEventsService, outboxService);
+            verifyNoInteractions(transactionRepository, transactionOutboxEventsService, outboxService);
         }
     }
 }

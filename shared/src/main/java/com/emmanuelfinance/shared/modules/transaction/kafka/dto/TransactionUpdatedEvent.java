@@ -1,6 +1,6 @@
 package com.emmanuelfinance.shared.modules.transaction.kafka.dto;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 
 import java.math.BigDecimal;
@@ -13,8 +13,8 @@ public record TransactionUpdatedEvent(
         UUID userId,
         BigDecimal oldAmount,
         BigDecimal newAmount,
-        TypeEnum oldType,
-        TypeEnum newType,
+        TypeTransactionEnum oldType,
+        TypeTransactionEnum newType,
         StatusTransactionEnum oldStatus,
         StatusTransactionEnum newStatus
 ) {

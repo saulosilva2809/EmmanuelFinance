@@ -1,6 +1,6 @@
 package com.emmanuelfinance.transaction.transaction.dtos;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 
 import java.math.BigDecimal;
@@ -16,5 +16,5 @@ public record TransactionFiltersDTO (
         Boolean scheduled,
         LocalDate date,
         StatusTransactionEnum status,
-        TypeEnum type
+        TypeTransactionEnum type
 ) {}

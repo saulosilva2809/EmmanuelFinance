@@ -15,6 +15,7 @@ public class CategoryProjector implements BaseProjector<CategoryDocument> {
     private final CategoryDocumentRepository categoryDocumentRepository;
 
     @Override
+    // apaga os caches relacionados para avitar conflitos
     @Caching(evict = {
             @CacheEvict(value = "category_summary", key = "#snapshot.userId + ':' + #snapshot.id"),
             @CacheEvict(value = "category_internal_summary", key = "#snapshot.userId + ':' + #snapshot.id"),

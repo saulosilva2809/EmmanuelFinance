@@ -1,6 +1,6 @@
 package com.emmanuelfinance.shared.modules.transaction.kafka.dto;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -13,7 +13,7 @@ public record TransactionCreatedEvent(
         UUID userId,
         BigDecimal amount,
         Integer installmentsCount,
-        TypeEnum type,
+        TypeTransactionEnum type,
         StatusTransactionEnum status,
         LocalDateTime date
 ) {}

@@ -1,6 +1,6 @@
 package com.emmanuelfinance.transaction.transaction.services;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.category.CategoryClientCacheService;
 import com.emmanuelfinance.shared.modules.category.dtos.CategorySummaryDTO;
 import com.emmanuelfinance.shared.modules.payment.InvoicePaymentDTO;
@@ -29,7 +29,7 @@ public class TransactionServiceInternal {
     private final CategoryClientCacheService categoryClientCacheService;
     private final TransactionMapper transactionMapper;
     private final TransactionRepository transactionRepository;
-    private final TransactionEventsService transactionEventsService;
+    private final TransactionOutboxEventsService transactionOutboxEventsService;
     private final IdempotencyService idempotencyService;
     private final OutboxService outboxService;
 
@@ -74,7 +74,7 @@ public class TransactionServiceInternal {
                 1,
                 false,
                 LocalDateTime.now(),
-                TypeEnum.EXPENSE
+                TypeTransactionEnum.EXPENSE
         );
 
         Transaction transaction = transactionMapper.toEntity(createTransactionDTO);
@@ -85,6 +85,6 @@ public class TransactionServiceInternal {
 
         transactionRepository.save(transaction);
         outboxService.transactionChanged(transaction);
-        transactionEventsService.publishInvoicePaymentCreatedEvent(transaction);
+        transactionOutboxEventsService.publishInvoicePaymentCreatedEventIfPaid(transaction);
     }
 }

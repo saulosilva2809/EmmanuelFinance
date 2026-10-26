@@ -7,7 +7,7 @@ import com.emmanuelfinance.category.query.CategoryDocumentRepository;
 import com.emmanuelfinance.category.query.CategoryDocumentSelector;
 import com.emmanuelfinance.category.query.CategoryProjector;
 import com.emmanuelfinance.category.query.CategoryQueryService;
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -224,7 +224,7 @@ class CategoryCachingTest {
         category.setUserId(userId);
         when(categoryDocumentSelector.getCategoryById(category.getId())).thenReturn(category);
         when(categoryMapper.toResponseDTO(category)).thenReturn(
-                new ResponseCategoryDTO(category.getId(), "Salário", TypeEnum.INCOME, LocalDateTime.now(), null, false));
+                new ResponseCategoryDTO(category.getId(), "Salário", TypeTransactionEnum.INCOME, LocalDateTime.now(), null, false));
         return category;
     }
 }

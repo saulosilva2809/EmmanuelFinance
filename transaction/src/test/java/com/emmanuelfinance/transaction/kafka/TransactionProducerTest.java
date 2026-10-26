@@ -1,6 +1,6 @@
 package com.emmanuelfinance.transaction.kafka;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
@@ -38,21 +38,21 @@ public class TransactionProducerTest {
     private TransactionCreatedEvent event() {
         return new TransactionCreatedEvent(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                new BigDecimal("100.00"), 1, TypeEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.now()
+                new BigDecimal("100.00"), 1, TypeTransactionEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.now()
         );
     }
 
     private TransactionDeletedAndRestoreEvent deletedEvent() {
         return new TransactionDeletedAndRestoreEvent(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                new BigDecimal("100.00"), 1, TypeEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.now()
+                new BigDecimal("100.00"), 1, TypeTransactionEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.now()
         );
     }
 
     private TransactionUpdatedEvent updatedEvent() {
         return new TransactionUpdatedEvent(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                new BigDecimal("100.00"), new BigDecimal("150.00"), TypeEnum.EXPENSE, TypeEnum.EXPENSE,
+                new BigDecimal("100.00"), new BigDecimal("150.00"), TypeTransactionEnum.EXPENSE, TypeTransactionEnum.EXPENSE,
                 StatusTransactionEnum.PAID, StatusTransactionEnum.PAID
         );
     }

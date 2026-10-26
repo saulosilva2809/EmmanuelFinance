@@ -1,6 +1,6 @@
 package com.emmanuelfinance.category.query;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.mongo.BaseDocument;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,5 +19,5 @@ public class CategoryDocument extends BaseDocument {
 
     private UUID userId;
     private String name;
-    private TypeEnum type;
+    private TypeTransactionEnum type;
 }

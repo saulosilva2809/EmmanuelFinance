@@ -1,6 +1,6 @@
 package com.emmanuelfinance.transaction.services;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.category.CategoryClientCacheService;
 import com.emmanuelfinance.shared.modules.category.dtos.CategorySummaryDTO;
 import com.emmanuelfinance.shared.modules.payment.InvoicePaymentDTO;
@@ -15,7 +15,7 @@ import com.emmanuelfinance.transaction.TransactionTestDataBuilder;
 import com.emmanuelfinance.transaction.transaction.dtos.CreateTransactionDTO;
 import com.emmanuelfinance.transaction.transaction.outbox.OutboxService;
 import com.emmanuelfinance.transaction.transaction.services.IdempotencyService;
-import com.emmanuelfinance.transaction.transaction.services.TransactionEventsService;
+import com.emmanuelfinance.transaction.transaction.services.TransactionOutboxEventsService;
 import com.emmanuelfinance.transaction.transaction.services.TransactionServiceInternal;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -51,7 +51,7 @@ public class TransactionServiceInternalTest {
     private TransactionRepository transactionRepository;
 
     @Mock
-    private TransactionEventsService transactionEventsService;
+    private TransactionOutboxEventsService transactionOutboxEventsService;
 
     @Mock
     private IdempotencyService idempotencyService;
@@ -148,17 +148,17 @@ public class TransactionServiceInternalTest {
             transactionServiceInternal.createTransactionRelatedToInvoicePayment(payment);
 
             ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
-            InOrder inOrder = inOrder(transactionRepository, outboxService, transactionEventsService);
+            InOrder inOrder = inOrder(transactionRepository, outboxService, transactionOutboxEventsService);
             inOrder.verify(transactionRepository).save(captor.capture());
             inOrder.verify(outboxService).transactionChanged(captor.getValue());
-            inOrder.verify(transactionEventsService).publishInvoicePaymentCreatedEvent(captor.getValue());
+            inOrder.verify(transactionOutboxEventsService).publishInvoicePaymentCreatedEventIfPaid(captor.getValue());
 
             Transaction saved = captor.getValue();
             assertEquals(userId, saved.getUserId());
             assertEquals(payment.accountId(), saved.getAccountId());
             assertEquals(payment.creditCardId(), saved.getCreditCardId());
             assertEquals(new BigDecimal("450.75"), saved.getAmount());
-            assertEquals(TypeEnum.EXPENSE, saved.getType());
+            assertEquals(TypeTransactionEnum.EXPENSE, saved.getType());
             assertEquals(StatusTransactionEnum.PAID, saved.getStatus());
             assertEquals("chave-fatura", saved.getIdempotencyKey());
             assertNull(saved.getCategoryId());
@@ -192,7 +192,7 @@ public class TransactionServiceInternalTest {
             transactionServiceInternal.createTransactionRelatedToInvoicePayment(payment());
 
             verify(transactionRepository, never()).save(any(Transaction.class));
-            verifyNoInteractions(outboxService, transactionEventsService, transactionMapper);
+            verifyNoInteractions(outboxService, transactionOutboxEventsService, transactionMapper);
         }
     }
 }

@@ -1,6 +1,6 @@
 package com.emmanuelfinance.transaction.outbox;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
@@ -42,12 +42,12 @@ class TransactionEventOutboxDispatcherTest {
 
     private final TransactionCreatedEvent created = new TransactionCreatedEvent(
             UUID.randomUUID(), UUID.randomUUID(), null, UUID.randomUUID(), new BigDecimal("100.00"),
-            1, TypeEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.of(2026, 10, 5, 10, 0)
+            1, TypeTransactionEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.of(2026, 10, 5, 10, 0)
     );
 
     private final TransactionDeletedAndRestoreEvent deleted = new TransactionDeletedAndRestoreEvent(
             UUID.randomUUID(), UUID.randomUUID(), null, UUID.randomUUID(), new BigDecimal("100.00"),
-            1, TypeEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.of(2026, 10, 5, 10, 0)
+            1, TypeTransactionEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.of(2026, 10, 5, 10, 0)
     );
 
     @Test
@@ -83,7 +83,7 @@ class TransactionEventOutboxDispatcherTest {
     void shouldPublishTheUpdatedEvent() throws Exception {
         TransactionUpdatedEvent updated = new TransactionUpdatedEvent(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                BigDecimal.TEN, BigDecimal.ONE, TypeEnum.EXPENSE, TypeEnum.INCOME,
+                BigDecimal.TEN, BigDecimal.ONE, TypeTransactionEnum.EXPENSE, TypeTransactionEnum.INCOME,
                 StatusTransactionEnum.PAID, StatusTransactionEnum.PAID
         );
 
@@ -91,7 +91,7 @@ class TransactionEventOutboxDispatcherTest {
 
         verify(transactionProducer).publishTransactionUpdated(argThat(received ->
                 received.transactionId().equals(updated.transactionId())
-                        && received.newType() == TypeEnum.INCOME));
+                        && received.newType() == TypeTransactionEnum.INCOME));
     }
 
     @Test

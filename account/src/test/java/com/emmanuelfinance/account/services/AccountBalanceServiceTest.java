@@ -4,7 +4,7 @@ import com.emmanuelfinance.account.Account;
 import com.emmanuelfinance.account.AccountRepository;
 import com.emmanuelfinance.account.AccountSelector;
 import com.emmanuelfinance.account.AccountTestDataBuilder;
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
@@ -56,7 +56,7 @@ public class AccountBalanceServiceTest {
     private TransactionCreatedEvent createdEvent(
             UUID accountId,
             BigDecimal amount,
-            TypeEnum type
+            TypeTransactionEnum type
     ) {
         return new TransactionCreatedEvent(
                 UUID.randomUUID(),
@@ -76,8 +76,8 @@ public class AccountBalanceServiceTest {
             UUID newAccountId,
             BigDecimal oldAmount,
             BigDecimal newAmount,
-            TypeEnum oldType,
-            TypeEnum newType
+            TypeTransactionEnum oldType,
+            TypeTransactionEnum newType
     ) {
         return new TransactionUpdatedEvent(
                 UUID.randomUUID(),
@@ -96,7 +96,7 @@ public class AccountBalanceServiceTest {
     private TransactionDeletedAndRestoreEvent deletedAndRestoreEvent(
             UUID accountId,
             BigDecimal amount,
-            TypeEnum type
+            TypeTransactionEnum type
     ) {
         return new TransactionDeletedAndRestoreEvent(
                 UUID.randomUUID(),
@@ -124,7 +124,7 @@ public class AccountBalanceServiceTest {
             TransactionCreatedEvent event = createdEvent(
                     account.getId(),
                     new BigDecimal(1000),
-                    TypeEnum.INCOME
+                    TypeTransactionEnum.INCOME
             );
 
             accountBalanceService.updateBalanceFromTransaction(event);
@@ -144,7 +144,7 @@ public class AccountBalanceServiceTest {
             TransactionCreatedEvent event = createdEvent(
                     account.getId(),
                     new BigDecimal(1000),
-                    TypeEnum.EXPENSE
+                    TypeTransactionEnum.EXPENSE
             );
 
             accountBalanceService.updateBalanceFromTransaction(event);
@@ -182,8 +182,8 @@ public class AccountBalanceServiceTest {
                     newAccount.getId(),
                     new BigDecimal(1000),
                     new BigDecimal(1000),
-                    TypeEnum.INCOME,
-                    TypeEnum.INCOME
+                    TypeTransactionEnum.INCOME,
+                    TypeTransactionEnum.INCOME
             );
 
             accountBalanceService.updateBalanceFromUpdatedTransaction(event);
@@ -226,8 +226,8 @@ public class AccountBalanceServiceTest {
                     newAccount.getId(),
                     new BigDecimal(1000),
                     new BigDecimal(1000),
-                    TypeEnum.EXPENSE,
-                    TypeEnum.EXPENSE
+                    TypeTransactionEnum.EXPENSE,
+                    TypeTransactionEnum.EXPENSE
             );
 
             accountBalanceService.updateBalanceFromUpdatedTransaction(event);
@@ -261,8 +261,8 @@ public class AccountBalanceServiceTest {
                     account.getId(),
                     new BigDecimal(1000),
                     new BigDecimal(2000),
-                    TypeEnum.INCOME,
-                    TypeEnum.INCOME
+                    TypeTransactionEnum.INCOME,
+                    TypeTransactionEnum.INCOME
             );
 
             accountBalanceService.updateBalanceFromUpdatedTransaction(event);
@@ -291,8 +291,8 @@ public class AccountBalanceServiceTest {
                     account.getId(),
                     new BigDecimal(1000),
                     new BigDecimal(2000),
-                    TypeEnum.EXPENSE,
-                    TypeEnum.EXPENSE
+                    TypeTransactionEnum.EXPENSE,
+                    TypeTransactionEnum.EXPENSE
             );
 
             accountBalanceService.updateBalanceFromUpdatedTransaction(event);
@@ -321,8 +321,8 @@ public class AccountBalanceServiceTest {
                     account.getId(),
                     new BigDecimal(1000),
                     new BigDecimal(1000),
-                    TypeEnum.INCOME,
-                    TypeEnum.EXPENSE
+                    TypeTransactionEnum.INCOME,
+                    TypeTransactionEnum.EXPENSE
             );
 
             accountBalanceService.updateBalanceFromUpdatedTransaction(event);
@@ -351,8 +351,8 @@ public class AccountBalanceServiceTest {
                     account.getId(),
                     new BigDecimal(1000),
                     new BigDecimal(1000),
-                    TypeEnum.EXPENSE,
-                    TypeEnum.INCOME
+                    TypeTransactionEnum.EXPENSE,
+                    TypeTransactionEnum.INCOME
             );
 
             accountBalanceService.updateBalanceFromUpdatedTransaction(event);
@@ -389,8 +389,8 @@ public class AccountBalanceServiceTest {
                     newAccount.getId(),
                     new BigDecimal(1000),
                     new BigDecimal(1500),
-                    TypeEnum.INCOME,
-                    TypeEnum.EXPENSE
+                    TypeTransactionEnum.INCOME,
+                    TypeTransactionEnum.EXPENSE
             );
 
             accountBalanceService.updateBalanceFromUpdatedTransaction(event);
@@ -429,7 +429,7 @@ public class AccountBalanceServiceTest {
             TransactionDeletedAndRestoreEvent event = deletedAndRestoreEvent(
                     account.getId(),
                     new BigDecimal(1000),
-                    TypeEnum.INCOME
+                    TypeTransactionEnum.INCOME
             );
 
             accountBalanceService.updateBalanceFromDeletedTransaction(event);
@@ -452,7 +452,7 @@ public class AccountBalanceServiceTest {
             TransactionDeletedAndRestoreEvent event = deletedAndRestoreEvent(
                     account.getId(),
                     new BigDecimal(1000),
-                    TypeEnum.EXPENSE
+                    TypeTransactionEnum.EXPENSE
             );
 
             accountBalanceService.updateBalanceFromDeletedTransaction(event);
@@ -477,7 +477,7 @@ public class AccountBalanceServiceTest {
             TransactionDeletedAndRestoreEvent event = deletedAndRestoreEvent(
                     account.getId(),
                     new BigDecimal(1000),
-                    TypeEnum.INCOME
+                    TypeTransactionEnum.INCOME
             );
 
             accountBalanceService.updateBalanceFromRestoreTransaction(event);
@@ -497,7 +497,7 @@ public class AccountBalanceServiceTest {
             TransactionDeletedAndRestoreEvent event = deletedAndRestoreEvent(
                     account.getId(),
                     new BigDecimal(1000),
-                    TypeEnum.EXPENSE
+                    TypeTransactionEnum.EXPENSE
             );
 
             accountBalanceService.updateBalanceFromRestoreTransaction(event);

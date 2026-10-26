@@ -3,7 +3,7 @@ package com.emmanuelfinance.category.outbox;
 import com.emmanuelfinance.category.outbox.enums.CategoryOutboxEventType;
 import com.emmanuelfinance.category.query.CategoryDocument;
 import com.emmanuelfinance.category.query.CategoryProjector;
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.Test;
@@ -54,7 +54,7 @@ class CategoryOutboxDispatcherTest {
         verify(categoryProjector).project(argThat(received ->
                 received.getId().equals(snapshot.getId())
                         && received.getName().equals("Salário")
-                        && received.getType() == TypeEnum.INCOME
+                        && received.getType() == TypeTransactionEnum.INCOME
                         && received.isDeleted()));
     }
 
@@ -70,7 +70,7 @@ class CategoryOutboxDispatcherTest {
         snapshot.setId(UUID.randomUUID());
         snapshot.setUserId(UUID.randomUUID());
         snapshot.setName("Salário");
-        snapshot.setType(TypeEnum.INCOME);
+        snapshot.setType(TypeTransactionEnum.INCOME);
         snapshot.setDeleted(true);
         return snapshot;
     }

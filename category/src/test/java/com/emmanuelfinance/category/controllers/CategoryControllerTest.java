@@ -11,7 +11,7 @@ import com.emmanuelfinance.category.exceptions.CategoryErrorCode;
 import com.emmanuelfinance.category.query.CategoryQueryService;
 import com.emmanuelfinance.category.services.CategoryService;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.category.exceptions.CategoryNotFound;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -326,7 +326,7 @@ public class CategoryControllerTest {
 
             UpdateCategoryDTO updateDTO = new UpdateCategoryDTO(
                     "Conta Atualizada",
-                    TypeEnum.EXPENSE
+                    TypeTransactionEnum.EXPENSE
             );
 
             when(categoryService.update(eq(category.getId()), any(UpdateCategoryDTO.class)))
@@ -349,7 +349,7 @@ public class CategoryControllerTest {
             UUID notFoundId = UUID.randomUUID();
             UpdateCategoryDTO updateDTO = new UpdateCategoryDTO(
                     "Conta Atualizada",
-                    TypeEnum.EXPENSE
+                    TypeTransactionEnum.EXPENSE
             );
 
             when(categoryService.update(eq(notFoundId), any(UpdateCategoryDTO.class)))
