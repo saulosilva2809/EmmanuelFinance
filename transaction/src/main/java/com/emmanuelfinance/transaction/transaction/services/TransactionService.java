@@ -1,6 +1,6 @@
 package com.emmanuelfinance.transaction.transaction.services;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import com.emmanuelfinance.transaction.transaction.Transaction;
@@ -31,7 +31,7 @@ public class TransactionService {
     private final TransactionSelector transactionSelector;
     private final IdempotencyService idempotencyService;
     private final TransactionValidatorService transactionValidatorService;
-    private final TransactionEventsService transactionEventsService;
+    private final TransactionOutboxEventsService transactionOutboxEventsService;
     private final TransactionSchedulerService transactionSchedulerService;
     private final OutboxService outboxService;
 
@@ -58,15 +58,17 @@ public class TransactionService {
         transaction.setIdempotencyKey(idempotencyKey);
         setTransactionStatus(transaction);
 
+        // salva no mongo e postgres
         Transaction savedTransaction = transactionRepository.save(transaction);
         outboxService.transactionChanged(savedTransaction);
 
+        // se está marcada para agendar, chama o schedule para marcar o agendamento
         if (savedTransaction.isScheduled()) {
             transactionSchedulerService.schedule(savedTransaction.getId(), savedTransaction.getDate());
         }
 
         // só transação paga avisa os outros serviços; a agendada avisa quando for executada
-        transactionEventsService.publishTransactionCreatedEvent(savedTransaction);
+        transactionOutboxEventsService.publishTransactionCreatedEventIfPaid(savedTransaction);
         return transactionMapper.toResponseDTO(savedTransaction);
     }
 
@@ -82,7 +84,7 @@ public class TransactionService {
         // guarda os valores de antes, porque o aviso de atualização leva o antes e o depois
         UUID oldAccountId = transaction.getAccountId();
         BigDecimal oldAmount = transaction.getAmount();
-        TypeEnum oldType = transaction.getType();
+        TypeTransactionEnum oldType = transaction.getType();
         StatusTransactionEnum oldStatus = transaction.getStatus();
 
         transactionValidatorService.update.validate(transaction, data);
@@ -94,18 +96,24 @@ public class TransactionService {
             transaction.setDate(null);
             transaction.setStatus(StatusTransactionEnum.PAID);
 
+            // cancela os agendamentos
             transactionSchedulerService.cancel(transaction.getId());
         }
 
         Transaction updatedTransaction = transactionRepository.saveAndFlush(transaction);
+
+        // publica evento de transaction alterada
         outboxService.transactionChanged(updatedTransaction);
 
         // valida se está agendado e continua pendente
         if (StatusTransactionEnum.PENDING.equals(transaction.getStatus()) && updatedTransaction.isScheduled()) {
+
+            // marca um agendamento novo para refletir mudanças nas datas (se houver)
             transactionSchedulerService.schedule(updatedTransaction.getId(), updatedTransaction.getDate());
         }
 
-        transactionEventsService.publishTransactionUpdatedEvent(
+        // publica um evento outbox informando que a transação foi alterada
+        transactionOutboxEventsService.publishTransactionUpdatedEventIfPaid(
                 updatedTransaction,
                 oldAccountId,
                 oldAmount,
@@ -122,7 +130,8 @@ public class TransactionService {
         transactionRepository.delete(transaction);
         outboxService.transactionDeleted(transaction);
 
-        transactionEventsService.publishTransactionDeletedEvent(transaction);
+        // evento de transação deletada
+        transactionOutboxEventsService.publishTransactionDeletedEventIfPaid(transaction);
     }
 
     @Transactional
@@ -134,6 +143,7 @@ public class TransactionService {
         transactionRepository.saveAndFlush(transaction);
         outboxService.transactionChanged(transaction);
 
-        transactionEventsService.publishTransactionRestoreEvent(transaction);
+        // evento de transação restaurada
+        transactionOutboxEventsService.publishTransactionRestoreEventIfPaid(transaction);
     }
 }

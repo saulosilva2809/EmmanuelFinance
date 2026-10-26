@@ -1,6 +1,6 @@
 package com.emmanuelfinance.transaction.transaction.dtos;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.modules.category.dtos.CategorySummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardSummaryDTO;
@@ -22,7 +22,7 @@ public record ResponseTransactionDTO(
         boolean scheduled,
         LocalDateTime date,
         StatusTransactionEnum status,
-        TypeEnum type,
+        TypeTransactionEnum type,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         boolean deleted

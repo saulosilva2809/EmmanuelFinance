@@ -1,7 +1,7 @@
 package com.emmanuelfinance.transaction.services;
 
 import com.emmanuelfinance.config.exceptions.APIException;
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.modules.category.CategoryClientCacheService;
@@ -73,7 +73,7 @@ public class TransactionValidatorServiceTest {
         assertEquals(expected.getMessage(), exception.getMessage());
     }
 
-    private void stubCategory(TypeEnum type) {
+    private void stubCategory(TypeTransactionEnum type) {
         when(categoryClientCacheService.getCategoryInternalSummaryDTO(categoryId))
                 .thenReturn(TransactionTestDataBuilder.categoryInternalSummaryDTO(categoryId, type));
     }
@@ -92,7 +92,7 @@ public class TransactionValidatorServiceTest {
         @Test
         @DisplayName("Deve passar para despesa de conta válida")
         void shouldPassForValidAccountExpense() {
-            stubCategory(TypeEnum.EXPENSE);
+            stubCategory(TypeTransactionEnum.EXPENSE);
             CreateTransactionDTO dto = TransactionTestDataBuilder.createDTO(accountId, categoryId);
 
             assertDoesNotThrow(() -> validator.create.validate(dto));
@@ -104,7 +104,7 @@ public class TransactionValidatorServiceTest {
         @DisplayName("Deve passar para compra no cartão válida")
         void shouldPassForValidCardPurchase() {
             stubCard(accountId, "1000.00");
-            stubCategory(TypeEnum.EXPENSE);
+            stubCategory(TypeTransactionEnum.EXPENSE);
             CreateTransactionDTO dto = TransactionTestDataBuilder.cardDTO(accountId, categoryId, creditCardId, 3);
 
             assertDoesNotThrow(() -> validator.create.validate(dto));
@@ -114,7 +114,7 @@ public class TransactionValidatorServiceTest {
         @DisplayName("Deve lançar erro ao parcelar uma transação sem cartão")
         void shouldThrowWhenInstallmentsWithoutCard() {
             CreateTransactionDTO dto = TransactionTestDataBuilder.createDTO(
-                    accountId, categoryId, null, BigDecimal.TEN, 3, false, null, TypeEnum.EXPENSE
+                    accountId, categoryId, null, BigDecimal.TEN, 3, false, null, TypeTransactionEnum.EXPENSE
             );
 
             assertDomainError(TransactionErrorCode.INSTALLMENTS_IN_TRANSACTION_ACCOUNT, () -> validator.create.validate(dto));
@@ -125,7 +125,7 @@ public class TransactionValidatorServiceTest {
         @DisplayName("Deve lançar erro quando a compra no cartão não for despesa")
         void shouldThrowWhenCardTransactionIsIncome() {
             CreateTransactionDTO dto = TransactionTestDataBuilder.createDTO(
-                    accountId, categoryId, creditCardId, BigDecimal.TEN, 1, false, null, TypeEnum.INCOME
+                    accountId, categoryId, creditCardId, BigDecimal.TEN, 1, false, null, TypeTransactionEnum.INCOME
             );
 
             assertDomainError(TransactionErrorCode.CARD_TRANSACTION_TYPE, () -> validator.create.validate(dto));
@@ -144,7 +144,7 @@ public class TransactionValidatorServiceTest {
         @DisplayName("Deve aceitar valor igual ao limite disponível do cartão")
         void shouldAcceptAmountEqualToCardLimit() {
             stubCard(accountId, "100.00");
-            stubCategory(TypeEnum.EXPENSE);
+            stubCategory(TypeTransactionEnum.EXPENSE);
             CreateTransactionDTO dto = TransactionTestDataBuilder.cardDTO(accountId, categoryId, creditCardId, 1);
 
             assertDoesNotThrow(() -> validator.create.validate(dto));
@@ -171,7 +171,7 @@ public class TransactionValidatorServiceTest {
         @Test
         @DisplayName("Deve lançar erro quando o tipo da categoria for incompatível com o da transação")
         void shouldThrowWhenCategoryTypeIsIncompatible() {
-            stubCategory(TypeEnum.INCOME);
+            stubCategory(TypeTransactionEnum.INCOME);
             CreateTransactionDTO dto = TransactionTestDataBuilder.createDTO(accountId, categoryId);
 
             assertDomainError(TransactionErrorCode.INCOMPATIBLE_CATEGORY_TYPE, () -> validator.create.validate(dto));
@@ -180,9 +180,9 @@ public class TransactionValidatorServiceTest {
         @Test
         @DisplayName("Deve lançar erro quando a transação agendada não tiver data")
         void shouldThrowWhenScheduledWithoutDate() {
-            stubCategory(TypeEnum.EXPENSE);
+            stubCategory(TypeTransactionEnum.EXPENSE);
             CreateTransactionDTO dto = TransactionTestDataBuilder.createDTO(
-                    accountId, categoryId, null, BigDecimal.TEN, 1, true, null, TypeEnum.EXPENSE
+                    accountId, categoryId, null, BigDecimal.TEN, 1, true, null, TypeTransactionEnum.EXPENSE
             );
 
             assertDomainError(TransactionErrorCode.SCHEDULED_TRANSACTION_DATE_REQUIRED, () -> validator.create.validate(dto));
@@ -191,7 +191,7 @@ public class TransactionValidatorServiceTest {
         @Test
         @DisplayName("Deve lançar erro quando a data agendada estiver no passado")
         void shouldThrowWhenScheduledInThePast() {
-            stubCategory(TypeEnum.EXPENSE);
+            stubCategory(TypeTransactionEnum.EXPENSE);
             CreateTransactionDTO dto = TransactionTestDataBuilder.scheduledDTO(
                     accountId, categoryId, LocalDateTime.now().minusDays(1)
             );
@@ -202,7 +202,7 @@ public class TransactionValidatorServiceTest {
         @Test
         @DisplayName("Deve aceitar transação agendada para o futuro")
         void shouldAcceptScheduledInTheFuture() {
-            stubCategory(TypeEnum.EXPENSE);
+            stubCategory(TypeTransactionEnum.EXPENSE);
             CreateTransactionDTO dto = TransactionTestDataBuilder.scheduledDTO(
                     accountId, categoryId, LocalDateTime.now().plusDays(1)
             );
@@ -213,9 +213,9 @@ public class TransactionValidatorServiceTest {
         @Test
         @DisplayName("Deve lançar erro quando a transação não agendada tiver data")
         void shouldThrowWhenUnscheduledHasDate() {
-            stubCategory(TypeEnum.EXPENSE);
+            stubCategory(TypeTransactionEnum.EXPENSE);
             CreateTransactionDTO dto = TransactionTestDataBuilder.createDTO(
-                    accountId, categoryId, null, BigDecimal.TEN, 1, false, LocalDateTime.now().plusDays(1), TypeEnum.EXPENSE
+                    accountId, categoryId, null, BigDecimal.TEN, 1, false, LocalDateTime.now().plusDays(1), TypeTransactionEnum.EXPENSE
             );
 
             assertDomainError(TransactionErrorCode.UNSCHEDULED_TRANSACTION_DATE_NOT_ALLOWED, () -> validator.create.validate(dto));
@@ -239,7 +239,7 @@ public class TransactionValidatorServiceTest {
         @DisplayName("Deve aceitar despesa igual ao saldo da conta")
         void shouldAcceptExpenseEqualToBalance() {
             stubBalance(accountId, "100.00");
-            stubCategory(TypeEnum.EXPENSE);
+            stubCategory(TypeTransactionEnum.EXPENSE);
             CreateTransactionDTO dto = TransactionTestDataBuilder.createDTO(accountId, categoryId);
 
             assertDoesNotThrow(() -> validator.create.validate(dto));
@@ -249,7 +249,7 @@ public class TransactionValidatorServiceTest {
         @DisplayName("Não deve validar saldo para receita")
         void shouldNotValidateBalanceForIncome() {
             stubBalance(accountId, "0.00");
-            stubCategory(TypeEnum.INCOME);
+            stubCategory(TypeTransactionEnum.INCOME);
             CreateTransactionDTO dto = TransactionTestDataBuilder.incomeDTO(accountId, categoryId);
 
             assertDoesNotThrow(() -> validator.create.validate(dto));
@@ -259,7 +259,7 @@ public class TransactionValidatorServiceTest {
         @DisplayName("Não deve validar o saldo da conta para compra no cartão")
         void shouldNotValidateBalanceForCardPurchase() {
             stubCard(accountId, "1000.00");
-            stubCategory(TypeEnum.EXPENSE);
+            stubCategory(TypeTransactionEnum.EXPENSE);
             stubBalance(accountId, "0.00");
             CreateTransactionDTO dto = TransactionTestDataBuilder.cardDTO(accountId, categoryId, creditCardId, 1);
 
@@ -330,7 +330,7 @@ public class TransactionValidatorServiceTest {
             Transaction transaction = TransactionTestDataBuilder.transactionEntity(userId);
             transaction.setAccountId(accountId);
             transaction.setScheduled(scheduled);
-            transaction.setType(TypeEnum.EXPENSE);
+            transaction.setType(TypeTransactionEnum.EXPENSE);
             return transaction;
         }
 
@@ -366,7 +366,7 @@ public class TransactionValidatorServiceTest {
         @Test
         @DisplayName("Deve validar a categoria com o tipo atual da transação")
         void shouldValidateCategoryAgainstExistingType() {
-            stubCategory(TypeEnum.INCOME);
+            stubCategory(TypeTransactionEnum.INCOME);
             UpdateTransactionDTO dto = TransactionTestDataBuilder.updateDTO(null, categoryId, null, null, null, null, null);
 
             assertDomainError(TransactionErrorCode.INCOMPATIBLE_CATEGORY_TYPE,
@@ -376,9 +376,9 @@ public class TransactionValidatorServiceTest {
         @Test
         @DisplayName("Deve validar a categoria com o novo tipo quando o tipo for alterado")
         void shouldValidateCategoryAgainstNewType() {
-            stubCategory(TypeEnum.INCOME);
+            stubCategory(TypeTransactionEnum.INCOME);
             UpdateTransactionDTO dto = TransactionTestDataBuilder.updateDTO(
-                    null, categoryId, null, null, null, null, TypeEnum.INCOME
+                    null, categoryId, null, null, null, null, TypeTransactionEnum.INCOME
             );
 
             assertDoesNotThrow(() -> validator.update.validate(existing(false), dto));
@@ -414,12 +414,23 @@ public class TransactionValidatorServiceTest {
             assertDoesNotThrow(() -> validator.update.validate(existing(true), dto));
         }
 
+        // o mapper ignora campos nulos, então sem data nova a transação mantém a data que já tinha
         @Test
-        @DisplayName("Deve lançar erro quando a transação continuar agendada sem data")
-        void shouldThrowWhenScheduledWithoutDate() {
+        @DisplayName("Deve manter a data existente quando a transação continuar agendada sem data nova")
+        void shouldKeepTheExistingDateWhenScheduledWithoutNewDate() {
             UpdateTransactionDTO dto = TransactionTestDataBuilder.updateDTO(null, null, null, null, true, null, null);
 
-            assertDomainError(TransactionErrorCode.SCHEDULED_TRANSACTION_DATE_REQUIRED,
+            assertDoesNotThrow(() -> validator.update.validate(existing(true), dto));
+        }
+
+        @Test
+        @DisplayName("Deve validar a data nova mesmo quando o campo scheduled não for informado")
+        void shouldValidateTheNewDateEvenWhenTheScheduledFlagIsOmitted() {
+            UpdateTransactionDTO dto = TransactionTestDataBuilder.updateDTO(
+                    null, null, null, null, null, LocalDateTime.now().minusDays(1), null
+            );
+
+            assertDomainError(TransactionErrorCode.TRANSACTION_SCHEDULED_IN_THE_PAST,
                     () -> validator.update.validate(existing(true), dto));
         }
 

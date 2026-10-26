@@ -1,6 +1,6 @@
 package com.emmanuelfinance.transaction.outbox;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
@@ -84,16 +84,16 @@ class OutboxServiceTest {
     void shouldRegisterOneRowForEachKindOfKafkaEvent() {
         TransactionCreatedEvent created = new TransactionCreatedEvent(
                 UUID.randomUUID(), UUID.randomUUID(), null, UUID.randomUUID(), new BigDecimal("10.00"),
-                1, TypeEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.now()
+                1, TypeTransactionEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.now()
         );
         TransactionUpdatedEvent updated = new TransactionUpdatedEvent(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                BigDecimal.TEN, BigDecimal.ONE, TypeEnum.EXPENSE, TypeEnum.EXPENSE,
+                BigDecimal.TEN, BigDecimal.ONE, TypeTransactionEnum.EXPENSE, TypeTransactionEnum.EXPENSE,
                 StatusTransactionEnum.PAID, StatusTransactionEnum.PAID
         );
         TransactionDeletedAndRestoreEvent deleted = new TransactionDeletedAndRestoreEvent(
                 UUID.randomUUID(), UUID.randomUUID(), null, UUID.randomUUID(), BigDecimal.TEN,
-                1, TypeEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.now()
+                1, TypeTransactionEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.now()
         );
 
         outboxService.transactionCreatedEvent(created);

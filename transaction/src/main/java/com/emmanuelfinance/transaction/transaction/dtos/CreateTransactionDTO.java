@@ -1,6 +1,6 @@
 package com.emmanuelfinance.transaction.transaction.dtos;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
@@ -28,7 +28,7 @@ public record CreateTransactionDTO(
         LocalDateTime date,
 
         @NotNull(message = "The type is required")
-        TypeEnum type
+        TypeTransactionEnum type
 ) {
         public CreateTransactionDTO{
                 if (installmentsCount == null) {

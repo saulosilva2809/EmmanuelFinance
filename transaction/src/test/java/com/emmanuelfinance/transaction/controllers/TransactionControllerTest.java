@@ -1,7 +1,7 @@
 package com.emmanuelfinance.transaction.controllers;
 
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.exceptions.TransactionNotFound;
 import com.emmanuelfinance.transaction.transaction.Transaction;
@@ -121,7 +121,7 @@ public class TransactionControllerTest {
         @DisplayName("Deve retornar 400 Bad Request quando a categoria não for informada")
         void shouldReturn400WhenCategoryIsMissing() throws Exception {
             CreateTransactionDTO dto = TransactionTestDataBuilder.createDTO(
-                    UUID.randomUUID(), null, null, new BigDecimal("100.00"), 1, false, null, TypeEnum.EXPENSE
+                    UUID.randomUUID(), null, null, new BigDecimal("100.00"), 1, false, null, TypeTransactionEnum.EXPENSE
             );
 
             mockMvc.perform(post("/transactions")
@@ -274,7 +274,7 @@ public class TransactionControllerTest {
                     accountId, categoryId, cardId,
                     new BigDecimal("10.50"), new BigDecimal("99.90"),
                     true, LocalDate.of(2026, 10, 5),
-                    StatusTransactionEnum.PENDING, TypeEnum.EXPENSE
+                    StatusTransactionEnum.PENDING, TypeTransactionEnum.EXPENSE
             ), captor.getValue());
         }
 

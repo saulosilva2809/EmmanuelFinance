@@ -1,6 +1,6 @@
 package com.emmanuelfinance.transaction;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryDTO;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
@@ -32,7 +32,7 @@ public class TransactionTestDataBuilder {
             Integer installmentsCount,
             boolean scheduled,
             LocalDateTime date,
-            TypeEnum type
+            TypeTransactionEnum type
     ) {
         return new CreateTransactionDTO(
                 accountId,
@@ -49,7 +49,7 @@ public class TransactionTestDataBuilder {
 
     /** Despesa simples de conta: não agendada, sem data e sem cartão. */
     public static CreateTransactionDTO createDTO(UUID accountId, UUID categoryId) {
-        return createDTO(accountId, categoryId, null, DEFAULT_AMOUNT, 1, false, null, TypeEnum.EXPENSE);
+        return createDTO(accountId, categoryId, null, DEFAULT_AMOUNT, 1, false, null, TypeTransactionEnum.EXPENSE);
     }
 
     public static CreateTransactionDTO createDTO() {
@@ -57,15 +57,15 @@ public class TransactionTestDataBuilder {
     }
 
     public static CreateTransactionDTO incomeDTO(UUID accountId, UUID categoryId) {
-        return createDTO(accountId, categoryId, null, DEFAULT_AMOUNT, 1, false, null, TypeEnum.INCOME);
+        return createDTO(accountId, categoryId, null, DEFAULT_AMOUNT, 1, false, null, TypeTransactionEnum.INCOME);
     }
 
     public static CreateTransactionDTO cardDTO(UUID accountId, UUID categoryId, UUID creditCardId, int installments) {
-        return createDTO(accountId, categoryId, creditCardId, DEFAULT_AMOUNT, installments, false, null, TypeEnum.EXPENSE);
+        return createDTO(accountId, categoryId, creditCardId, DEFAULT_AMOUNT, installments, false, null, TypeTransactionEnum.EXPENSE);
     }
 
     public static CreateTransactionDTO scheduledDTO(UUID accountId, UUID categoryId, LocalDateTime date) {
-        return createDTO(accountId, categoryId, null, DEFAULT_AMOUNT, 1, true, date, TypeEnum.EXPENSE);
+        return createDTO(accountId, categoryId, null, DEFAULT_AMOUNT, 1, true, date, TypeTransactionEnum.EXPENSE);
     }
 
     // ---------- UpdateTransactionDTO ----------
@@ -77,7 +77,7 @@ public class TransactionTestDataBuilder {
             BigDecimal amount,
             Boolean scheduled,
             LocalDateTime date,
-            TypeEnum type
+            TypeTransactionEnum type
     ) {
         return new UpdateTransactionDTO(accountId, categoryId, description, amount, scheduled, date, type);
     }
@@ -102,7 +102,7 @@ public class TransactionTestDataBuilder {
             StatusTransactionEnum status,
             boolean scheduled,
             LocalDateTime date,
-            TypeEnum type,
+            TypeTransactionEnum type,
             boolean deleted
     ) {
         Transaction transaction = new Transaction();
@@ -129,7 +129,7 @@ public class TransactionTestDataBuilder {
     public static Transaction transactionEntity(UUID userId) {
         return transactionEntity(
                 userId, UUID.randomUUID(), UUID.randomUUID(), null, DEFAULT_AMOUNT,
-                StatusTransactionEnum.PAID, false, LocalDateTime.now(), TypeEnum.EXPENSE, false
+                StatusTransactionEnum.PAID, false, LocalDateTime.now(), TypeTransactionEnum.EXPENSE, false
         );
     }
 
@@ -142,14 +142,14 @@ public class TransactionTestDataBuilder {
     public static Transaction cardTransactionEntity(UUID userId, UUID accountId, UUID creditCardId) {
         return transactionEntity(
                 userId, accountId, UUID.randomUUID(), creditCardId, DEFAULT_AMOUNT,
-                StatusTransactionEnum.PAID, false, LocalDateTime.now(), TypeEnum.EXPENSE, false
+                StatusTransactionEnum.PAID, false, LocalDateTime.now(), TypeTransactionEnum.EXPENSE, false
         );
     }
 
     public static Transaction pendingTransactionEntity(UUID userId, LocalDateTime date) {
         return transactionEntity(
                 userId, UUID.randomUUID(), UUID.randomUUID(), null, DEFAULT_AMOUNT,
-                StatusTransactionEnum.PENDING, true, date, TypeEnum.EXPENSE, false
+                StatusTransactionEnum.PENDING, true, date, TypeTransactionEnum.EXPENSE, false
         );
     }
 
@@ -182,7 +182,7 @@ public class TransactionTestDataBuilder {
         return new CreditCardSummaryDTO(creditCardId, "Cartão de Crédito C6", false);
     }
 
-    public static CategoryInternalSummaryDTO categoryInternalSummaryDTO(UUID categoryId, TypeEnum type) {
+    public static CategoryInternalSummaryDTO categoryInternalSummaryDTO(UUID categoryId, TypeTransactionEnum type) {
         return new CategoryInternalSummaryDTO(categoryId, type);
     }
 

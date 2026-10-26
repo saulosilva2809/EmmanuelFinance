@@ -1,6 +1,6 @@
 package com.emmanuelfinance.transaction.services;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.transaction.TransactionTestDataBuilder;
 import com.emmanuelfinance.transaction.transaction.dtos.CreateTransactionDTO;
 import com.emmanuelfinance.transaction.transaction.exceptions.TransactionDomainException;
@@ -48,7 +48,7 @@ public class IdempotencyServiceTest {
 
         private CreateTransactionDTO dto(BigDecimal amount, LocalDateTime date, String description) {
             return new CreateTransactionDTO(
-                    accountId, null, UUID.randomUUID(), description, amount, 1, date != null, date, TypeEnum.EXPENSE
+                    accountId, null, UUID.randomUUID(), description, amount, 1, date != null, date, TypeTransactionEnum.EXPENSE
             );
         }
 

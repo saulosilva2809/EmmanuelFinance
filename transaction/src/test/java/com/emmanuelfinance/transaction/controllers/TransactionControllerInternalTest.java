@@ -1,6 +1,6 @@
 package com.emmanuelfinance.transaction.controllers;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.category.dtos.CategorySummaryDTO;
 import com.emmanuelfinance.shared.modules.transaction.dtos.TransactionSummaryDTO;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
@@ -48,7 +48,7 @@ public class TransactionControllerInternalTest {
                 new CategorySummaryDTO(categoryId, "Alimentação", false),
                 new BigDecimal("100.00"),
                 StatusTransactionEnum.PAID,
-                TypeEnum.EXPENSE
+                TypeTransactionEnum.EXPENSE
         ));
 
         mockMvc.perform(get("/internal/transactions/summary/{id}", transactionId))

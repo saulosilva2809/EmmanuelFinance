@@ -5,7 +5,7 @@ import com.emmanuelfinance.transaction.transaction.Transaction;
 import com.emmanuelfinance.transaction.transaction.TransactionRepository;
 import com.emmanuelfinance.transaction.transaction.TransactionSelector;
 import com.emmanuelfinance.transaction.transaction.outbox.OutboxService;
-import com.emmanuelfinance.transaction.transaction.services.TransactionEventsService;
+import com.emmanuelfinance.transaction.transaction.services.TransactionOutboxEventsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,17 +19,20 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TransactionExecutionService {
 
-    private final TransactionEventsService transactionEventsService;
+    private final TransactionOutboxEventsService transactionOutboxEventsService;
     private final TransactionSelector transactionSelector;
     private final TransactionRepository transactionRepository;
     private final OutboxService outboxService;
 
+    // executa uma transação agendada
     @Transactional
     public void executeScheduledTransaction(UUID transactionId) {
         log.info("Iniciando execução da transação agendadada: {}", transactionId);
 
+        // pega a transação
         Transaction transaction = transactionSelector.getTransactionByIdInternal(transactionId);
 
+        // verifica se está deletada ou o status não é PENDING
         if (transaction.isDeleted() || !StatusTransactionEnum.PENDING.equals(transaction.getStatus())) {
             log.warn("Transação {} ignorada (deleted: {}, status: {})",
                     transactionId, transaction.isDeleted(), transaction.getStatus());
@@ -47,9 +50,12 @@ public class TransactionExecutionService {
             transaction.setStatus(StatusTransactionEnum.PAID);
             // grava na hora para a data de atualização já ir preenchida na foto do outbox
             transactionRepository.saveAndFlush(transaction);
+
+            // publica evento de transação (snapshot)
             outboxService.transactionChanged(transaction);
 
-            transactionEventsService.publishTransactionCreatedEvent(transaction);
+            // publica evento no kafka
+            transactionOutboxEventsService.publishTransactionCreatedEventIfPaid(transaction);
         } catch (Exception e) {
             log.error("Erro ao executar transação agendada {}: {}", transactionId, e.getMessage());
             transaction.setStatus(StatusTransactionEnum.PENDING);

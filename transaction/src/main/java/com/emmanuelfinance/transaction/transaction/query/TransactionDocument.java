@@ -1,6 +1,6 @@
 package com.emmanuelfinance.transaction.transaction.query;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.shared.mongo.BaseDocument;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -35,5 +35,5 @@ public class TransactionDocument extends BaseDocument {
     private boolean scheduled;
     private LocalDateTime date;
     private StatusTransactionEnum status;
-    private TypeEnum type;
+    private TypeTransactionEnum type;
 }

@@ -33,6 +33,7 @@ public class TransactionSchedulerService {
     }
 
     public void schedule(UUID transactionId, LocalDateTime scheduledDateTime) {
+        // apaga algum agendamento antigo (se houver)
         cancel(transactionId);
         Instant executionTime = scheduledDateTime.atZone(ZoneId.systemDefault()).toInstant();
 

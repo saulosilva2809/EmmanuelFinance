@@ -1,6 +1,6 @@
 package com.emmanuelfinance.transaction.outbox;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
 import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
@@ -66,7 +66,7 @@ class OutboxEventFactoryTest {
     void shouldBuildTheCreatedEventRowWithTheEventAsPayload() throws Exception {
         TransactionCreatedEvent event = new TransactionCreatedEvent(
                 UUID.randomUUID(), UUID.randomUUID(), null, UUID.randomUUID(), new BigDecimal("100.00"),
-                1, TypeEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.of(2026, 10, 5, 10, 0)
+                1, TypeTransactionEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.of(2026, 10, 5, 10, 0)
         );
 
         OutboxEvent created = outboxEventFactory.transactionCreated(event);
@@ -89,7 +89,7 @@ class OutboxEventFactoryTest {
     void shouldBuildTheUpdatedEventRow() throws Exception {
         TransactionUpdatedEvent event = new TransactionUpdatedEvent(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                new BigDecimal("100.00"), new BigDecimal("150.00"), TypeEnum.EXPENSE, TypeEnum.INCOME,
+                new BigDecimal("100.00"), new BigDecimal("150.00"), TypeTransactionEnum.EXPENSE, TypeTransactionEnum.INCOME,
                 StatusTransactionEnum.PAID, StatusTransactionEnum.PAID
         );
 
@@ -107,7 +107,7 @@ class OutboxEventFactoryTest {
     void shouldBuildTheDeletedAndRestoredEventRows() {
         TransactionDeletedAndRestoreEvent event = new TransactionDeletedAndRestoreEvent(
                 UUID.randomUUID(), UUID.randomUUID(), null, UUID.randomUUID(), new BigDecimal("100.00"),
-                1, TypeEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.now()
+                1, TypeTransactionEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.now()
         );
 
         OutboxEvent deleted = outboxEventFactory.transactionDeleted(event);

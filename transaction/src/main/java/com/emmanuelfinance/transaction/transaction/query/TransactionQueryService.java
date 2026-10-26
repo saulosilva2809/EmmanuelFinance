@@ -18,8 +18,6 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.UUID;
 
-// lado de leitura: busca as transações no mongo e nunca no postgres. os dados chegam pelo outbox,
-// então logo depois de uma escrita a leitura pode demorar um pouco para mostrar a mudança
 @Service
 @RequiredArgsConstructor
 public class TransactionQueryService {
@@ -52,15 +50,12 @@ public class TransactionQueryService {
         return search(filters, pageable, true);
     }
 
-    // a lista de ativas e a de excluídas só mudam no filtro de excluído
     private PageResponseDTO<ResponseTransactionDTO> search(TransactionFiltersDTO filters, Pageable pageable, boolean deleted) {
         UUID userId = securityUtils.getCurrentUserId();
 
         Query query = TransactionSpecification.withFilter(filters, userId, deleted);
-        // conta o total sem paginar, para saber quantas páginas existem
         long total = mongoTemplate.count(query, TransactionDocument.class);
 
-        // busca só a página pedida, já com a ordem
         List<TransactionDocument> documents = mongoTemplate.find(query.with(pageable), TransactionDocument.class);
         Page<ResponseTransactionDTO> page = new PageImpl<>(documents, pageable, total)
                 .map(transactionMapper::toResponseDTO);

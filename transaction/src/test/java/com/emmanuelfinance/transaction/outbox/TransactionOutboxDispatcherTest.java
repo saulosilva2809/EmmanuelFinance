@@ -1,6 +1,6 @@
 package com.emmanuelfinance.transaction.outbox;
 
-import com.emmanuelfinance.shared.enums.TypeEnum;
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.transaction.transaction.outbox.OutboxEvent;
 import com.emmanuelfinance.transaction.transaction.outbox.TransactionOutboxDispatcher;
@@ -78,7 +78,7 @@ class TransactionOutboxDispatcherTest {
         snapshot.setAccountId(UUID.randomUUID());
         snapshot.setAmount(new BigDecimal("150.50"));
         snapshot.setStatus(StatusTransactionEnum.PAID);
-        snapshot.setType(TypeEnum.EXPENSE);
+        snapshot.setType(TypeTransactionEnum.EXPENSE);
         snapshot.setDate(LocalDateTime.of(2026, 10, 5, 10, 30));
         snapshot.setDeleted(true);
         return snapshot;
