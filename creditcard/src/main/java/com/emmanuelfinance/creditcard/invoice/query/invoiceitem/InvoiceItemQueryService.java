@@ -7,7 +7,7 @@ import com.emmanuelfinance.creditcard.invoice.exceptions.InvoiceDomainException;
 import com.emmanuelfinance.creditcard.invoice.exceptions.InvoiceErrorCode;
 import com.emmanuelfinance.creditcard.invoice.query.invoice.InvoiceDocumentRepository;
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
-import com.emmanuelfinance.shared.modules.transaction.TransactionClientCacheService;
+import com.emmanuelfinance.shared.modules.transaction.transaction.TransactionClientCacheService;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;

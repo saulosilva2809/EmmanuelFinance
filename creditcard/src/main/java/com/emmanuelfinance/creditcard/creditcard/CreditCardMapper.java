@@ -24,6 +24,8 @@ public abstract class CreditCardMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "deleted", ignore = true)
+    @Mapping(target = "deactivatedByAccount", ignore = true)
+    @Mapping(target = "version", ignore = true)
     public abstract CreditCard toEntity(CreateCreditCardDTO data);
 
     @Mapping(target = "account", source = "accountId", qualifiedByName = "mapAccount")

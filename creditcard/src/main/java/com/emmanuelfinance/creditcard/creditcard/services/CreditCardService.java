@@ -5,7 +5,6 @@ import com.emmanuelfinance.creditcard.creditcard.dto.CreateCreditCardDTO;
 import com.emmanuelfinance.creditcard.creditcard.dto.ResponseCreditCardDTO;
 import com.emmanuelfinance.creditcard.creditcard.dto.UpdateCreditCardDTO;
 import com.emmanuelfinance.creditcard.outbox.OutboxService;
-import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,7 +17,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CreditCardService {
 
-    private final AccountOwnershipValidator accountOwnershipValidator;
     private final SecurityUtils securityUtils;
     private final CreditCardRepository creditCardRepository;
     private final CreditCardMapper cardMapper;
@@ -51,9 +49,7 @@ public class CreditCardService {
     public ResponseCreditCardDTO update(UUID cardId, UpdateCreditCardDTO data) {
         CreditCard creditCard = cardSelector.getCreditCardById(cardId);
 
-        if (data.accountId() != null) {
-            accountOwnershipValidator.validate(data.accountId());
-        }
+        creditCardValidatorService.validateUpdate(creditCard, data);
 
         creditCardBalanceService.updateAvailableLimit(creditCard, data);
         cardMapper.updateCreditCardFromDTO(data, creditCard);
@@ -79,6 +75,7 @@ public class CreditCardService {
         creditCardValidatorService.validateRestoration(creditCard);
 
         creditCard.setDeleted(false);
+        creditCard.setDeactivatedByAccount(false);
         creditCardRepository.saveAndFlush(creditCard);
         outboxService.creditCardChanged(creditCard);
     }

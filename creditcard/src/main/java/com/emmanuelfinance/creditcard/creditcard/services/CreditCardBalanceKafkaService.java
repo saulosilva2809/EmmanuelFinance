@@ -5,12 +5,15 @@ import com.emmanuelfinance.creditcard.creditcard.CreditCardRepository;
 import com.emmanuelfinance.creditcard.creditcard.CreditCardSelector;
 import com.emmanuelfinance.creditcard.invoice.services.InvoiceService;
 import com.emmanuelfinance.creditcard.outbox.OutboxService;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
+import com.emmanuelfinance.shared.kafka.ProcessedEventService;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionCreatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 
 @Slf4j
@@ -22,11 +25,16 @@ public class CreditCardBalanceKafkaService {
     private final InvoiceService invoiceService;
     private final CreditCardRepository creditCardRepository;
     private final OutboxService outboxService;
+    private final ProcessedEventService processedEventService;
 
 
     // altera o limite disponível no cartão após uma transação ser criada
     @Transactional
     public void processTransactionCreate(TransactionCreatedEvent event) {
+        if (alreadyProcessed(event.eventId())) {
+            return;
+        }
+
         // pega o cartão
         CreditCard creditCard = creditCardSelector.getCreditCardByIdInternal(event.creditCardId());
         // subtrai no limite
@@ -43,6 +51,10 @@ public class CreditCardBalanceKafkaService {
     // altera o limite disponível no cartão após deletar uma transação
     @Transactional
     public void processTransactionDeletion(TransactionDeletedAndRestoreEvent event) {
+        if (alreadyProcessed(event.eventId())) {
+            return;
+        }
+
         CreditCard creditCard = creditCardSelector.getCreditCardByIdInternal(event.creditCardId());
         // restaura o limite
         creditCard.setAvailableLimit(creditCard.getAvailableLimit().add(event.amount()));
@@ -59,6 +71,10 @@ public class CreditCardBalanceKafkaService {
     // altera o limite disponível no cartão após restaurar uma transação
     @Transactional
     public void processTransactionRestore(TransactionDeletedAndRestoreEvent event) {
+        if (alreadyProcessed(event.eventId())) {
+            return;
+        }
+
         CreditCard creditCard = creditCardSelector.getCreditCardByIdInternal(event.creditCardId());
         // subtrai no limite
         creditCard.setAvailableLimit(creditCard.getAvailableLimit().subtract(event.amount()));
@@ -67,5 +83,15 @@ public class CreditCardBalanceKafkaService {
         outboxService.creditCardChanged(creditCard);
         // restaura invoices
         invoiceService.restore(event);
+    }
+
+    // o kafka pode entregar o mesmo aviso mais de uma vez, e o limite e a fatura só podem mudar na primeira
+    private boolean alreadyProcessed(UUID eventId) {
+        if (processedEventService.register(eventId)) {
+            return false;
+        }
+
+        log.warn("Aviso {} já processado, ignorado.", eventId);
+        return true;
     }
 }

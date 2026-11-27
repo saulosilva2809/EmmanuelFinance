@@ -21,7 +21,7 @@ public class InvoiceSelector {
             Integer month,
             Integer year
     ) {
-        Optional<Invoice> invoice = invoiceRepository.findByCreditCardIdAndMonthAndYearAndDeletedFalse(
+        Optional<Invoice> invoice = invoiceRepository.findByCreditCardIdAndMonthAndYear(
                 creditCardId,
                 month,
                 year

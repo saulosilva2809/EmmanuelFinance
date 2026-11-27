@@ -4,8 +4,8 @@ import com.emmanuelfinance.creditcard.creditcard.services.CreditCardBalanceKafka
 import com.emmanuelfinance.creditcard.creditcard.services.CreditCardInternalService;
 import com.emmanuelfinance.shared.modules.account.dto.AccountEventDTO;
 import com.emmanuelfinance.shared.modules.account.enums.StatusEventEnum;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionCreatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -18,21 +18,16 @@ public class CreditCardListener {
 
     private final CreditCardInternalService creditCardInternalService;
     private final CreditCardBalanceKafkaService creditCardBalanceKafkaService;
-    private final CreditCardProducer creditCardProducer;
 
-
+    // nenhum método captura o erro: é ele subindo que faz o kafka tentar de novo
     @KafkaListener(topics = "account-events", groupId = "credit-card-service-group")
-    public void handleAccountDeleted(AccountEventDTO event) {
+    public void handleAccountEvent(AccountEventDTO event) {
         log.info("Recebido evento de conta: {}", event.accountId());
 
-        if (event.status() != StatusEventEnum.DELETED) {
-            return;
-        }
-
-        try {
+        if (event.status() == StatusEventEnum.DELETED) {
             creditCardInternalService.deactivateCardsByAccountId(event.accountId());
-        } catch (Exception e) {
-            log.error("Erro ao deletar cartões associados {}", event, e);
+        } else if (event.status() == StatusEventEnum.RESTORE) {
+            creditCardInternalService.restoreCardsByAccountId(event.accountId());
         }
     }
 
@@ -44,12 +39,7 @@ public class CreditCardListener {
             return;
         }
 
-        try {
-            creditCardBalanceKafkaService.processTransactionCreate(event);
-        } catch (Exception e) {
-            creditCardProducer.publishTransactionFailed(event.transactionId());
-            log.error("Erro ao processar atualização de saldo e limite para o evento de criação: {}", event, e);
-        }
+        creditCardBalanceKafkaService.processTransactionCreate(event);
     }
 
     @KafkaListener(topics = "transaction-deleted-topic", groupId = "credit-card-service-group")
@@ -60,12 +50,12 @@ public class CreditCardListener {
                 event.creditCardId()
         );
 
-        try {
-            creditCardBalanceKafkaService.processTransactionDeletion(event);
-        } catch (Exception e) {
-            creditCardProducer.publishTransactionFailed(event.transactionId());
-            log.error("Erro ao processar exclusão de transação no cartão: {}", event, e);
+        // transação só de conta não mexe em cartão nenhum
+        if (event.creditCardId() == null) {
+            return;
         }
+
+        creditCardBalanceKafkaService.processTransactionDeletion(event);
     }
 
     @KafkaListener(topics = "transaction-restore-topic", groupId = "credit-card-service-group")
@@ -76,11 +66,11 @@ public class CreditCardListener {
                 event.creditCardId()
         );
 
-        try {
-            creditCardBalanceKafkaService.processTransactionRestore(event);
-        } catch (Exception e) {
-            creditCardProducer.publishTransactionFailed(event.transactionId());
-            log.error("Erro ao processar atualização de saldo no cartão para o evento de recuperação: {}", event, e);
+        // transação só de conta não mexe em cartão nenhum
+        if (event.creditCardId() == null) {
+            return;
         }
+
+        creditCardBalanceKafkaService.processTransactionRestore(event);
     }
 }

@@ -31,6 +31,8 @@ faturas (geradas a partir das compras feitas no cartão) e do pagamento da fatur
 | `creditLimit` | limite total |
 | `availableLimit` | limite ainda disponível (começa igual ao limite total) |
 | `closingDay`, `dueDay` | dia de fechamento e dia de vencimento |
+| `deactivatedByAccount` | desativado porque a conta foi excluída |
+| `version` | controle otimista (também na fatura) |
 | `deleted` | exclusão lógica |
 
 **Fatura** (`invoice`)
@@ -47,13 +49,21 @@ faturas (geradas a partir das compras feitas no cartão) e do pagamento da fatur
 
 ### Regras de negócio
 
-- **Criar cartão:** a conta precisa ser do usuário e o banco do cartão precisa ser o mesmo da conta. O limite
-  disponível começa igual ao limite total.
+- **Criar cartão:** a conta precisa ser do usuário e o banco do cartão precisa ser o mesmo da conta. O limite é
+  obrigatório, e o disponível começa igual a ele. Mudar a conta ou o banco depois repete essas conferências.
 - **Editar o limite:** o limite disponível muda pela diferença entre o limite novo e o antigo. Nenhum dos dois pode
   ficar negativo.
 - **Restaurar:** só vale para cartão excluído e cuja conta não esteja excluída.
-- **Compra no cartão:** o valor sai do limite disponível. Uma compra parcelada em `n` vezes vira `n` itens, e a
-  parcela `i` cai na fatura do mês da compra mais `i` meses (o valor é dividido com 2 casas decimais).
+- **Compra no cartão:** o valor sai do limite disponível. Uma compra parcelada em `n` vezes vira `n` itens em meses
+  seguidos. A primeira parcela cai na fatura do mês da compra, ou na do mês seguinte se a compra for **depois do dia
+  de fechamento**. O valor é dividido com 2 casas, e os centavos que sobram ficam na primeira parcela. Uma fatura que
+  tinha zerado é reaproveitada, e uma compra nova reabre a fatura paga.
+- **Excluir compra:** não é permitido quando, sem ela, a fatura ficaria menor que o valor já pago (o `transaction`
+  pergunta em `/internal/credit-card/transactions/{id}/paid`).
+- **Conta excluída ou restaurada:** os cartões são desativados junto e voltam junto. Os que o usuário tinha excluído
+  continuam excluídos.
+- **Pagamento que não se completa:** se o `transaction` ou o `account` não conseguirem registrar o pagamento, o aviso
+  em `invoice-payment-failed-topic` desfaz a baixa da fatura e o limite devolvido.
 - **Pagar a fatura:** total ou parcial, e só se o saldo da conta cobrir o valor pago. O pagamento total paga o que
   ainda falta (o total menos o que já foi pago). No pagamento parcial o valor precisa ser maior que zero e não pode
   passar do que falta pagar (senão `DATA_INVALID_VALUE`, 400). Os pagamentos se somam em `amountPaid`; a fatura vira
@@ -92,7 +102,8 @@ Todos os endpoints exigem JWT (Keycloak), e o dono do cartão é sempre o usuár
 
 | Método | Rota | O que faz |
 |--------|------|-----------|
-| `GET` | `/internal/credit-card/summary/{id}` | resumo do cartão |
+| `GET` | `/internal/credit-card/summary/{id}` | resumo do cartão (inclui os excluídos) |
+| `GET` | `/internal/credit-card/transactions/{transactionId}/paid` | informa se a compra já entrou num valor pago |
 | `GET` | `/internal/credit-card/internal-summary/{id}` | resumo com conta, limite disponível e dias de fechamento e vencimento |
 
 ---
@@ -195,12 +206,22 @@ leitura (`query`). A regra vale para consultas que mostram dados (Mongo) versus 
 
 | Tópico | Direção | O que faz |
 |--------|---------|-----------|
-| `account-events` | consome | quando uma conta é excluída (`DELETED`), desativa os cartões dela |
+| `account-events` | consome | conta excluída desativa os cartões dela, e conta restaurada os reativa |
+| `invoice-payment-failed-topic` | consome | desfaz o pagamento da fatura que não saiu da conta |
 | `transaction-created-topic` | consome | compra no cartão: tira do limite disponível e gera os itens da fatura |
 | `transaction-deleted-topic` | consome | devolve o limite e remove os itens da fatura |
 | `transaction-restore-topic` | consome | tira o limite de novo e restaura os itens |
 | `transaction-failed-topic` | publica | avisa que não foi possível processar a transação (compensação no `transaction`) |
 | `created-invoice-payment-topic` | publica (pelo Outbox) | o `transaction` registra a transação do pagamento e publica `invoice-payment-created-topic`, que o `account` consome para descontar o saldo |
+
+Exclusão e restauração de transação sem cartão são ignoradas. Cada aviso leva um `eventId`, gravado em
+`processed_event` junto com a mudança, então a reentrega não mexe duas vezes no limite nem na fatura.
+
+Quando o consumo falha, a mensagem é tentada mais 3 vezes, com 2 segundos entre elas, e depois vai para a DLQ do
+serviço (`<tópico>.creditcard.DLT`), com um erro no log. Erro de regra (`APIException`) não é repetido. Nada lê a DLQ
+sozinho: o reprocessamento é manual. A regra fica na `KafkaErrorHandlingConfig` do `shared`.
+Se a mensagem for um aviso de transação, o `CreditCardProducer` publica então a falha.
+O pagamento da fatura confere o saldo direto no `account`, sem cache.
 
 ### Cache (Redis)
 Todos os caches são do Spring (`@Cacheable`), gravados na primeira consulta, com validade de 10 horas (`RedisConfig`, no

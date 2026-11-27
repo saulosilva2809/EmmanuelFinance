@@ -148,4 +148,18 @@ public class CreditCardBalanceServiceTest {
             assertEquals(new BigDecimal("2000.00"), creditCard.getAvailableLimit());
         }
     }
+
+    @Test
+    @DisplayName("Não deve mexer no limite quando a alteração não informar o limite")
+    void shouldKeepTheLimitWhenItIsNotInformed() {
+        CreditCard card = CreditCardTestDataBuilder.createEntity(
+                CreditCardTestDataBuilder.createCardDTO(), UUID.randomUUID(), false);
+        BigDecimal limit = card.getCreditLimit();
+        BigDecimal available = card.getAvailableLimit();
+
+        creditCardBalanceService.updateAvailableLimit(card, createUpdateCardDTO(null));
+
+        assertEquals(limit, card.getCreditLimit());
+        assertEquals(available, card.getAvailableLimit());
+    }
 }

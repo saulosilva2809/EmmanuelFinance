@@ -12,4 +12,5 @@ public interface CreditCardRepository extends JpaRepository<CreditCard, UUID>, J
     Optional<CreditCard> findByIdAndUserIdAndDeletedFalse(UUID id, UUID userId);
     Optional<CreditCard> findByIdAndUserId(UUID id, UUID userId);
     List<CreditCard> findByAccountId(UUID accountId);
+    List<CreditCard> findByAccountIdAndDeactivatedByAccountTrue(UUID accountId);
 }

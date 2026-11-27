@@ -13,11 +13,13 @@ import com.emmanuelfinance.creditcard.payment.dto.PaymentTotalDTO;
 import com.emmanuelfinance.creditcard.payment.exceptions.PaymentDomainException;
 import com.emmanuelfinance.creditcard.payment.exceptions.PaymentErrorCode;
 import com.emmanuelfinance.creditcard.outbox.OutboxService;
-import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
+import com.emmanuelfinance.shared.kafka.ProcessedEventService;
+import com.emmanuelfinance.shared.modules.account.AccountClient;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 import com.emmanuelfinance.shared.modules.creditcard.enums.InvoiceStatusEnum;
 import com.emmanuelfinance.shared.modules.payment.InvoicePaymentDTO;
+import com.emmanuelfinance.shared.modules.payment.InvoicePaymentFailedEvent;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,7 +34,8 @@ public class PaymentService {
 
     private final InvoiceSelector invoiceSelector;
     private final InvoiceRepository invoiceRepository;
-    private final AccountClientCacheService accountClientCacheService;
+    private final AccountClient accountClient;
+    private final ProcessedEventService processedEventService;
     private final AccountOwnershipValidator accountOwnershipValidator;
     private final SecurityUtils securityUtils;
     private final CreditCardSelector creditCardSelector;
@@ -101,7 +104,8 @@ public class PaymentService {
 
         // valida se o usuário fazendo a request é o dono da conta
         accountOwnershipValidator.validate(accountId);
-        AccountSummaryInternalDTO accountSummary = accountClientCacheService.getInternalAccountById(accountId);
+        // quem decide pergunta direto ao account, porque o saldo guardado em cache pode estar atrasado
+        AccountSummaryInternalDTO accountSummary = accountClient.getAccountSummaryInternal(accountId);
 
         // verifica se a conta tem saldo para fazer o pagamento da fatura
         if (accountSummary.currentBalance().compareTo(amount) < 0) {
@@ -136,6 +140,26 @@ public class PaymentService {
                 amount,
                 UUID.randomUUID() // id do pagamento
         ));
+    }
+
+    // a conta não foi debitada: a fatura volta a dever o valor e o limite devolvido sai de novo
+    @Transactional
+    public void revertPayment(InvoicePaymentFailedEvent event) {
+        if (!processedEventService.register(event.eventId())) {
+            return;
+        }
+
+        Invoice invoice = invoiceRepository.findById(event.invoiceId())
+                .orElseThrow(() -> new InvoiceDomainException(InvoiceErrorCode.INVOICE_NOT_FOUND));
+        invoice.setAmountPaid(invoice.getAmountPaid().subtract(event.amount()).max(BigDecimal.ZERO));
+        invoice.setStatus(InvoiceStatusEnum.OPEN);
+        invoiceRepository.saveAndFlush(invoice);
+        outboxService.invoiceChanged(invoice);
+
+        CreditCard creditCard = creditCardSelector.getCreditCardByIdInternal(event.creditCardId());
+        creditCard.setAvailableLimit(creditCard.getAvailableLimit().subtract(event.amount()));
+        creditCardRepository.saveAndFlush(creditCard);
+        outboxService.creditCardChanged(creditCard);
     }
 
     @Transactional

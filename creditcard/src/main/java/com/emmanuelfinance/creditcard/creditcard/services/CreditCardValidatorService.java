@@ -2,6 +2,7 @@ package com.emmanuelfinance.creditcard.creditcard.services;
 
 import com.emmanuelfinance.creditcard.creditcard.CreditCard;
 import com.emmanuelfinance.creditcard.creditcard.dto.CreateCreditCardDTO;
+import com.emmanuelfinance.creditcard.creditcard.dto.UpdateCreditCardDTO;
 import com.emmanuelfinance.creditcard.creditcard.exceptions.*;
 import com.emmanuelfinance.shared.enums.BanksEnum;
 import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
@@ -53,6 +54,19 @@ public class CreditCardValidatorService {
     public void validateCreation(CreateCreditCardDTO data) {
         validateAccountOwnership(data.accountId());
         validateCardAndAccountBank(data.bank(), data.accountId());
+    }
+
+    // validações de alteração: se mudar a conta ou o banco, os dois precisam continuar combinando
+    public void validateUpdate(CreditCard creditCard, UpdateCreditCardDTO data) {
+        if (data.accountId() == null && data.bank() == null) {
+            return;
+        }
+
+        UUID accountId = data.accountId() != null ? data.accountId() : creditCard.getAccountId();
+        BanksEnum bank = data.bank() != null ? data.bank() : creditCard.getBank();
+
+        validateAccountOwnership(accountId);
+        validateCardAndAccountBank(bank, accountId);
     }
 
     // validações de restauração

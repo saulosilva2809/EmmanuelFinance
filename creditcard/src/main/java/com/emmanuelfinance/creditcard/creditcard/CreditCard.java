@@ -21,7 +21,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
-@SQLDelete(sql = "UPDATE credit_card SET deleted = true WHERE id = ?")
+@SQLDelete(sql = "UPDATE credit_card SET deleted = true, version = version + 1 WHERE id = ? AND version = ?")
 @Filter(name = "deletedFilter")
 public class CreditCard extends BaseEntity {
 
@@ -46,4 +46,11 @@ public class CreditCard extends BaseEntity {
 
     @Column(name = "due_day", nullable = false)
     private Integer dueDay;
+
+    @Column(name = "deactivated_by_account", nullable = false)
+    private boolean deactivatedByAccount = false;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 }

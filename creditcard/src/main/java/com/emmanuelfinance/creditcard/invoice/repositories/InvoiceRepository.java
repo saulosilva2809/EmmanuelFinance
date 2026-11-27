@@ -11,5 +11,5 @@ import java.util.UUID;
 @Repository
 public interface InvoiceRepository extends JpaRepository<Invoice, UUID>, JpaSpecificationExecutor<Invoice> {
     Optional<Invoice> findByIdAndDeletedFalse(UUID invoiceId);
-    Optional<Invoice> findByCreditCardIdAndMonthAndYearAndDeletedFalse(UUID creditCardId, Integer month, Integer year);
+    Optional<Invoice> findByCreditCardIdAndMonthAndYear(UUID creditCardId, Integer month, Integer year);
 }

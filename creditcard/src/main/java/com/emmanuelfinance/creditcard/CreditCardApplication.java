@@ -2,7 +2,7 @@ package com.emmanuelfinance.creditcard;
 
 import com.emmanuelfinance.shared.modules.account.AccountClient;
 import com.emmanuelfinance.shared.modules.creditcard.CreditCardClient;
-import com.emmanuelfinance.shared.modules.transaction.TransactionClient;
+import com.emmanuelfinance.shared.modules.transaction.transaction.TransactionClient;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;

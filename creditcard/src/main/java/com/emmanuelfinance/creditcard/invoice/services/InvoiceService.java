@@ -9,8 +9,8 @@ import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceItemSelector;
 import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceSelector;
 import com.emmanuelfinance.creditcard.outbox.OutboxService;
 import com.emmanuelfinance.shared.modules.creditcard.enums.InvoiceStatusEnum;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionCreatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,9 +19,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -36,16 +39,17 @@ public class InvoiceService {
     private final InvoiceAmountService invoiceAmountService;
     private final OutboxService outboxService;
 
-    @Transactional
-    private Invoice createInvoice(TransactionCreatedEvent event, LocalDate targetDate, BigDecimal installmentAmount) {
-        // vem do evento do kafka, que não tem usuário logado nem token: lê do banco daqui, sem chamar o próprio serviço por http
-        CreditCard creditCard = creditCardSelector.getCreditCardByIdInternal(event.creditCardId());
-
+    private Invoice createInvoice(
+            TransactionCreatedEvent event,
+            CreditCard creditCard,
+            YearMonth target,
+            BigDecimal installmentAmount
+    ) {
         Invoice invoice = new Invoice();
         invoice.setUserId(event.userId());
         invoice.setCreditCardId(event.creditCardId());
-        invoice.setMonth(targetDate.getMonthValue());
-        invoice.setYear(targetDate.getYear());
+        invoice.setMonth(target.getMonthValue());
+        invoice.setYear(target.getYear());
 
         invoice.setDueDate(creditCard.getDueDay());
         invoice.setClosingDate(creditCard.getClosingDay());
@@ -55,49 +59,70 @@ public class InvoiceService {
 
         invoiceRepository.save(invoice);
         outboxService.invoiceChanged(invoice);
-        log.info("Criada nova INVOICE para {}/{}", targetDate.getMonthValue(), targetDate.getYear());
+        log.info("Criada nova INVOICE para {}", target);
 
         return invoice;
     }
 
-    @Transactional
-    private Invoice processInvoiceForDate(TransactionCreatedEvent event, LocalDate targetDate, BigDecimal installmentAmount) {
+    private Invoice processInvoiceForMonth(
+            TransactionCreatedEvent event,
+            CreditCard creditCard,
+            YearMonth target,
+            BigDecimal installmentAmount
+    ) {
         Optional<Invoice> invoiceOptional = invoiceSelector.getByCreditCardAndMonthAndYear(
                 event.creditCardId(),
-                targetDate.getMonthValue(),
-                targetDate.getYear()
+                target.getMonthValue(),
+                target.getYear()
         );
 
         if (invoiceOptional.isEmpty()) {
-            return createInvoice(event, targetDate, installmentAmount);
-        } else {
-            Invoice invoice = invoiceOptional.get();
-            BigDecimal currentAmount = invoice.getTotalAmount() != null ? invoice.getTotalAmount() : BigDecimal.ZERO;
-            invoice.setTotalAmount(currentAmount.add(installmentAmount));
-
-            invoiceRepository.saveAndFlush(invoice);
-            outboxService.invoiceChanged(invoice);
-            log.info("INVOICE já existe para {}/{}. Valor atualizado.", targetDate.getMonthValue(), targetDate.getYear());
-
-            return invoice;
+            return createInvoice(event, creditCard, target, installmentAmount);
         }
+
+        Invoice invoice = invoiceOptional.get();
+        BigDecimal currentAmount = invoice.getTotalAmount() != null ? invoice.getTotalAmount() : BigDecimal.ZERO;
+        // a fatura excluída por ter zerado é reaproveitada, porque só pode existir uma por mês
+        invoice.setDeleted(false);
+        invoice.setTotalAmount(currentAmount.add(installmentAmount));
+        // uma compra nova deixa a fatura paga em aberto de novo
+        invoice.setStatus(InvoiceStatusEnum.OPEN);
+
+        invoiceRepository.saveAndFlush(invoice);
+        outboxService.invoiceChanged(invoice);
+        log.info("INVOICE já existe para {}. Valor atualizado.", target);
+
+        return invoice;
     }
 
     @Transactional
     public void findOrCreate(TransactionCreatedEvent event) {
         int totalInstallments = event.installmentsCount() != null ? event.installmentsCount() : 1;
 
+        // vem do evento do kafka, que não tem usuário logado nem token: lê do banco daqui, sem chamar o próprio serviço por http
+        CreditCard creditCard = creditCardSelector.getCreditCardByIdInternal(event.creditCardId());
+
         BigDecimal installmentAmount = event.amount().divide(
                 BigDecimal.valueOf(totalInstallments),
                 2,
-                RoundingMode.HALF_EVEN
+                RoundingMode.DOWN
         );
+        // os centavos que sobram da divisão entram na primeira parcela, para a soma bater com a compra
+        BigDecimal remainder = event.amount()
+                .subtract(installmentAmount.multiply(BigDecimal.valueOf(totalInstallments)));
+
+        // compra feita depois do fechamento só entra na fatura do mês seguinte
+        LocalDate purchaseDate = event.date().toLocalDate();
+        YearMonth firstMonth = YearMonth.from(purchaseDate);
+        if (purchaseDate.getDayOfMonth() > creditCard.getClosingDay()) {
+            firstMonth = firstMonth.plusMonths(1);
+        }
 
         for (int i = 0; i < totalInstallments; i++) {
-            LocalDate installmentDate = event.date().toLocalDate().plusMonths(i);
+            BigDecimal amount = i == 0 ? installmentAmount.add(remainder) : installmentAmount;
 
-            Invoice invoice = processInvoiceForDate(event, installmentDate, installmentAmount);
-            invoiceItemService.createInvoiceItem(event, invoice.getId(), i+1, installmentAmount);
+            Invoice invoice = processInvoiceForMonth(event, creditCard, firstMonth.plusMonths(i), amount);
+            invoiceItemService.createInvoiceItem(event, invoice.getId(), i+1, amount);
         }
     }
 
@@ -117,7 +142,7 @@ public class InvoiceService {
         if (!invoiceIds.isEmpty()) {
             List<Invoice> invoiceList = invoiceRepository.findAllById(invoiceIds);
 
-            invoiceAmountService.removeBalanceAfterDeletion(invoiceList, invoiceItems.get(0).getAmount());
+            invoiceAmountService.removeBalanceAfterDeletion(invoiceList, amountByInvoice(invoiceItems));
         }
     }
 
@@ -137,7 +162,13 @@ public class InvoiceService {
         if (!invoiceIds.isEmpty()) {
             List<Invoice> invoiceList = invoiceRepository.findAllById(invoiceIds);
 
-            invoiceAmountService.addBalanceAfterRestore(invoiceList, invoiceItems.get(0).getAmount());
+            invoiceAmountService.addBalanceAfterRestore(invoiceList, amountByInvoice(invoiceItems));
         }
+    }
+
+    // as parcelas podem ter valores diferentes, então cada fatura recebe a soma das suas
+    private Map<UUID, BigDecimal> amountByInvoice(List<InvoiceItem> invoiceItems) {
+        return invoiceItems.stream()
+                .collect(Collectors.toMap(InvoiceItem::getInvoiceId, InvoiceItem::getAmount, BigDecimal::add));
     }
 }

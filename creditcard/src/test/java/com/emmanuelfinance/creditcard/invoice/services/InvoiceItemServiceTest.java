@@ -4,7 +4,7 @@ import com.emmanuelfinance.creditcard.invoice.InvoiceItem;
 import com.emmanuelfinance.creditcard.invoice.InvoiceTestDataBuilder;
 import com.emmanuelfinance.creditcard.invoice.repositories.InvoiceItemRepository;
 import com.emmanuelfinance.creditcard.outbox.OutboxService;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionCreatedEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

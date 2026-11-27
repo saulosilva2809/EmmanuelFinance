@@ -32,6 +32,11 @@ public class CreditCardBalanceService {
     // atualiza o limite disponível
     @Transactional
     public void updateAvailableLimit(CreditCard creditCard, UpdateCreditCardDTO data) {
+        // a alteração pode não mexer no limite
+        if (data.creditLimit() == null) {
+            return;
+        }
+
         // limite antigo -> limite atual do cartão
         BigDecimal oldLimit = creditCard.getCreditLimit();
         // novo limite -> limite informado pelo usuário

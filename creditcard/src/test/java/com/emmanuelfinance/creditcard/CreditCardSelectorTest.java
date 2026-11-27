@@ -1,5 +1,6 @@
 package com.emmanuelfinance.creditcard;
 
+import com.emmanuelfinance.shared.entity.BaseEntity;
 import com.emmanuelfinance.creditcard.creditcard.CreditCard;
 import com.emmanuelfinance.creditcard.creditcard.CreditCardRepository;
 import com.emmanuelfinance.creditcard.creditcard.CreditCardSelector;
@@ -49,9 +50,9 @@ public class CreditCardSelectorTest {
             when(securityUtils.getCurrentUserId()).thenReturn(userId);
 
             CreateCreditCardDTO dto = CreditCardTestDataBuilder.createCardDTO();
-            CreditCard card = creditCardRepository.saveAndFlush(
+            CreditCard card = creditCardRepository.saveAndFlush(unsaved(
                     CreditCardTestDataBuilder.createEntity(dto, userId, false)
-            );
+            ));
 
             CreditCard result = creditCardSelector.getCreditCardById(card.getId());
 
@@ -69,9 +70,9 @@ public class CreditCardSelectorTest {
             when(securityUtils.getCurrentUserId()).thenReturn(userId);
 
             CreateCreditCardDTO dto = CreditCardTestDataBuilder.createCardDTO();
-            CreditCard card = creditCardRepository.saveAndFlush(
+            CreditCard card = creditCardRepository.saveAndFlush(unsaved(
                     CreditCardTestDataBuilder.createEntity(dto, userId, true)
-            );
+            ));
 
             assertThrows(CreditCardNotFound.class, () ->
                     creditCardSelector.getCreditCardById(card.getId())
@@ -88,9 +89,9 @@ public class CreditCardSelectorTest {
             when(securityUtils.getCurrentUserId()).thenReturn(currentUser);
 
             CreateCreditCardDTO dto = CreditCardTestDataBuilder.createCardDTO();
-            CreditCard card = creditCardRepository.saveAndFlush(
+            CreditCard card = creditCardRepository.saveAndFlush(unsaved(
                     CreditCardTestDataBuilder.createEntity(dto, anotherUser, false)
-            );
+            ));
 
             assertThrows(CreditCardNotFound.class, () ->
                     creditCardSelector.getCreditCardById(card.getId())
@@ -122,9 +123,9 @@ public class CreditCardSelectorTest {
         void shouldReturnCardInternalRegardlessOfUserOrDeletedStatus() {
             UUID userId = UUID.randomUUID();
             CreateCreditCardDTO dto = CreditCardTestDataBuilder.createCardDTO();
-            CreditCard card = creditCardRepository.saveAndFlush(
+            CreditCard card = creditCardRepository.saveAndFlush(unsaved(
                     CreditCardTestDataBuilder.createEntity(dto, userId, true)
-            );
+            ));
 
             CreditCard result = creditCardSelector.getCreditCardByIdInternal(card.getId());
 
@@ -151,9 +152,9 @@ public class CreditCardSelectorTest {
         @DisplayName("Deve buscar o cartão do usuário informado sem consultar o usuário logado")
         void shouldReturnCardOfTheGivenUser() {
             UUID userId = UUID.randomUUID();
-            CreditCard card = creditCardRepository.saveAndFlush(CreditCardTestDataBuilder.createEntity(
+            CreditCard card = creditCardRepository.saveAndFlush(unsaved(CreditCardTestDataBuilder.createEntity(
                     CreditCardTestDataBuilder.createCardDTO(), userId, false
-            ));
+            )));
 
             CreditCard result = creditCardSelector.getCreditCardById(card.getId(), userId);
 
@@ -164,9 +165,9 @@ public class CreditCardSelectorTest {
         @Test
         @DisplayName("Deve lançar CreditCardNotFound quando o cartão for de outro usuário")
         void shouldThrowWhenCardBelongsToAnotherUser() {
-            CreditCard card = creditCardRepository.saveAndFlush(CreditCardTestDataBuilder.createEntity(
+            CreditCard card = creditCardRepository.saveAndFlush(unsaved(CreditCardTestDataBuilder.createEntity(
                     CreditCardTestDataBuilder.createCardDTO(), UUID.randomUUID(), false
-            ));
+            )));
 
             assertThrows(CreditCardNotFound.class, () ->
                     creditCardSelector.getCreditCardById(card.getId(), UUID.randomUUID())
@@ -177,9 +178,9 @@ public class CreditCardSelectorTest {
         @DisplayName("Deve lançar CreditCardNotFound quando o cartão estiver excluído")
         void shouldThrowWhenCardIsDeleted() {
             UUID userId = UUID.randomUUID();
-            CreditCard card = creditCardRepository.saveAndFlush(CreditCardTestDataBuilder.createEntity(
+            CreditCard card = creditCardRepository.saveAndFlush(unsaved(CreditCardTestDataBuilder.createEntity(
                     CreditCardTestDataBuilder.createCardDTO(), userId, true
-            ));
+            )));
 
             assertThrows(CreditCardNotFound.class, () ->
                     creditCardSelector.getCreditCardById(card.getId(), userId)
@@ -198,9 +199,9 @@ public class CreditCardSelectorTest {
             when(securityUtils.getCurrentUserId()).thenReturn(userId);
 
             CreateCreditCardDTO dto = CreditCardTestDataBuilder.createCardDTO();
-            CreditCard card = creditCardRepository.saveAndFlush(
+            CreditCard card = creditCardRepository.saveAndFlush(unsaved(
                     CreditCardTestDataBuilder.createEntity(dto, userId, true)
-            );
+            ));
 
             CreditCard result = creditCardSelector.getCreditCardByIdIncludingDeleted(card.getId());
 
@@ -218,9 +219,9 @@ public class CreditCardSelectorTest {
             when(securityUtils.getCurrentUserId()).thenReturn(currentUser);
 
             CreateCreditCardDTO dto = CreditCardTestDataBuilder.createCardDTO();
-            CreditCard card = creditCardRepository.saveAndFlush(
+            CreditCard card = creditCardRepository.saveAndFlush(unsaved(
                     CreditCardTestDataBuilder.createEntity(dto, anotherUser, true)
-            );
+            ));
 
             assertThrows(CreditCardNotFound.class, () ->
                     creditCardSelector.getCreditCardByIdIncludingDeleted(card.getId())
@@ -246,7 +247,7 @@ public class CreditCardSelectorTest {
             CreateCreditCardDTO dto2 = CreditCardTestDataBuilder.createCardDTO(accountId);
             CreditCard card2 = CreditCardTestDataBuilder.createEntity(dto2, userId, false);
 
-            creditCardRepository.saveAllAndFlush(List.of(card1, card2));
+            creditCardRepository.saveAllAndFlush(List.of(unsaved(card1), unsaved(card2)));
 
             List<CreditCard> results = creditCardSelector.findByAccountId(accountId);
 
@@ -263,5 +264,10 @@ public class CreditCardSelectorTest {
             assertNotNull(results);
             assertTrue(results.isEmpty());
         }
+    }
+
+    private static <T extends BaseEntity> T unsaved(T entity) {
+        entity.setId(null);
+        return entity;
     }
 }

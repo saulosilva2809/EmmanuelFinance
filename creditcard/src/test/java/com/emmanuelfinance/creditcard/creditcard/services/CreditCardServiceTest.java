@@ -12,7 +12,6 @@ import com.emmanuelfinance.creditcard.creditcard.exceptions.CreditCardDomainExce
 import com.emmanuelfinance.creditcard.creditcard.exceptions.CreditCardErrorCode;
 import com.emmanuelfinance.creditcard.outbox.OutboxService;
 import com.emmanuelfinance.shared.enums.BanksEnum;
-import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.modules.account.exceptions.AccountNotFound;
 import com.emmanuelfinance.shared.modules.creditcard.exceptions.CreditCardNotFound;
 import com.emmanuelfinance.shared.security.SecurityUtils;
@@ -43,9 +42,6 @@ public class CreditCardServiceTest {
 
     @Mock
     private SecurityUtils securityUtils;
-
-    @Mock
-    private AccountOwnershipValidator accountOwnershipValidator;
 
     @Mock
     private CreditCardMapper creditCardMapper;
@@ -154,7 +150,7 @@ public class CreditCardServiceTest {
 
             assertThrows(CreditCardNotFound.class, () -> creditCardService.update(cardId, updateDTO(null)));
 
-            verifyNoInteractions(creditCardBalanceService, creditCardRepository, accountOwnershipValidator);
+            verifyNoInteractions(creditCardBalanceService, creditCardRepository);
         }
 
         @Test
@@ -163,12 +159,10 @@ public class CreditCardServiceTest {
             UUID accountNotFoundId = UUID.randomUUID();
             CreditCard card = cardEntity(false);
             when(creditCardSelector.getCreditCardById(card.getId())).thenReturn(card);
-            doThrow(new AccountNotFound()).when(accountOwnershipValidator).validate(accountNotFoundId);
+            UpdateCreditCardDTO dto = updateDTO(accountNotFoundId);
+            doThrow(new AccountNotFound()).when(creditCardValidatorService).validateUpdate(card, dto);
 
-            assertThrows(AccountNotFound.class,
-                    () -> creditCardService.update(card.getId(), updateDTO(accountNotFoundId)));
-
-            verify(accountOwnershipValidator, times(1)).validate(accountNotFoundId);
+            assertThrows(AccountNotFound.class, () -> creditCardService.update(card.getId(), dto));
             verifyNoInteractions(creditCardBalanceService);
             verify(creditCardRepository, never()).saveAndFlush(any(CreditCard.class));
         }
@@ -189,7 +183,7 @@ public class CreditCardServiceTest {
         }
 
         @Test
-        @DisplayName("Deve atualizar o cartão sem validar a conta quando o accountId não for informado")
+        @DisplayName("Deve validar e atualizar o cartão")
         void shouldUpdateTheCardSuccessfully() {
             CreditCard card = cardEntity(false);
             UpdateCreditCardDTO dto = updateDTO(null);
@@ -205,11 +199,11 @@ public class CreditCardServiceTest {
             verify(creditCardMapper, times(1)).updateCreditCardFromDTO(dto, card);
             verify(creditCardRepository, times(1)).saveAndFlush(card);
             verify(outboxService, times(1)).creditCardChanged(card);
-            verifyNoInteractions(accountOwnershipValidator);
+            verify(creditCardValidatorService).validateUpdate(card, dto);
         }
 
         @Test
-        @DisplayName("Deve validar a posse da conta quando o accountId for informado")
+        @DisplayName("Deve validar a nova conta antes de salvar")
         void shouldValidateAccountOwnershipWhenAccountIdIsInformed() {
             UUID newAccountId = UUID.randomUUID();
             CreditCard card = cardEntity(false);
@@ -220,7 +214,7 @@ public class CreditCardServiceTest {
 
             creditCardService.update(card.getId(), dto);
 
-            verify(accountOwnershipValidator, times(1)).validate(newAccountId);
+            verify(creditCardValidatorService, times(1)).validateUpdate(card, dto);
         }
     }
 
