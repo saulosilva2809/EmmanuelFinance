@@ -1,4 +1,4 @@
-package com.emmanuelfinance.transaction.transaction.query;
+package com.emmanuelfinance.transaction.config;
 
 import org.bson.types.Decimal128;
 import org.springframework.context.annotation.Bean;
@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @Configuration
-public class TransactionMongoConfig {
+public class MongoConfig {
 
     // por padrão o spring guarda BigDecimal como texto no mongo, e texto não compara como número
     // ("100" fica maior que "1000"). como o filtro de valor mínimo e máximo precisa comparar, guardamos como decimal128
