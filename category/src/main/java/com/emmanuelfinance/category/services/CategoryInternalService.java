@@ -16,7 +16,8 @@ public class CategoryInternalService {
     private final CategorySelector categorySelector;
 
     public CategorySummaryDTO getCategorySummary(UUID id) {
-        Category category = categorySelector.getCategoryById(id);
+        // o resumo só mostra dados, então uma categoria excluída também precisa aparecer
+        Category category = categorySelector.getCategoryByIdIncludingDeleted(id);
         return new CategorySummaryDTO(
                 category.getId(),
                 category.getName(),
