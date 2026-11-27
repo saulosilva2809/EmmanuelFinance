@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
@@ -73,8 +75,11 @@ public class UserController {
     }
 
     @GetMapping("/users/{id}")
-    public ResponseEntity<UserSummaryDTO> getUserById(@PathVariable UUID id) {
-        UserSummaryDTO user = userService.findById(id);
+    public ResponseEntity<UserSummaryDTO> getUserById(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        UserSummaryDTO user = userService.findById(id, UUID.fromString(jwt.getSubject()));
         return ResponseEntity.ok(user);
     }
 }
