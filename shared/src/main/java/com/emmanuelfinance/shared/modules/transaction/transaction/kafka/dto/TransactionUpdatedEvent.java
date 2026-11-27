@@ -1,7 +1,7 @@
-package com.emmanuelfinance.shared.modules.transaction.kafka.dto;
+package com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto;
 
 import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -16,6 +16,6 @@ public record TransactionUpdatedEvent(
         TypeTransactionEnum oldType,
         TypeTransactionEnum newType,
         StatusTransactionEnum oldStatus,
-        StatusTransactionEnum newStatus
-) {
-}
+        StatusTransactionEnum newStatus,
+        UUID eventId
+) implements TransactionEvent {}

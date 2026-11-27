@@ -1,6 +1,6 @@
-package com.emmanuelfinance.shared.modules.transaction;
+package com.emmanuelfinance.shared.modules.transaction.transaction;
 
-import com.emmanuelfinance.shared.modules.transaction.exceptions.TransactionNotFound;
+import com.emmanuelfinance.shared.modules.transaction.transaction.exceptions.TransactionNotFound;
 import feign.Response;
 import feign.codec.ErrorDecoder;
 

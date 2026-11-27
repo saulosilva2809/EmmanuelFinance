@@ -1,4 +1,4 @@
-package com.emmanuelfinance.shared.modules.transaction.exceptions;
+package com.emmanuelfinance.shared.modules.transaction.transaction.exceptions;
 
 import com.emmanuelfinance.config.exceptions.APIException;
 import org.springframework.http.HttpStatus;

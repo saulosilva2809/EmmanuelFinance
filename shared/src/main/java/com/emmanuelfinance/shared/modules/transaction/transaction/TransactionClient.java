@@ -1,6 +1,6 @@
-package com.emmanuelfinance.shared.modules.transaction;
+package com.emmanuelfinance.shared.modules.transaction.transaction;
 
-import com.emmanuelfinance.shared.modules.transaction.dtos.TransactionSummaryDTO;
+import com.emmanuelfinance.shared.modules.transaction.transaction.dtos.TransactionSummaryDTO;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;

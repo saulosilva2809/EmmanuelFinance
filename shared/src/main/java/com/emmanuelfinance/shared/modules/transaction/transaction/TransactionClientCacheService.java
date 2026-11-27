@@ -1,6 +1,6 @@
-package com.emmanuelfinance.shared.modules.transaction;
+package com.emmanuelfinance.shared.modules.transaction.transaction;
 
-import com.emmanuelfinance.shared.modules.transaction.dtos.TransactionSummaryDTO;
+import com.emmanuelfinance.shared.modules.transaction.transaction.dtos.TransactionSummaryDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
