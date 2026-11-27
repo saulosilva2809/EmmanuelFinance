@@ -119,7 +119,12 @@ public class UserService {
         }
     }
     
-    public UserSummaryDTO findById(UUID id) {
+    public UserSummaryDTO findById(UUID id, UUID requesterId) {
+        // cada um só enxerga os próprios dados, e para os outros a resposta é a mesma de um id que não existe
+        if (!id.equals(requesterId)) {
+            throw new AuthDomainException(AuthErrorCode.USER_NOT_FOUND);
+        }
+
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AuthDomainException(AuthErrorCode.USER_NOT_FOUND));
 

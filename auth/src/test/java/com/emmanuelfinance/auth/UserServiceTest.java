@@ -182,4 +182,24 @@ class UserServiceTest {
         verify(usersResource, times(1)).get(userId);
         verify(userResource, times(1)).remove();
     }
+
+    @Test
+    void shouldNotLetAUserReadAnotherUser() {
+        AuthDomainException exception = assertThrows(AuthDomainException.class,
+                () -> userService.findById(UUID.randomUUID(), UUID.randomUUID()));
+
+        assertEquals(AuthErrorCode.USER_NOT_FOUND, exception.getErrorCode());
+        verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    void shouldReturnTheRequesterOwnData() {
+        UUID id = UUID.randomUUID();
+        User user = new User();
+        user.setId(id);
+        user.setEmail("dono@teste.com");
+        when(userRepository.findById(id)).thenReturn(java.util.Optional.of(user));
+
+        assertEquals(id, userService.findById(id, id).uuid());
+    }
 }
