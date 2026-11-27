@@ -50,6 +50,11 @@ replay_pid*
 # Instruções locais do Claude Code
 CLAUDE.md
 
+# Documentação local (a única pública é o README.md da raiz)
+docs/
+**/README.md
+!/README.md
+
 # ==========================================
 # 4. SISTEMA OPERACIONAL
 # ==========================================
