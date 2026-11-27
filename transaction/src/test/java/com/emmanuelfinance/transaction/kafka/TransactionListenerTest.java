@@ -1,14 +1,10 @@
 package com.emmanuelfinance.transaction.kafka;
 
+import com.emmanuelfinance.shared.enums.FailedOperationEnum;
 import com.emmanuelfinance.shared.modules.payment.InvoicePaymentDTO;
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.exceptions.TransactionNotFound;
-import com.emmanuelfinance.transaction.transaction.Transaction;
-import com.emmanuelfinance.transaction.transaction.TransactionRepository;
-import com.emmanuelfinance.transaction.transaction.TransactionSelector;
-import com.emmanuelfinance.transaction.TransactionTestDataBuilder;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionFailedEvent;
 import com.emmanuelfinance.transaction.transaction.kafka.TransactionListener;
-import com.emmanuelfinance.transaction.transaction.outbox.OutboxService;
+import com.emmanuelfinance.transaction.transaction.services.TransactionFailureService;
 import com.emmanuelfinance.transaction.transaction.services.TransactionServiceInternal;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -28,13 +24,7 @@ import static org.mockito.Mockito.*;
 public class TransactionListenerTest {
 
     @Mock
-    private TransactionSelector transactionSelector;
-
-    @Mock
-    private TransactionRepository transactionRepository;
-
-    @Mock
-    private OutboxService outboxService;
+    private TransactionFailureService transactionFailureService;
 
     @Mock
     private TransactionServiceInternal transactionServiceInternal;
@@ -46,28 +36,23 @@ public class TransactionListenerTest {
     @DisplayName("Cenários do handleTransactionFailed")
     class TransactionFailedTests {
 
+        private final TransactionFailedEvent event = new TransactionFailedEvent(
+                UUID.randomUUID(), FailedOperationEnum.CREATE, null, null, null, null);
+
         @Test
-        @DisplayName("Deve marcar a transação como FAILED e salvar")
-        void shouldMarkTransactionAsFailed() {
-            Transaction transaction = TransactionTestDataBuilder.transactionEntity(UUID.randomUUID());
-            when(transactionSelector.getTransactionByIdInternal(transaction.getId())).thenReturn(transaction);
+        @DisplayName("Deve delegar o aviso de falha ao service")
+        void shouldDelegateToTheService() {
+            transactionListener.handleTransactionFailed(event);
 
-            transactionListener.handleTransactionFailed(transaction.getId());
-
-            assertEquals(StatusTransactionEnum.FAILED, transaction.getStatus());
-            verify(transactionRepository, times(1)).saveAndFlush(transaction);
-            verify(outboxService, times(1)).transactionChanged(transaction);
+            verify(transactionFailureService).compensate(event);
         }
 
         @Test
-        @DisplayName("Deve propagar TransactionNotFound e não salvar quando a transação não existir")
-        void shouldPropagateWhenTransactionDoesNotExist() {
-            UUID id = UUID.randomUUID();
-            when(transactionSelector.getTransactionByIdInternal(id)).thenThrow(new TransactionNotFound());
+        @DisplayName("Deve propagar a exceção quando a compensação falhar")
+        void shouldPropagateFailure() {
+            doThrow(new IllegalStateException("falha")).when(transactionFailureService).compensate(event);
 
-            assertThrows(TransactionNotFound.class, () -> transactionListener.handleTransactionFailed(id));
-
-            verifyNoInteractions(transactionRepository, outboxService);
+            assertThrows(IllegalStateException.class, () -> transactionListener.handleTransactionFailed(event));
         }
     }
 

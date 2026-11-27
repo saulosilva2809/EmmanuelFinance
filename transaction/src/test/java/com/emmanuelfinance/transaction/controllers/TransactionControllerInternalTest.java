@@ -2,9 +2,9 @@ package com.emmanuelfinance.transaction.controllers;
 
 import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.category.dtos.CategorySummaryDTO;
-import com.emmanuelfinance.shared.modules.transaction.dtos.TransactionSummaryDTO;
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.exceptions.TransactionNotFound;
+import com.emmanuelfinance.shared.modules.transaction.transaction.dtos.TransactionSummaryDTO;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.exceptions.TransactionNotFound;
 import com.emmanuelfinance.transaction.transaction.controllers.TransactionControllerInternal;
 import com.emmanuelfinance.transaction.transaction.services.TransactionServiceInternal;
 import org.junit.jupiter.api.DisplayName;

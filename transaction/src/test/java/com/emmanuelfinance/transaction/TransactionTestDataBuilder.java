@@ -8,7 +8,7 @@ import com.emmanuelfinance.shared.modules.category.dtos.CategoryInternalSummaryD
 import com.emmanuelfinance.shared.modules.category.dtos.CategorySummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardInternalSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardSummaryDTO;
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.transaction.transaction.Transaction;
 import com.emmanuelfinance.transaction.transaction.dtos.CreateTransactionDTO;
 import com.emmanuelfinance.transaction.transaction.dtos.ResponseTransactionDTO;

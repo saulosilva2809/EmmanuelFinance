@@ -1,18 +1,19 @@
 package com.emmanuelfinance.transaction.transaction.services;
 
 import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import com.emmanuelfinance.transaction.transaction.Transaction;
 import com.emmanuelfinance.transaction.transaction.TransactionMapper;
 import com.emmanuelfinance.transaction.transaction.TransactionRepository;
 import com.emmanuelfinance.transaction.transaction.TransactionSelector;
 import com.emmanuelfinance.transaction.transaction.dtos.CreateTransactionDTO;
+import com.emmanuelfinance.transaction.transaction.dtos.IdempotencyDataDTO;
 import com.emmanuelfinance.transaction.transaction.dtos.ResponseTransactionDTO;
 import com.emmanuelfinance.transaction.transaction.dtos.UpdateTransactionDTO;
 import com.emmanuelfinance.transaction.transaction.exceptions.TransactionDomainException;
 import com.emmanuelfinance.transaction.transaction.exceptions.TransactionErrorCode;
-import com.emmanuelfinance.transaction.transaction.outbox.OutboxService;
+import com.emmanuelfinance.transaction.transaction.outbox.TransactionOutbox;
 import com.emmanuelfinance.transaction.transaction.services.scheduler.TransactionSchedulerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -33,7 +34,7 @@ public class TransactionService {
     private final TransactionValidatorService transactionValidatorService;
     private final TransactionOutboxEventsService transactionOutboxEventsService;
     private final TransactionSchedulerService transactionSchedulerService;
-    private final OutboxService outboxService;
+    private final TransactionOutbox transactionOutbox;
 
     // transação agendada espera a data (pendente); a que não é agendada já nasce paga
     private void setTransactionStatus(Transaction transaction) {
@@ -50,7 +51,16 @@ public class TransactionService {
 
         transactionValidatorService.create.validate(data);
 
-        String idempotencyKey = idempotencyService.generateIdempotencyKey(userId, data);
+        String idempotencyKey = idempotencyService.generateKey(IdempotencyDataDTO.builder()
+                .userId(userId)
+                .accountId(data.accountId())
+                .categoryId(data.categoryId())
+                .creditCardId(data.creditCardId())
+                .amount(data.amount())
+                .date(data.date())
+                .description(data.description())
+                .build());
+
         idempotencyService.validateAndLock(idempotencyKey);
 
         Transaction transaction = transactionMapper.toEntity(data);
@@ -60,7 +70,7 @@ public class TransactionService {
 
         // salva no mongo e postgres
         Transaction savedTransaction = transactionRepository.save(transaction);
-        outboxService.transactionChanged(savedTransaction);
+        transactionOutbox.transactionChanged(savedTransaction);
 
         // se está marcada para agendar, chama o schedule para marcar o agendamento
         if (savedTransaction.isScheduled()) {
@@ -103,7 +113,7 @@ public class TransactionService {
         Transaction updatedTransaction = transactionRepository.saveAndFlush(transaction);
 
         // publica evento de transaction alterada
-        outboxService.transactionChanged(updatedTransaction);
+        transactionOutbox.transactionChanged(updatedTransaction);
 
         // valida se está agendado e continua pendente
         if (StatusTransactionEnum.PENDING.equals(transaction.getStatus()) && updatedTransaction.isScheduled()) {
@@ -127,8 +137,10 @@ public class TransactionService {
     @Transactional
     public void delete(UUID transactionId) {
         Transaction transaction = transactionSelector.getTransactionById(transactionId);
+        transactionValidatorService.delete.validate(transaction);
+
         transactionRepository.delete(transaction);
-        outboxService.transactionDeleted(transaction);
+        transactionOutbox.transactionDeleted(transaction);
 
         // evento de transação deletada
         transactionOutboxEventsService.publishTransactionDeletedEventIfPaid(transaction);
@@ -141,7 +153,7 @@ public class TransactionService {
 
         transaction.setDeleted(false);
         transactionRepository.saveAndFlush(transaction);
-        outboxService.transactionChanged(transaction);
+        transactionOutbox.transactionChanged(transaction);
 
         // evento de transação restaurada
         transactionOutboxEventsService.publishTransactionRestoreEventIfPaid(transaction);

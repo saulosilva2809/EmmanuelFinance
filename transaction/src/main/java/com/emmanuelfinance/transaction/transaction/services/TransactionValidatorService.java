@@ -1,12 +1,14 @@
 package com.emmanuelfinance.transaction.transaction.services;
 
 import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
-import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
+import com.emmanuelfinance.shared.modules.account.AccountClient;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 import com.emmanuelfinance.shared.modules.category.CategoryClientCacheService;
 import com.emmanuelfinance.shared.modules.category.dtos.CategoryInternalSummaryDTO;
+import com.emmanuelfinance.shared.modules.creditcard.CreditCardClient;
 import com.emmanuelfinance.shared.modules.creditcard.CreditCardClientCacheService;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardInternalSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.exceptions.CreditCardNotFound;
 import com.emmanuelfinance.transaction.transaction.Transaction;
@@ -28,11 +30,13 @@ public class TransactionValidatorService {
     private final AccountOwnershipValidator accountOwnershipValidator;
     private final CategoryClientCacheService categoryClientCacheService;
     private final CreditCardClientCacheService creditCardClientCacheService;
-    private final AccountClientCacheService accountClientCacheService;
+    private final AccountClient accountClient;
+    private final CreditCardClient creditCardClient;
 
     public final CreateValidations create = new CreateValidations();
     public final UpdateValidations update = new UpdateValidations();
     public final RestoreValidations restore = new RestoreValidations();
+    public final DeleteValidations delete = new DeleteValidations();
 
     // valida se o tipo da categoria é o mesmo tipo da transação (INCOME, EXPENSE)
     private void checkCategoryAndTransactionType(UUID categoryId, TypeTransactionEnum transactionType) {
@@ -88,7 +92,8 @@ public class TransactionValidatorService {
             return;
         }
 
-        CreditCardInternalSummaryDTO creditCard = creditCardClientCacheService.getCreditCardInternalSummaryDTO(creditCardId);
+        // o limite que decide a compra vem direto do cartão, sem cache
+        CreditCardInternalSummaryDTO creditCard = creditCardClient.getCreditCardInternalSummary(creditCardId);
 
         if (amount.compareTo(creditCard.availableLimit()) > 0) {
             throw new TransactionDomainException(TransactionErrorCode.INSUFFICIENT_LIMIT_ON_THE_CARD);
@@ -104,16 +109,71 @@ public class TransactionValidatorService {
 
     // valida se é uma EXPENSE e tem saldo na conta
     public void validateAccountBalance(BigDecimal value, UUID accountId, TypeTransactionEnum type) {
-        AccountSummaryInternalDTO accountSummary = accountClientCacheService.getInternalAccountById(accountId);
+        // quem decide pergunta direto ao account, porque o saldo guardado em cache pode estar atrasado
+        AccountSummaryInternalDTO accountSummary = accountClient.getAccountSummaryInternal(accountId);
 
         if (value.compareTo(accountSummary.currentBalance()) > 0 && TypeTransactionEnum.EXPENSE.equals(type)) {
             throw new TransactionDomainException(TransactionErrorCode.INSUFFICIENT_BALANCE);
         }
     }
 
+    public void validateNegativeValue(BigDecimal amount) {
+        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new TransactionDomainException(TransactionErrorCode.VALUE_LESS_THAN_ZERO);
+        }
+    }
+
+    // o pagamento de fatura é a única transação com cartão e sem categoria
+    private boolean isInvoicePayment(Transaction transaction) {
+        return transaction.getCreditCardId() != null && transaction.getCategoryId() == null;
+    }
+
+    // na alteração, o saldo precisa cobrir o novo valor depois de desfeito o efeito antigo na mesma conta
+    private void validateBalanceAfterUpdate(Transaction existing, UpdateTransactionDTO data) {
+        UUID accountId = data.accountId() != null ? data.accountId() : existing.getAccountId();
+        BigDecimal amount = data.amount() != null ? data.amount() : existing.getAmount();
+        TypeTransactionEnum type = data.type() != null ? data.type() : existing.getType();
+
+        boolean nothingChanged = accountId.equals(existing.getAccountId())
+                && amount.compareTo(existing.getAmount()) == 0
+                && type == existing.getType();
+        if (existing.getCreditCardId() != null || nothingChanged || !TypeTransactionEnum.EXPENSE.equals(type)) {
+            return;
+        }
+
+        BigDecimal available = accountClient.getAccountSummaryInternal(accountId).currentBalance();
+
+        // só transação paga já mexeu no saldo: a despesa volta para a conta, e a receita sai dela
+        if (StatusTransactionEnum.PAID.equals(existing.getStatus()) && accountId.equals(existing.getAccountId())) {
+            available = TypeTransactionEnum.EXPENSE.equals(existing.getType())
+                    ? available.add(existing.getAmount())
+                    : available.subtract(existing.getAmount());
+        }
+
+        if (amount.compareTo(available) > 0) {
+            throw new TransactionDomainException(TransactionErrorCode.INSUFFICIENT_BALANCE);
+        }
+    }
+
+    // validações agrupadas para o delete
+    public class DeleteValidations {
+        public void validate(Transaction transaction) {
+            if (isInvoicePayment(transaction)) {
+                throw new TransactionDomainException(TransactionErrorCode.INVOICE_PAYMENT_CANNOT_BE_CHANGED);
+            }
+
+            // apagar compra de fatura paga devolveria um limite que o pagamento já devolveu
+            if (transaction.getCreditCardId() != null
+                    && creditCardClient.isPurchaseAlreadyPaid(transaction.getId())) {
+                throw new TransactionDomainException(TransactionErrorCode.CARD_PURCHASE_ALREADY_PAID);
+            }
+        }
+    }
+
     // validações agrupadas para o create
     public class CreateValidations {
         public void validate(CreateTransactionDTO data) {
+            validateNegativeValue(data.amount());
 
             // se o cartão de crédito é nulo
             if (data.creditCardId() == null) {
@@ -159,6 +219,10 @@ public class TransactionValidatorService {
     // validações agrupadas para o update
     public class UpdateValidations {
         public void validate(Transaction existingTransaction, UpdateTransactionDTO data) {
+            if (data.amount() != null && data.amount().compareTo(existingTransaction.getAmount()) != 0) {
+                validateNegativeValue(data.amount());
+            }
+
             // se um novo tipo foi imformado, pega ele, se não pega o da transação existente
             TypeTransactionEnum targetType = data.type() != null ? data.type() : existingTransaction.getType();
 
@@ -191,14 +255,7 @@ public class TransactionValidatorService {
                 validateScheduledDate(isScheduled, data.date());
             }
 
-            // se tem valor e não é no cartão de crédito
-            if (data.amount() != null && existingTransaction.getCreditCardId() == null) {
-                // pega a conta nova (se tiver mudado)
-                UUID accountId = data.accountId() != null ? data.accountId() : existingTransaction.getAccountId();
-
-                // valida o saldo
-                validateAccountBalance(data.amount(), accountId, targetType);
-            }
+            validateBalanceAfterUpdate(existingTransaction, data);
         }
     }
 
@@ -208,12 +265,19 @@ public class TransactionValidatorService {
             // se a transação está deletada
             checkIfTransactionIsDeleted(transaction);
 
+            if (isInvoicePayment(transaction)) {
+                throw new TransactionDomainException(TransactionErrorCode.INVOICE_PAYMENT_CANNOT_BE_CHANGED);
+            }
+
             // se tem um cartão de crédito
             if (transaction.getCreditCardId() != null) {
                 // verifica se tem limite no cartão
                 // se for uma receita -> deve subtrair do saldo após excluir
                 // se for uma despesa -> deve adicionar ao saldo após excluir
                 validateCreditCardLimit(transaction.getCreditCardId(), transaction.getAmount());
+            } else if (StatusTransactionEnum.PAID.equals(transaction.getStatus())) {
+                // a despesa volta a sair da conta, então precisa ter saldo
+                validateAccountBalance(transaction.getAmount(), transaction.getAccountId(), transaction.getType());
             }
         }
     }

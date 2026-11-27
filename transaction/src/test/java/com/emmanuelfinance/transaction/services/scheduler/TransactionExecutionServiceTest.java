@@ -1,11 +1,11 @@
 package com.emmanuelfinance.transaction.services.scheduler;
 
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.transaction.transaction.Transaction;
 import com.emmanuelfinance.transaction.transaction.TransactionRepository;
 import com.emmanuelfinance.transaction.transaction.TransactionSelector;
 import com.emmanuelfinance.transaction.TransactionTestDataBuilder;
-import com.emmanuelfinance.transaction.transaction.outbox.OutboxService;
+import com.emmanuelfinance.transaction.transaction.outbox.TransactionOutbox;
 import com.emmanuelfinance.transaction.transaction.services.TransactionOutboxEventsService;
 import com.emmanuelfinance.transaction.transaction.services.scheduler.TransactionExecutionService;
 import org.junit.jupiter.api.DisplayName;
@@ -34,7 +34,7 @@ public class TransactionExecutionServiceTest {
     private TransactionRepository transactionRepository;
 
     @Mock
-    private OutboxService outboxService;
+    private TransactionOutbox transactionOutbox;
 
     @InjectMocks
     private TransactionExecutionService transactionExecutionService;
@@ -47,13 +47,13 @@ public class TransactionExecutionServiceTest {
     @DisplayName("Deve marcar como PAID, salvar e publicar o evento quando a data já chegou")
     void shouldExecutePendingTransaction() {
         Transaction transaction = pending(LocalDateTime.now().minusMinutes(1));
-        when(transactionSelector.getTransactionByIdInternal(transaction.getId())).thenReturn(transaction);
+        when(transactionSelector.getTransactionByIdForUpdate(transaction.getId())).thenReturn(transaction);
 
         transactionExecutionService.executeScheduledTransaction(transaction.getId());
 
         assertEquals(StatusTransactionEnum.PAID, transaction.getStatus());
         verify(transactionRepository, times(1)).saveAndFlush(transaction);
-        verify(outboxService, times(1)).transactionChanged(transaction);
+        verify(transactionOutbox, times(1)).transactionChanged(transaction);
         verify(transactionOutboxEventsService, times(1)).publishTransactionCreatedEventIfPaid(transaction);
     }
 
@@ -62,12 +62,12 @@ public class TransactionExecutionServiceTest {
     void shouldIgnoreDeletedTransaction() {
         Transaction transaction = pending(LocalDateTime.now().minusMinutes(1));
         transaction.setDeleted(true);
-        when(transactionSelector.getTransactionByIdInternal(transaction.getId())).thenReturn(transaction);
+        when(transactionSelector.getTransactionByIdForUpdate(transaction.getId())).thenReturn(transaction);
 
         transactionExecutionService.executeScheduledTransaction(transaction.getId());
 
         assertEquals(StatusTransactionEnum.PENDING, transaction.getStatus());
-        verifyNoInteractions(transactionRepository, transactionOutboxEventsService, outboxService);
+        verifyNoInteractions(transactionRepository, transactionOutboxEventsService, transactionOutbox);
     }
 
     @Test
@@ -75,37 +75,34 @@ public class TransactionExecutionServiceTest {
     void shouldIgnoreNonPendingTransaction() {
         Transaction transaction = pending(LocalDateTime.now().minusMinutes(1));
         transaction.setStatus(StatusTransactionEnum.PAID);
-        when(transactionSelector.getTransactionByIdInternal(transaction.getId())).thenReturn(transaction);
+        when(transactionSelector.getTransactionByIdForUpdate(transaction.getId())).thenReturn(transaction);
 
         transactionExecutionService.executeScheduledTransaction(transaction.getId());
 
-        verifyNoInteractions(transactionRepository, transactionOutboxEventsService, outboxService);
+        verifyNoInteractions(transactionRepository, transactionOutboxEventsService, transactionOutbox);
     }
 
     @Test
     @DisplayName("Não deve executar quando a data foi alterada para o futuro")
     void shouldNotExecuteWhenDateIsInTheFuture() {
         Transaction transaction = pending(LocalDateTime.now().plusDays(1));
-        when(transactionSelector.getTransactionByIdInternal(transaction.getId())).thenReturn(transaction);
+        when(transactionSelector.getTransactionByIdForUpdate(transaction.getId())).thenReturn(transaction);
 
         transactionExecutionService.executeScheduledTransaction(transaction.getId());
 
         assertEquals(StatusTransactionEnum.PENDING, transaction.getStatus());
-        verifyNoInteractions(transactionRepository, transactionOutboxEventsService, outboxService);
+        verifyNoInteractions(transactionRepository, transactionOutboxEventsService, transactionOutbox);
     }
 
     @Test
-    @DisplayName("Deve voltar para PENDING e salvar quando a publicação do evento falhar")
-    void shouldRevertToPendingWhenPublishFails() {
+    @DisplayName("Deve deixar o erro subir, para a transação do banco desfazer tudo")
+    void shouldPropagateWhenRegisteringTheEventFails() {
         Transaction transaction = pending(LocalDateTime.now().minusMinutes(1));
-        when(transactionSelector.getTransactionByIdInternal(transaction.getId())).thenReturn(transaction);
-        doThrow(new RuntimeException("kafka indisponível"))
+        when(transactionSelector.getTransactionByIdForUpdate(transaction.getId())).thenReturn(transaction);
+        doThrow(new RuntimeException("banco indisponível"))
                 .when(transactionOutboxEventsService).publishTransactionCreatedEventIfPaid(transaction);
 
-        assertDoesNotThrow(() -> transactionExecutionService.executeScheduledTransaction(transaction.getId()));
-
-        assertEquals(StatusTransactionEnum.PENDING, transaction.getStatus());
-        verify(transactionRepository, times(2)).saveAndFlush(transaction);
-        verify(outboxService, times(2)).transactionChanged(transaction);
+        assertThrows(RuntimeException.class,
+                () -> transactionExecutionService.executeScheduledTransaction(transaction.getId()));
     }
 }

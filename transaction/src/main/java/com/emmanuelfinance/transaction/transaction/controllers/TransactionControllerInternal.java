@@ -1,6 +1,6 @@
 package com.emmanuelfinance.transaction.transaction.controllers;
 
-import com.emmanuelfinance.shared.modules.transaction.dtos.TransactionSummaryDTO;
+import com.emmanuelfinance.shared.modules.transaction.transaction.dtos.TransactionSummaryDTO;
 import com.emmanuelfinance.transaction.transaction.services.TransactionServiceInternal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

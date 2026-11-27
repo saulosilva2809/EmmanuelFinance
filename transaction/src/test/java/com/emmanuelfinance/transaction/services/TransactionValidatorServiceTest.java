@@ -2,12 +2,14 @@ package com.emmanuelfinance.transaction.services;
 
 import com.emmanuelfinance.config.exceptions.APIException;
 import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
-import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
+import com.emmanuelfinance.shared.modules.account.AccountClient;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.modules.category.CategoryClientCacheService;
+import com.emmanuelfinance.shared.modules.creditcard.CreditCardClient;
 import com.emmanuelfinance.shared.modules.creditcard.CreditCardClientCacheService;
+import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardInternalSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.exceptions.CreditCardNotFound;
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.transaction.transaction.Transaction;
 import com.emmanuelfinance.transaction.TransactionTestDataBuilder;
 import com.emmanuelfinance.transaction.transaction.dtos.CreateTransactionDTO;
@@ -30,6 +32,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,7 +48,10 @@ public class TransactionValidatorServiceTest {
     private CreditCardClientCacheService creditCardClientCacheService;
 
     @Mock
-    private AccountClientCacheService accountClientCacheService;
+    private AccountClient accountClient;
+
+    @Mock
+    private CreditCardClient creditCardClient;
 
     @InjectMocks
     private TransactionValidatorService validator;
@@ -62,7 +68,7 @@ public class TransactionValidatorServiceTest {
     }
 
     private void stubBalance(UUID id, String balance) {
-        lenient().when(accountClientCacheService.getInternalAccountById(id)).thenReturn(
+        lenient().when(accountClient.getAccountSummaryInternal(id)).thenReturn(
                 TransactionTestDataBuilder.accountSummaryInternalDTO(id, new BigDecimal(balance))
         );
     }
@@ -79,10 +85,12 @@ public class TransactionValidatorServiceTest {
     }
 
     private void stubCard(UUID cardAccountId, String availableLimit) {
-        when(creditCardClientCacheService.getCreditCardInternalSummaryDTO(creditCardId))
-                .thenReturn(TransactionTestDataBuilder.creditCardInternalSummaryDTO(
-                        creditCardId, cardAccountId, new BigDecimal(availableLimit)
-                ));
+        CreditCardInternalSummaryDTO card = TransactionTestDataBuilder.creditCardInternalSummaryDTO(
+                creditCardId, cardAccountId, new BigDecimal(availableLimit)
+        );
+        // o limite vem direto do cartão, e a conta do cartão vem do cache
+        lenient().when(creditCardClient.getCreditCardInternalSummary(creditCardId)).thenReturn(card);
+        lenient().when(creditCardClientCacheService.getCreditCardInternalSummaryDTO(creditCardId)).thenReturn(card);
     }
 
     @Nested
@@ -265,7 +273,7 @@ public class TransactionValidatorServiceTest {
 
             assertDoesNotThrow(() -> validator.create.validate(dto));
 
-            verify(accountClientCacheService, never()).getInternalAccountById(accountId);
+            verify(accountClient, never()).getAccountSummaryInternal(accountId);
         }
 
         @Test
@@ -278,7 +286,7 @@ public class TransactionValidatorServiceTest {
             assertThrows(com.emmanuelfinance.shared.modules.account.exceptions.AccountNotFound.class,
                     () -> validator.create.validate(dto));
 
-            verifyNoInteractions(accountClientCacheService);
+            verifyNoInteractions(accountClient);
         }
 
         @Test
@@ -288,7 +296,7 @@ public class TransactionValidatorServiceTest {
             Transaction existing = TransactionTestDataBuilder.transactionEntity(userId);
             existing.setAccountId(accountId);
             UpdateTransactionDTO dto = TransactionTestDataBuilder.updateDTO(
-                    null, null, null, new BigDecimal("80.00"), null, null, null
+                    null, null, null, new BigDecimal("500.00"), null, null, null
             );
 
             assertDomainError(TransactionErrorCode.INSUFFICIENT_BALANCE, () -> validator.update.validate(existing, dto));
@@ -318,7 +326,7 @@ public class TransactionValidatorServiceTest {
 
             assertDoesNotThrow(() -> validator.update.validate(existing, dto));
 
-            verifyNoInteractions(accountClientCacheService);
+            verifyNoInteractions(accountClient);
         }
     }
 
@@ -347,6 +355,8 @@ public class TransactionValidatorServiceTest {
         void shouldValidateAccountWhenChanged() {
             UUID newAccountId = UUID.randomUUID();
             UpdateTransactionDTO dto = TransactionTestDataBuilder.updateDTO(newAccountId, null, null, null, null, null, null);
+
+            stubBalance(newAccountId, "1000.00");
 
             validator.update.validate(existing(false), dto);
 
@@ -464,6 +474,9 @@ public class TransactionValidatorServiceTest {
         void shouldPassForDeletedAccountTransaction() {
             Transaction transaction = TransactionTestDataBuilder.transactionEntity(userId, true);
 
+            // a despesa volta a sair da conta, então precisa haver saldo
+            stubBalance(transaction.getAccountId(), "1000.00");
+
             assertDoesNotThrow(() -> validator.restore.validate(transaction));
 
             verifyNoInteractions(creditCardClientCacheService);
@@ -489,6 +502,86 @@ public class TransactionValidatorServiceTest {
             transaction.setStatus(StatusTransactionEnum.PAID);
 
             assertDoesNotThrow(() -> validator.restore.validate(transaction));
+        }
+    }
+
+    @Nested
+    @DisplayName("Cenários do saldo na alteração e na restauração")
+    class DifferenceBalanceTests {
+
+        private Transaction paidExpense(String amount) {
+            Transaction transaction = TransactionTestDataBuilder.transactionEntity(userId);
+            transaction.setAccountId(accountId);
+            transaction.setAmount(new BigDecimal(amount));
+            return transaction;
+        }
+
+        private UpdateTransactionDTO newAmount(String amount) {
+            return TransactionTestDataBuilder.updateDTO(
+                    null, null, null, new BigDecimal(amount), null, null, null);
+        }
+
+        @Test
+        @DisplayName("Alterar uma despesa paga exige saldo só para a diferença")
+        void shouldRequireOnlyTheDifference() {
+            stubBalance(accountId, "10.00");
+
+            assertDoesNotThrow(() -> validator.update.validate(paidExpense("100.00"), newAmount("110.00")));
+            assertDomainError(TransactionErrorCode.INSUFFICIENT_BALANCE,
+                    () -> validator.update.validate(paidExpense("100.00"), newAmount("110.01")));
+        }
+
+        @Test
+        @DisplayName("Transformar receita em despesa exige saldo sem a receita")
+        void shouldCheckTheBalanceWhenOnlyTheTypeChanges() {
+            stubBalance(accountId, "150.00");
+            Transaction income = paidExpense("100.00");
+            income.setType(TypeTransactionEnum.INCOME);
+            lenient().when(categoryClientCacheService.getCategoryInternalSummaryDTO(any())).thenReturn(null);
+            UpdateTransactionDTO dto = TransactionTestDataBuilder.updateDTO(
+                    null, null, null, null, null, null, TypeTransactionEnum.EXPENSE);
+
+            assertDomainError(TransactionErrorCode.INSUFFICIENT_BALANCE,
+                    () -> validator.update.validate(income, dto));
+        }
+
+        @Test
+        @DisplayName("Restaurar uma despesa de conta exige saldo")
+        void shouldCheckTheBalanceOnRestore() {
+            stubBalance(accountId, "10.00");
+            Transaction transaction = paidExpense("100.00");
+            transaction.setDeleted(true);
+
+            assertDomainError(TransactionErrorCode.INSUFFICIENT_BALANCE,
+                    () -> validator.restore.validate(transaction));
+        }
+    }
+
+    @Nested
+    @DisplayName("Cenários do delete.validate")
+    class DeleteTests {
+
+        @Test
+        @DisplayName("Não deve permitir excluir nem restaurar um pagamento de fatura")
+        void shouldBlockInvoicePayments() {
+            Transaction payment = TransactionTestDataBuilder.cardTransactionEntity(userId, accountId, creditCardId);
+            payment.setCategoryId(null);
+
+            assertDomainError(TransactionErrorCode.INVOICE_PAYMENT_CANNOT_BE_CHANGED,
+                    () -> validator.delete.validate(payment));
+            payment.setDeleted(true);
+            assertDomainError(TransactionErrorCode.INVOICE_PAYMENT_CANNOT_BE_CHANGED,
+                    () -> validator.restore.validate(payment));
+        }
+
+        @Test
+        @DisplayName("Deve permitir excluir uma compra que ainda não foi paga")
+        void shouldAllowAnUnpaidPurchase() {
+            Transaction purchase = TransactionTestDataBuilder.cardTransactionEntity(userId, accountId, creditCardId);
+
+            assertDoesNotThrow(() -> validator.delete.validate(purchase));
+
+            verify(creditCardClient).isPurchaseAlreadyPaid(purchase.getId());
         }
     }
 }

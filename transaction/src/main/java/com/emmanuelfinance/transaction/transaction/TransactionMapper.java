@@ -39,6 +39,7 @@ public abstract class TransactionMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "deleted", ignore = true)
+    @Mapping(target = "invoiceId", ignore = true)
     public abstract Transaction toEntity(CreateTransactionDTO data);
 
     @Mapping(target = "accountSummary", source = "accountId", qualifiedByName = "mapAccount")

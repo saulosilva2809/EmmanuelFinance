@@ -1,8 +1,8 @@
 package com.emmanuelfinance.transaction.transaction;
 
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.shared.security.SecurityUtils;
-import com.emmanuelfinance.shared.modules.transaction.exceptions.TransactionNotFound;
+import com.emmanuelfinance.shared.modules.transaction.transaction.exceptions.TransactionNotFound;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -37,12 +37,8 @@ public class TransactionSelector {
         return transaction;
     }
 
-    public Transaction getTransactionByIdInternal(UUID id) {
-        Transaction transaction = transactionRepository.findByIdAndDeletedFalse(
-                id
-        ).orElseThrow(TransactionNotFound::new);
-
-        return transaction;
+    public Transaction getTransactionByIdForUpdate(UUID id) {
+        return transactionRepository.findByIdForUpdate(id).orElseThrow(TransactionNotFound::new);
     }
 
     public List<Transaction> getPendingTransactionsAfter(LocalDateTime date) {

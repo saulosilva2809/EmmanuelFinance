@@ -1,12 +1,12 @@
 package com.emmanuelfinance.transaction.transaction.services;
 
 import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionUpdatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionCreatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionUpdatedEvent;
 import com.emmanuelfinance.transaction.transaction.Transaction;
-import com.emmanuelfinance.transaction.transaction.outbox.OutboxService;
+import com.emmanuelfinance.transaction.transaction.outbox.TransactionOutbox;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,11 +18,11 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TransactionOutboxEventsService {
 
-    private final OutboxService outboxService;
+    private final TransactionOutbox transactionOutbox;
 
     public void publishTransactionCreatedEventIfPaid(Transaction transaction) {
         if (transaction.getStatus() == StatusTransactionEnum.PAID) {
-            outboxService.transactionCreatedEvent(new TransactionCreatedEvent(
+            transactionOutbox.transactionCreatedEvent(new TransactionCreatedEvent(
                     transaction.getId(),
                     transaction.getAccountId(),
                     transaction.getCreditCardId(),
@@ -31,14 +31,15 @@ public class TransactionOutboxEventsService {
                     transaction.getInstallmentsCount(),
                     transaction.getType(),
                     transaction.getStatus(),
-                    transaction.getDate() != null ? transaction.getDate() : LocalDateTime.now()
+                    transaction.getDate() != null ? transaction.getDate() : LocalDateTime.now(),
+                    UUID.randomUUID()
             ));
         }
     }
 
     public void publishInvoicePaymentCreatedEventIfPaid(Transaction transaction) {
         if (transaction.getStatus() == StatusTransactionEnum.PAID) {
-            outboxService.invoicePaymentCreatedEvent(new TransactionCreatedEvent(
+            transactionOutbox.invoicePaymentCreatedEvent(new TransactionCreatedEvent(
                     transaction.getId(),
                     transaction.getAccountId(),
                     transaction.getCreditCardId(),
@@ -47,7 +48,8 @@ public class TransactionOutboxEventsService {
                     transaction.getInstallmentsCount(),
                     transaction.getType(),
                     transaction.getStatus(),
-                    transaction.getDate() != null ? transaction.getDate() : LocalDateTime.now()
+                    transaction.getDate() != null ? transaction.getDate() : LocalDateTime.now(),
+                    UUID.randomUUID()
             ));
         }
     }
@@ -60,7 +62,7 @@ public class TransactionOutboxEventsService {
             StatusTransactionEnum oldStatus
     ) {
         if (transaction.getStatus() == StatusTransactionEnum.PAID) {
-            outboxService.transactionUpdatedEvent(new TransactionUpdatedEvent(
+            transactionOutbox.transactionUpdatedEvent(new TransactionUpdatedEvent(
                     transaction.getId(),
                     oldAccountId,
                     transaction.getAccountId(),
@@ -70,14 +72,15 @@ public class TransactionOutboxEventsService {
                     oldType,
                     transaction.getType(),
                     oldStatus,
-                    transaction.getStatus()
+                    transaction.getStatus(),
+                    UUID.randomUUID()
             ));
         }
     }
 
     public void publishTransactionDeletedEventIfPaid(Transaction transaction) {
         if (transaction.getStatus() == StatusTransactionEnum.PAID) {
-            outboxService.transactionDeletedEvent(new TransactionDeletedAndRestoreEvent(
+            transactionOutbox.transactionDeletedEvent(new TransactionDeletedAndRestoreEvent(
                     transaction.getId(),
                     transaction.getAccountId(),
                     transaction.getCreditCardId(),
@@ -86,14 +89,15 @@ public class TransactionOutboxEventsService {
                     transaction.getInstallmentsCount(),
                     transaction.getType(),
                     transaction.getStatus(),
-                    transaction.getDate() != null ? transaction.getDate() : LocalDateTime.now()
+                    transaction.getDate() != null ? transaction.getDate() : LocalDateTime.now(),
+                    UUID.randomUUID()
             ));
         }
     }
 
     public void publishTransactionRestoreEventIfPaid(Transaction transaction) {
         if (transaction.getStatus() == StatusTransactionEnum.PAID) {
-            outboxService.transactionRestoredEvent(new TransactionDeletedAndRestoreEvent(
+            transactionOutbox.transactionRestoredEvent(new TransactionDeletedAndRestoreEvent(
                     transaction.getId(),
                     transaction.getAccountId(),
                     transaction.getCreditCardId(),
@@ -102,7 +106,8 @@ public class TransactionOutboxEventsService {
                     transaction.getInstallmentsCount(),
                     transaction.getType(),
                     transaction.getStatus(),
-                    transaction.getDate() != null ? transaction.getDate() : LocalDateTime.now()
+                    transaction.getDate() != null ? transaction.getDate() : LocalDateTime.now(),
+                    UUID.randomUUID()
             ));
         }
     }

@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -32,7 +34,22 @@ public class TransactionSchedulerService {
         }
     }
 
+    // dentro de uma transação do banco, só agenda depois do commit, para a tarefa já encontrar a linha gravada
     public void schedule(UUID transactionId, LocalDateTime scheduledDateTime) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            scheduleNow(transactionId, scheduledDateTime);
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                scheduleNow(transactionId, scheduledDateTime);
+            }
+        });
+    }
+
+    private void scheduleNow(UUID transactionId, LocalDateTime scheduledDateTime) {
         // apaga algum agendamento antigo (se houver)
         cancel(transactionId);
         Instant executionTime = scheduledDateTime.atZone(ZoneId.systemDefault()).toInstant();

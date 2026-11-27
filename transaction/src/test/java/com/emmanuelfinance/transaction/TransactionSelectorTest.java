@@ -1,7 +1,7 @@
 package com.emmanuelfinance.transaction;
 
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.exceptions.TransactionNotFound;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.exceptions.TransactionNotFound;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import com.emmanuelfinance.transaction.transaction.Transaction;
 import com.emmanuelfinance.transaction.transaction.TransactionRepository;
@@ -125,38 +125,6 @@ public class TransactionSelectorTest {
 
             assertThrows(TransactionNotFound.class,
                     () -> transactionSelector.getTransactionByIdIncluingDeleted(saved.getId()));
-        }
-    }
-
-    @Nested
-    @DisplayName("Cenários do getTransactionByIdInternal")
-    class GetTransactionByIdInternalTests {
-
-        @Test
-        @DisplayName("Deve buscar a transação sem filtrar por usuário")
-        void shouldReturnRegardlessOfUser() {
-            Transaction saved = save(TransactionTestDataBuilder.transactionEntity(UUID.randomUUID()));
-
-            Transaction result = transactionSelector.getTransactionByIdInternal(saved.getId());
-
-            assertEquals(saved.getId(), result.getId());
-            verify(securityUtils, never()).getCurrentUserId();
-        }
-
-        @Test
-        @DisplayName("Deve lançar TransactionNotFound quando a transação estiver excluída")
-        void shouldThrowWhenDeleted() {
-            Transaction saved = save(TransactionTestDataBuilder.transactionEntity(UUID.randomUUID(), true));
-
-            assertThrows(TransactionNotFound.class,
-                    () -> transactionSelector.getTransactionByIdInternal(saved.getId()));
-        }
-
-        @Test
-        @DisplayName("Deve lançar TransactionNotFound quando o ID não existir")
-        void shouldThrowWhenDoesNotExist() {
-            assertThrows(TransactionNotFound.class,
-                    () -> transactionSelector.getTransactionByIdInternal(UUID.randomUUID()));
         }
     }
 
