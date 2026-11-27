@@ -86,7 +86,7 @@ Define limites financeiros e metas de teto de gastos por categorias e períodos 
 
 ## 4. Módulo de Movimentações Financeiras
 
-### Entity: `Transaction`
+### Entity: `Transaction` ✅
 O registro principal de movimentação financeira. Pode ser associado diretamente a uma conta líquida ou a um cartão de crédito.
 
 | Atributo | Tipo | Restrições | Descrição |
