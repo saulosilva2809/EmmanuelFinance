@@ -1,4 +1,4 @@
-package com.emmanuelfinance.transaction.transaction.outbox;
+package com.emmanuelfinance.transaction.outbox;
 
 import com.emmanuelfinance.shared.outbox.OutboxRelay;
 import org.springframework.context.annotation.Configuration;

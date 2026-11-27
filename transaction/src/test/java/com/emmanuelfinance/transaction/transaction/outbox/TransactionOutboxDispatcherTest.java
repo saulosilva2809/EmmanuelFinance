@@ -1,8 +1,8 @@
-package com.emmanuelfinance.transaction.outbox;
+package com.emmanuelfinance.transaction.transaction.outbox;
 
 import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
-import com.emmanuelfinance.transaction.transaction.outbox.OutboxEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.transaction.outbox.OutboxEvent;
 import com.emmanuelfinance.transaction.transaction.outbox.TransactionOutboxDispatcher;
 import com.emmanuelfinance.transaction.transaction.outbox.enums.TransactionEventOutboxEventType;
 import com.emmanuelfinance.transaction.transaction.outbox.enums.TransactionOutboxEventType;

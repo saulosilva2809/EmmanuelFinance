@@ -1,12 +1,12 @@
-package com.emmanuelfinance.transaction.outbox;
+package com.emmanuelfinance.transaction.transaction.outbox;
 
 import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionUpdatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionCreatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionUpdatedEvent;
 import com.emmanuelfinance.transaction.transaction.kafka.TransactionProducer;
-import com.emmanuelfinance.transaction.transaction.outbox.OutboxEvent;
+import com.emmanuelfinance.transaction.outbox.OutboxEvent;
 import com.emmanuelfinance.transaction.transaction.outbox.TransactionEventOutboxDispatcher;
 import com.emmanuelfinance.transaction.transaction.outbox.enums.TransactionEventOutboxEventType;
 import com.emmanuelfinance.transaction.transaction.outbox.enums.TransactionOutboxEventType;
@@ -42,12 +42,12 @@ class TransactionEventOutboxDispatcherTest {
 
     private final TransactionCreatedEvent created = new TransactionCreatedEvent(
             UUID.randomUUID(), UUID.randomUUID(), null, UUID.randomUUID(), new BigDecimal("100.00"),
-            1, TypeTransactionEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.of(2026, 10, 5, 10, 0)
+            1, TypeTransactionEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.of(2026, 10, 5, 10, 0), UUID.randomUUID()
     );
 
     private final TransactionDeletedAndRestoreEvent deleted = new TransactionDeletedAndRestoreEvent(
             UUID.randomUUID(), UUID.randomUUID(), null, UUID.randomUUID(), new BigDecimal("100.00"),
-            1, TypeTransactionEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.of(2026, 10, 5, 10, 0)
+            1, TypeTransactionEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.of(2026, 10, 5, 10, 0), UUID.randomUUID()
     );
 
     @Test
@@ -84,7 +84,7 @@ class TransactionEventOutboxDispatcherTest {
         TransactionUpdatedEvent updated = new TransactionUpdatedEvent(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 BigDecimal.TEN, BigDecimal.ONE, TypeTransactionEnum.EXPENSE, TypeTransactionEnum.INCOME,
-                StatusTransactionEnum.PAID, StatusTransactionEnum.PAID
+                StatusTransactionEnum.PAID, StatusTransactionEnum.PAID, UUID.randomUUID()
         );
 
         dispatcher.dispatch(row(TransactionEventOutboxEventType.TRANSACTION_UPDATED, updated));

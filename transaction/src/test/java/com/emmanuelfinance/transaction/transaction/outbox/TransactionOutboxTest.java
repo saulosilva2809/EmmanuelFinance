@@ -1,40 +1,59 @@
-package com.emmanuelfinance.transaction.outbox;
+package com.emmanuelfinance.transaction.transaction.outbox;
 
 import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionUpdatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionCreatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionUpdatedEvent;
 import com.emmanuelfinance.transaction.transaction.Transaction;
 import com.emmanuelfinance.transaction.transaction.TransactionMapper;
 import com.emmanuelfinance.transaction.TransactionTestDataBuilder;
-import com.emmanuelfinance.transaction.transaction.outbox.OutboxEvent;
-import com.emmanuelfinance.transaction.transaction.outbox.OutboxEventFactory;
+import com.emmanuelfinance.transaction.outbox.OutboxEvent;
+import com.emmanuelfinance.transaction.outbox.OutboxEventFactory;
+import com.emmanuelfinance.transaction.outbox.OutboxService;
 import com.emmanuelfinance.transaction.transaction.outbox.enums.TransactionEventOutboxEventType;
 import com.emmanuelfinance.transaction.transaction.outbox.enums.TransactionOutboxEventType;
 import com.emmanuelfinance.transaction.transaction.query.TransactionDocument;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.mapstruct.factory.Mappers;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
-class OutboxEventFactoryTest {
+@ExtendWith(MockitoExtension.class)
+class TransactionOutboxTest {
 
     private final ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
-    private final OutboxEventFactory outboxEventFactory =
-            new OutboxEventFactory(objectMapper, Mappers.getMapper(TransactionMapper.class));
+    @Mock
+    private OutboxService outboxService;
+
+    private TransactionOutbox transactionOutbox;
+
+    @BeforeEach
+    void setUp() {
+        transactionOutbox = new TransactionOutbox(
+                outboxService, new OutboxEventFactory(objectMapper), Mappers.getMapper(TransactionMapper.class));
+    }
 
     @Test
     void shouldBuildTheSnapshotWithTheWholeTransaction() throws Exception {
         Transaction transaction = TransactionTestDataBuilder.transactionEntity(UUID.randomUUID());
 
-        OutboxEvent row = outboxEventFactory.transactionSnapshot(transaction, false);
+        transactionOutbox.transactionChanged(transaction);
+        OutboxEvent row = registeredRows(1).get(0);
 
         assertEquals(TransactionOutboxEventType.TRANSACTION_CHANGED.name(), row.getType().name());
         assertEquals(transaction.getId().toString(), row.getAggregateId());
@@ -57,7 +76,8 @@ class OutboxEventFactoryTest {
     void shouldMarkTheSnapshotAsDeletedWhenAskedTo() throws Exception {
         Transaction transaction = TransactionTestDataBuilder.transactionEntity(UUID.randomUUID());
 
-        OutboxEvent row = outboxEventFactory.transactionSnapshot(transaction, true);
+        transactionOutbox.transactionDeleted(transaction);
+        OutboxEvent row = registeredRows(1).get(0);
 
         assertTrue(objectMapper.treeToValue(row.getPayload(), TransactionDocument.class).isDeleted());
     }
@@ -66,11 +86,14 @@ class OutboxEventFactoryTest {
     void shouldBuildTheCreatedEventRowWithTheEventAsPayload() throws Exception {
         TransactionCreatedEvent event = new TransactionCreatedEvent(
                 UUID.randomUUID(), UUID.randomUUID(), null, UUID.randomUUID(), new BigDecimal("100.00"),
-                1, TypeTransactionEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.of(2026, 10, 5, 10, 0)
+                1, TypeTransactionEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.of(2026, 10, 5, 10, 0), UUID.randomUUID()
         );
 
-        OutboxEvent created = outboxEventFactory.transactionCreated(event);
-        OutboxEvent invoicePayment = outboxEventFactory.invoicePaymentCreated(event);
+        transactionOutbox.transactionCreatedEvent(event);
+        transactionOutbox.invoicePaymentCreatedEvent(event);
+        List<OutboxEvent> rows = registeredRows(2);
+        OutboxEvent created = rows.get(0);
+        OutboxEvent invoicePayment = rows.get(1);
 
         assertEquals(TransactionEventOutboxEventType.TRANSACTION_CREATED.name(), created.getType().name());
         assertEquals(TransactionEventOutboxEventType.INVOICE_PAYMENT_CREATED.name(), invoicePayment.getType().name());
@@ -90,10 +113,11 @@ class OutboxEventFactoryTest {
         TransactionUpdatedEvent event = new TransactionUpdatedEvent(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 new BigDecimal("100.00"), new BigDecimal("150.00"), TypeTransactionEnum.EXPENSE, TypeTransactionEnum.INCOME,
-                StatusTransactionEnum.PAID, StatusTransactionEnum.PAID
+                StatusTransactionEnum.PAID, StatusTransactionEnum.PAID, UUID.randomUUID()
         );
 
-        OutboxEvent row = outboxEventFactory.transactionUpdated(event);
+        transactionOutbox.transactionUpdatedEvent(event);
+        OutboxEvent row = registeredRows(1).get(0);
 
         assertEquals(TransactionEventOutboxEventType.TRANSACTION_UPDATED.name(), row.getType().name());
         TransactionUpdatedEvent saved = objectMapper.treeToValue(row.getPayload(), TransactionUpdatedEvent.class);
@@ -107,14 +131,23 @@ class OutboxEventFactoryTest {
     void shouldBuildTheDeletedAndRestoredEventRows() {
         TransactionDeletedAndRestoreEvent event = new TransactionDeletedAndRestoreEvent(
                 UUID.randomUUID(), UUID.randomUUID(), null, UUID.randomUUID(), new BigDecimal("100.00"),
-                1, TypeTransactionEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.now()
+                1, TypeTransactionEnum.EXPENSE, StatusTransactionEnum.PAID, LocalDateTime.now(), UUID.randomUUID()
         );
 
-        OutboxEvent deleted = outboxEventFactory.transactionDeleted(event);
-        OutboxEvent restored = outboxEventFactory.transactionRestored(event);
+        transactionOutbox.transactionDeletedEvent(event);
+        transactionOutbox.transactionRestoredEvent(event);
+        List<OutboxEvent> rows = registeredRows(2);
+        OutboxEvent deleted = rows.get(0);
+        OutboxEvent restored = rows.get(1);
 
         assertEquals(TransactionEventOutboxEventType.TRANSACTION_DELETED.name(), deleted.getType().name());
         assertEquals(TransactionEventOutboxEventType.TRANSACTION_RESTORED.name(), restored.getType().name());
         assertEquals(event.transactionId().toString(), restored.getAggregateId());
+    }
+
+    private List<OutboxEvent> registeredRows(int expected) {
+        ArgumentCaptor<OutboxEvent> rows = ArgumentCaptor.forClass(OutboxEvent.class);
+        verify(outboxService, times(expected)).register(rows.capture());
+        return rows.getAllValues();
     }
 }
