@@ -1,14 +1,18 @@
 package com.emmanuelfinance.account.services;
 
+import com.emmanuelfinance.shared.modules.transaction.transfer.kafka.dto.TransferDeletedAndRestoreEventDTO;
+import com.emmanuelfinance.shared.modules.transaction.transfer.kafka.dto.TransferUpdatedEventDTO;
+import com.emmanuelfinance.shared.kafka.ProcessedEventService;
 import com.emmanuelfinance.account.Account;
 import com.emmanuelfinance.account.AccountRepository;
 import com.emmanuelfinance.account.AccountSelector;
 import com.emmanuelfinance.account.AccountTestDataBuilder;
 import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionUpdatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionCreatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionUpdatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.transfer.kafka.dto.TransferCreatedEventDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +29,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @Slf4j
@@ -39,6 +44,14 @@ public class AccountBalanceServiceTest {
 
     @Mock
     private AccountRepository accountRepository;
+
+    @Mock
+    private ProcessedEventService processedEventService;
+
+    @BeforeEach
+    void treatEveryEventAsNew() {
+        lenient().when(processedEventService.register(any())).thenReturn(true);
+    }
 
     @Mock
     private OutboxService outboxService;
@@ -67,7 +80,7 @@ public class AccountBalanceServiceTest {
                 1,
                 type,
                 StatusTransactionEnum.PAID,
-                LocalDateTime.now()
+                LocalDateTime.now(), UUID.randomUUID()
         );
     }
 
@@ -89,7 +102,7 @@ public class AccountBalanceServiceTest {
                 oldType,
                 newType,
                 StatusTransactionEnum.PAID,
-                StatusTransactionEnum.PAID
+                StatusTransactionEnum.PAID, UUID.randomUUID()
         );
     }
 
@@ -107,7 +120,7 @@ public class AccountBalanceServiceTest {
                 1,
                 type,
                 StatusTransactionEnum.PAID,
-                LocalDateTime.now()
+                LocalDateTime.now(), UUID.randomUUID()
         );
     }
 
@@ -507,5 +520,87 @@ public class AccountBalanceServiceTest {
 
             verify(accountRepository, times(1)).saveAndFlush(account);
         }
+    }
+
+    @Nested
+    @DisplayName("Tests of updateBalanceFromTransfer method")
+    class UpdateBalanceFromTransfer {
+
+        @Test
+        @DisplayName("Deve tirar o valor da conta de origem e somar na conta de destino")
+        void shouldMoveTheAmountBetweenTheAccounts() {
+            Account destination = AccountTestDataBuilder.accountEntity(
+                    AccountTestDataBuilder.createAccountDTO(),
+                    userId,
+                    false
+            );
+
+            when(accountSelector.getAccountByIdInternal(account.getId()))
+                    .thenReturn(account);
+            when(accountSelector.getAccountByIdInternal(destination.getId()))
+                    .thenReturn(destination);
+
+            accountBalanceService.updateBalanceFromTransfer(
+                    new TransferCreatedEventDTO(UUID.randomUUID(), account.getId(), destination.getId(), new BigDecimal(1000), UUID.randomUUID())
+            );
+
+            assertEquals(new BigDecimal(4000), account.getCurrentBalance());
+            assertEquals(new BigDecimal(6000), destination.getCurrentBalance());
+
+            verify(accountRepository).saveAndFlush(account);
+            verify(accountRepository).saveAndFlush(destination);
+            verify(outboxService).accountBalanceChanged(account);
+            verify(outboxService).accountBalanceChanged(destination);
+        }
+    }
+
+    @Test
+    @DisplayName("Não deve mexer no saldo quando o aviso já foi processado")
+    void shouldIgnoreARepeatedEvent() {
+        TransactionCreatedEvent event = createdEvent(account.getId(), BigDecimal.TEN, TypeTransactionEnum.EXPENSE);
+        when(processedEventService.register(event.eventId())).thenReturn(false);
+
+        accountBalanceService.updateBalanceFromTransaction(event);
+
+        verifyNoInteractions(accountSelector, accountRepository, outboxService);
+    }
+
+    @Test
+    @DisplayName("Deve desfazer a transferência antiga e aplicar a nova")
+    void shouldMoveTheDifferenceWhenTheTransferIsUpdated() {
+        Account destination = AccountTestDataBuilder.accountEntity(
+                AccountTestDataBuilder.createAccountDTO(), userId, false);
+        when(accountSelector.getAccountByIdInternal(account.getId())).thenReturn(account);
+        when(accountSelector.getAccountByIdInternal(destination.getId())).thenReturn(destination);
+
+        accountBalanceService.updateBalanceFromUpdatedTransfer(new TransferUpdatedEventDTO(
+                UUID.randomUUID(), account.getId(), destination.getId(), new BigDecimal(1000),
+                account.getId(), destination.getId(), new BigDecimal(1500), UUID.randomUUID()));
+
+        assertEquals(new BigDecimal(4500), account.getCurrentBalance());
+        assertEquals(new BigDecimal(5500), destination.getCurrentBalance());
+        verify(accountRepository, times(1)).saveAndFlush(account);
+        verify(accountRepository, times(1)).saveAndFlush(destination);
+    }
+
+    @Test
+    @DisplayName("Deve devolver o dinheiro quando a transferência for excluída e tirar de novo na restauração")
+    void shouldRevertAndReapplyTheTransfer() {
+        Account destination = AccountTestDataBuilder.accountEntity(
+                AccountTestDataBuilder.createAccountDTO(), userId, false);
+        when(accountSelector.getAccountByIdInternal(account.getId())).thenReturn(account);
+        when(accountSelector.getAccountByIdInternal(destination.getId())).thenReturn(destination);
+        TransferDeletedAndRestoreEventDTO event = new TransferDeletedAndRestoreEventDTO(
+                UUID.randomUUID(), account.getId(), destination.getId(), new BigDecimal(1000), UUID.randomUUID());
+
+        accountBalanceService.updateBalanceFromDeletedTransfer(event);
+
+        assertEquals(new BigDecimal(6000), account.getCurrentBalance());
+        assertEquals(new BigDecimal(4000), destination.getCurrentBalance());
+
+        accountBalanceService.updateBalanceFromRestoreTransfer(event);
+
+        assertEquals(new BigDecimal(5000), account.getCurrentBalance());
+        assertEquals(new BigDecimal(5000), destination.getCurrentBalance());
     }
 }
