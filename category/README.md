@@ -49,7 +49,7 @@ Todos os endpoints exigem JWT (Keycloak), e o dono da categoria é sempre o usu�
 
 | Método | Rota | O que faz |
 |--------|------|-----------|
-| `GET` | `/internal/categories/summary/{id}` | resumo da categoria (`id`, `name` e `deleted`) |
+| `GET` | `/internal/categories/summary/{id}` | resumo da categoria (`id`, `name` e `deleted`), inclusive de uma excluída |
 | `GET` | `/internal/categories/internal-summary/{id}` | resumo com `id` e `type` |
 
 ---
