@@ -1,5 +1,8 @@
 package com.emmanuelfinance.creditcard.payment.services;
 
+import java.util.Optional;
+import com.emmanuelfinance.shared.modules.payment.InvoicePaymentFailedEvent;
+import com.emmanuelfinance.shared.kafka.ProcessedEventService;
 import com.emmanuelfinance.creditcard.creditcard.CreditCard;
 import com.emmanuelfinance.creditcard.creditcard.CreditCardRepository;
 import com.emmanuelfinance.creditcard.creditcard.CreditCardSelector;
@@ -16,7 +19,7 @@ import com.emmanuelfinance.creditcard.payment.exceptions.PaymentDomainException;
 import com.emmanuelfinance.creditcard.payment.exceptions.PaymentErrorCode;
 import com.emmanuelfinance.creditcard.outbox.OutboxService;
 import com.emmanuelfinance.shared.enums.BanksEnum;
-import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
+import com.emmanuelfinance.shared.modules.account.AccountClient;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.modules.account.dto.AccountSummaryInternalDTO;
 import com.emmanuelfinance.shared.modules.account.exceptions.AccountNotFound;
@@ -52,7 +55,10 @@ public class PaymentServiceTest {
     private InvoiceRepository invoiceRepository;
 
     @Mock
-    private AccountClientCacheService accountClientCacheService;
+    private AccountClient accountClient;
+
+    @Mock
+    private ProcessedEventService processedEventService;
 
     @Mock
     private AccountOwnershipValidator accountOwnershipValidator;
@@ -90,7 +96,7 @@ public class PaymentServiceTest {
     }
 
     private void stubBalance(String balance) {
-        when(accountClientCacheService.getInternalAccountById(accountId)).thenReturn(
+        when(accountClient.getAccountSummaryInternal(accountId)).thenReturn(
                 new AccountSummaryInternalDTO(accountId, "Conta", BanksEnum.C6_BANK, new BigDecimal(balance), false)
         );
     }
@@ -200,7 +206,7 @@ public class PaymentServiceTest {
                     () -> paymentService.totalInvoicePayment(card.getId(), invoice.getId(), paymentDTO));
 
             assertEquals(InvoiceErrorCode.INVOICE_NOT_FOUND, exception.getErrorCode());
-            verifyNoInteractions(accountClientCacheService, accountOwnershipValidator);
+            verifyNoInteractions(accountClient, accountOwnershipValidator);
             assertNothingWasChargedOrPublished();
         }
 
@@ -226,7 +232,7 @@ public class PaymentServiceTest {
             assertThrows(AccountNotFound.class,
                     () -> paymentService.totalInvoicePayment(card.getId(), invoice.getId(), paymentDTO));
 
-            verifyNoInteractions(accountClientCacheService);
+            verifyNoInteractions(accountClient);
             assertNothingWasChargedOrPublished();
         }
 
@@ -266,7 +272,7 @@ public class PaymentServiceTest {
             assertThrows(CreditCardNotFound.class,
                     () -> paymentService.totalInvoicePayment(cardId, UUID.randomUUID(), paymentDTO));
 
-            verifyNoInteractions(invoiceSelector, accountClientCacheService, outboxService);
+            verifyNoInteractions(invoiceSelector, accountClient, outboxService);
         }
     }
 
@@ -371,7 +377,7 @@ public class PaymentServiceTest {
 
             assertEquals(PaymentErrorCode.DATA_INVALID_VALUE, exception.getErrorCode());
             assertEquals(new BigDecimal("100.00"), invoice.getAmountPaid());
-            verifyNoInteractions(accountClientCacheService, accountOwnershipValidator);
+            verifyNoInteractions(accountClient, accountOwnershipValidator);
             assertNothingWasChargedOrPublished();
         }
 
@@ -492,5 +498,37 @@ public class PaymentServiceTest {
             verify(outboxService, times(2)).invoicePayment(captor.capture());
             assertNotEquals(captor.getAllValues().get(0).paymentId(), captor.getAllValues().get(1).paymentId());
         }
+    }
+
+    @Test
+    @DisplayName("Deve desfazer o pagamento quando a conta não for debitada")
+    void shouldRevertTheFailedPayment() {
+        Invoice invoice = invoice(userId, card.getId(), "300.00", InvoiceStatusEnum.PAID);
+        invoice.setAmountPaid(new BigDecimal("300.00"));
+        InvoicePaymentFailedEvent event = new InvoicePaymentFailedEvent(
+                UUID.randomUUID(), card.getId(), invoice.getId(), new BigDecimal("300.00"));
+        when(processedEventService.register(event.eventId())).thenReturn(true);
+        when(invoiceRepository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(creditCardSelector.getCreditCardByIdInternal(card.getId())).thenReturn(card);
+
+        paymentService.revertPayment(event);
+
+        assertEquals(0, invoice.getAmountPaid().compareTo(BigDecimal.ZERO));
+        assertEquals(InvoiceStatusEnum.OPEN, invoice.getStatus());
+        assertEquals(new BigDecimal("4700.00"), card.getAvailableLimit());
+        verify(outboxService).invoiceChanged(invoice);
+        verify(outboxService).creditCardChanged(card);
+    }
+
+    @Test
+    @DisplayName("Não deve desfazer duas vezes o mesmo pagamento")
+    void shouldNotRevertTheSamePaymentTwice() {
+        InvoicePaymentFailedEvent event = new InvoicePaymentFailedEvent(
+                UUID.randomUUID(), card.getId(), UUID.randomUUID(), BigDecimal.TEN);
+        when(processedEventService.register(event.eventId())).thenReturn(false);
+
+        paymentService.revertPayment(event);
+
+        verifyNoInteractions(invoiceRepository, creditCardRepository, outboxService);
     }
 }

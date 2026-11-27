@@ -1,7 +1,7 @@
 # Transaction Service
 
 Microsserviço de **transações financeiras**: receitas e despesas pagas na conta ou no cartão de crédito, à vista,
-parceladas ou agendadas. É ele que avisa os outros serviços (conta e cartão) para acertarem o saldo, o limite e a
+parceladas ou agendadas, e **transferências** entre contas do mesmo usuário. É ele que avisa os outros serviços (conta e cartão) para acertarem o saldo, o limite e a
 fatura.
 
 - Porta local: `8006`
@@ -18,6 +18,7 @@ fatura.
 | Exclusão lógica e restauração | Controlar limite e faturas do cartão (serviço `creditcard`) |
 | Agendar transações para uma data futura e executá-las | Cadastrar as categorias (serviço `category`) |
 | Evitar transação duplicada (idempotência) | Autenticar usuários (serviço `auth` e Keycloak) |
+| Criar, alterar, excluir e restaurar transferências | |
 | Avisar os outros serviços de cada mudança (Kafka) | |
 | Criar a transação do pagamento de uma fatura | |
 | Expor um resumo da transação para outros serviços | |
@@ -35,9 +36,13 @@ fatura.
 | `installmentsCount` | número de parcelas (só para cartão; 1 é à vista) |
 | `scheduled`, `date` | se é agendada e para quando |
 | `status` | `PENDING` (agendada, aguardando a data), `PAID` ou `FAILED` |
+| `invoiceId` | fatura paga (só no pagamento de fatura) |
 | `type` | `INCOME` (receita) ou `EXPENSE` (despesa) |
 | `idempotencyKey` | chave que impede criar a mesma transação duas vezes |
 | `deleted` | exclusão lógica |
+
+**Transferência** (`transfer`): `sourceAccountId`, `destinationAccountId`, `amount`, `description`, `status` (`PAID`
+ou `FAILED`), `idempotencyKey` e `deleted`.
 
 ### Regras de negócio
 
@@ -48,9 +53,25 @@ fatura.
 - **Agendada:** precisa de data, e a data não pode estar no passado. Nasce `PENDING` e vira `PAID` quando a data chega.
   Transação não agendada não aceita data e nasce `PAID`.
 - **Só a transação `PAID` avisa os outros serviços.** A agendada avisa quando for executada.
-- **Restaurar:** só vale para transação excluída (e, se for de cartão, o limite precisa comportar o valor de novo).
-- **Idempotência:** a mesma transação (mesmo usuário, conta, valor, data e descrição) não é criada duas vezes em
-  2 minutos. A chave é um hash dos dados e fica travada no Redis; a chave também é gravada na transação.
+- **Alterar:** uma despesa precisa de saldo para o novo valor, já contando a devolução do antigo.
+- **Excluir:** compra de fatura já paga não pode ser excluída. Pagamento de fatura não pode ser excluído, restaurado
+  nem alterado.
+- **Restaurar:** só vale para transação excluída. No cartão o limite precisa comportar o valor de novo, e a despesa de
+  conta precisa de saldo.
+- **Saldo e limite que decidem** são consultados direto no `account` e no `creditcard`, sem cache.
+- **Transferência:** valor maior que zero, contas diferentes e do usuário, e saldo na origem. Alterar exige saldo para
+  o novo valor; excluir exige que o destino ainda tenha o valor; restaurar exige saldo na origem. Uma transferência
+  `FAILED` não pode ser alterada.
+- **Idempotência:** a mesma transação (mesmo usuário, conta, cartão, categoria, valor, data e descrição) não é criada
+  duas vezes em 2 minutos. Se a gravação falhar, a trava é solta na hora. A chave é um hash dos dados e fica travada no Redis; a chave também é gravada na transação.
+- **Gerar a chave de idempotência:** `IdempotencyService.generateKey(IdempotencyDataDTO)` aceita qualquer combinação
+  destes dados, todos opcionais: `userId`, `accountId`, `destinationAccountId`, `creditCardId`, `categoryId`, `referenceId` (o id do
+  que originou a operação, como um pagamento), `amount`, `date` e `description`. Só os dados preenchidos entram na
+  chave, e cada um entra com o seu nome, então o mesmo id como conta de origem e como conta de destino gera chaves
+  diferentes. O valor ignora a escala (`10` e `10.00` são iguais) e a descrição ignora caixa e espaços nas pontas.
+  Chamar sem nenhum dado lança `IllegalArgumentException`. É o único jeito de gerar a chave: a criação da transação usa
+  usuário, conta, cartão, categoria, valor, data e descrição; o pagamento de fatura usa usuário e `referenceId` (o id do pagamento); a
+  transferência usa usuário, conta de origem, conta de destino, valor e descrição.
 
 ---
 
@@ -74,7 +95,19 @@ Todos os endpoints exigem JWT (Keycloak), e o dono da transação é sempre o us
 
 | Método | Rota | O que faz |
 |--------|------|-----------|
-| `GET` | `/internal/transactions/summary/{id}` | resumo da transação (categoria, valor, status e tipo) |
+| `GET` | `/internal/transactions/summary/{id}` | resumo da transação do usuário (categoria, valor, status e tipo) |
+
+### Transferências (`/transfers`)
+
+| Método | Rota | O que faz |
+|--------|------|-----------|
+| `POST` | `/transfers` | cria a transferência |
+| `GET` | `/transfers/{id}` | busca uma transferência |
+| `GET` | `/transfers?sourceAccountId=&destinationAccountId=&amountMin=&amountMax=&createdAt=&page=&size=&sort=` | lista com filtros (a data vale pelo dia inteiro) |
+| `GET` | `/transfers/deleted` | lista as excluídas |
+| `PUT` | `/transfers/{id}` | altera |
+| `DELETE` | `/transfers/{id}` | exclui logicamente |
+| `POST` | `/transfers/restore/{id}` | restaura |
 
 ---
 
@@ -104,19 +137,24 @@ atualizar o Mongo e avisar os outros serviços pelo Kafka.
 
 ### Pacotes
 
-O código da transação fica em `com.emmanuelfinance.transaction.transaction`; os próximos assuntos (transação
-recorrente e transferência) ganham o seu próprio subpacote ao lado, em `com.emmanuelfinance.transaction`. Os nomes
+O código da transação fica em `com.emmanuelfinance.transaction.transaction`, e o da transferência em
+`com.emmanuelfinance.transaction.transfer` (com os mesmos papéis; o Outbox e a idempotência são os da transação). Os nomes
 abaixo são relativos a `transaction.transaction`.
 
 | Pacote | Papel |
 |--------|-------|
 | `transaction` | a entidade, o mapper, o repositório, o selector e a recuperação das agendadas ao iniciar |
 | `controllers`, `dtos`, `exceptions` | entrada HTTP, objetos de entrada e saída e erros de domínio |
-| `services` | regras: `TransactionService` (escrita), `TransactionValidatorService`, `IdempotencyService`, `TransactionEventsService` (monta os avisos) e `TransactionServiceInternal` |
+| `services` | regras: `TransactionService` (escrita), `TransactionValidatorService`, `IdempotencyService`, `TransactionOutboxEventsService` (monta os avisos), `TransactionFailureService` (desfaz o que falhou) e `TransactionServiceInternal` |
 | `services.scheduler` | agendamento e execução das transações futuras |
-| `query` | `TransactionQueryService` (consultas), `TransactionSpecification` (filtros), `TransactionDocument` (modelo do Mongo), `TransactionProjector` (grava no Mongo) e `TransactionMongoConfig` |
+| `query` | `TransactionQueryService` (consultas), `TransactionSpecification` (filtros), `TransactionDocument` (modelo do Mongo) e `TransactionProjector` (grava no Mongo) |
+| `config` | `MongoConfig`: configuração do Mongo que vale para o serviço inteiro (grava `BigDecimal` como `Decimal128`) |
 | `kafka` | `TransactionProducer` (publica) e `TransactionListener` (consome) |
-| `outbox` | `OutboxService` (registra), `OutboxEventFactory` (monta as linhas), os dispatchers (entregam), `OutboxEvent` e `OutboxConfig`; os tipos de evento ficam em `outbox.enums`, um enum por assunto |
+| `outbox` | `TransactionOutbox` (registra as linhas da transação), os dois dispatchers dela e os enums em `outbox.enums`. A transferência tem o mesmo em `transfer.outbox` (`TransferOutbox`) |
+
+A parte comum do Outbox, usada pelos dois assuntos, fica em `com.emmanuelfinance.transaction.outbox`:
+`OutboxEvent`, `OutboxEventRepository`, `OutboxEventFactory` (monta a linha), `OutboxService` (grava e acorda o relay)
+e `OutboxConfig`.
 
 ---
 
@@ -132,7 +170,7 @@ instantes para refletir a mudança.
 
 O valor (`amount`) é guardado no Mongo como `Decimal128`, e não como texto (o padrão do Spring para `BigDecimal`).
 Texto não compara como número (`"100"` fica maior que `"1000"`), e os filtros de valor mínimo e máximo precisam
-comparar de verdade. A conversão está em `TransactionMongoConfig`.
+comparar de verdade. A conversão vale para o serviço inteiro (transação e transferência) e está em `config.MongoConfig`.
 
 ### Transactional Outbox
 Salvar no Postgres e depois atualizar o Mongo ou avisar o Kafka são escritas em sistemas diferentes, e nenhuma
@@ -141,7 +179,7 @@ transação cobre todos eles. Para não perder nada, o serviço grava, na mesma 
 módulo `shared`) entrega cada linha ao destino e a apaga. Se o destino estiver fora do ar, a linha continua pendente
 e é tentada de novo.
 
-Há um único Outbox no serviço, com dois assuntos (dois enums) e seis tipos de linha:
+Há um único Outbox no serviço, com um enum por assunto:
 
 | Tipo | Destino | Conteúdo |
 |------|---------|----------|
@@ -151,6 +189,9 @@ Há um único Outbox no serviço, com dois assuntos (dois enums) e seis tipos de
 | `TRANSACTION_UPDATED` | Kafka (`transaction-updated-topic`) | valores de antes e de depois da alteração |
 | `TRANSACTION_DELETED` | Kafka (`transaction-deleted-topic`) | transação paga excluída |
 | `TRANSACTION_RESTORED` | Kafka (`transaction-restore-topic`) | transação paga restaurada |
+| `INVOICE_PAYMENT_FAILED` | Kafka (`invoice-payment-failed-topic`) | o pagamento não saiu da conta, e o cartão desfaz |
+| `TRANSFER_CHANGED` | MongoDB | foto completa da transferência |
+| `TRANSFER_CREATED`, `TRANSFER_UPDATED`, `TRANSFER_DELETED`, `TRANSFER_RESTORED` | Kafka (`transfer-*-topic`) | o `account` move o valor entre as contas |
 
 O tipo é gravado como texto na coluna `type`. Por isso o relay pergunta a cada dispatcher `supports(tipo)` e a
 comparação é feita pelo nome do tipo (`OutboxEventType.is`), não por `equals`.
@@ -164,12 +205,12 @@ O que registra cada linha:
 | Excluir transação | sim, com `deleted = true` | `TRANSACTION_DELETED`, se estava `PAID` |
 | Restaurar transação | sim | `TRANSACTION_RESTORED`, se estava `PAID` |
 | Executar transação agendada (vira `PAID`) | sim | `TRANSACTION_CREATED` |
-| Falha avisada pelo cartão (vira `FAILED`) | sim | não |
+| Falha avisada pela conta ou pelo cartão (a operação é desfeita) | sim | só `INVOICE_PAYMENT_FAILED`, se era pagamento de fatura |
 | Pagamento de fatura recebido | sim | `INVOICE_PAYMENT_CREATED` |
 
 Como a foto é sempre a transação inteira, o Mongo só precisa sobrescrever o documento: receber a mesma foto duas
 vezes não muda nada, e uma foto perdida é corrigida pela seguinte. O relay entrega "pelo menos uma vez": se o
-serviço cair entre entregar e apagar a linha, ela é entregue de novo. O `TransactionProducer` espera a confirmação do
+serviço cair entre entregar e apagar a linha, ela é entregue de novo. O `TransactionProducer` e o `TransferProducer` esperam a confirmação do
 Kafka (até 5 segundos) e deixa o erro subir, e assim a linha continua pendente se o Kafka falhar.
 
 ### Chamadas entre serviços leem do Postgres
@@ -186,14 +227,32 @@ nenhuma classe do lado de leitura (`query`).
 | `transaction-updated-topic` | publica (pelo Outbox) | a conta acerta o saldo pela diferença |
 | `transaction-deleted-topic` | publica (pelo Outbox) | conta e cartão desfazem o efeito da transação |
 | `transaction-restore-topic` | publica (pelo Outbox) | conta e cartão refazem o efeito da transação |
-| `transaction-failed-topic` | consome | o cartão avisa que não conseguiu processar; a transação vira `FAILED` |
+| `transaction-failed-topic` | consome | a conta ou o cartão não conseguiu aplicar uma operação, e ela é desfeita |
+| `transfer-failed-topic` | consome | o mesmo, para transferências |
+| `transfer-*-topic` | publica (pelo Outbox) | a conta move o valor |
+| `invoice-payment-failed-topic` | publica | o cartão desfaz o pagamento da fatura |
 | `created-invoice-payment-topic` | consome | o cartão avisou que uma fatura foi paga; cria a despesa do pagamento (uma por pagamento, identificada pelo `paymentId`, então a reentrega não duplica e dois pagamentos da mesma fatura não se confundem) |
+
+Quando o consumo falha, a mensagem é tentada mais 3 vezes, com 2 segundos entre elas, e depois vai para a DLQ do
+serviço (`<tópico>.transaction.DLT`), com um erro no log. Erro de regra (`APIException`) não é repetido. Nada lê a DLQ
+sozinho: o reprocessamento é manual. A regra fica na `KafkaErrorHandlingConfig` do `shared`.
+
+**O que acontece quando uma operação falha em outro serviço** (`TransactionFailureService` e
+`TransferFailureService`):
+
+| Operação que falhou | Resultado |
+|---------------------|-----------|
+| criação | vira `FAILED` (se era pagamento de fatura, o cartão desfaz a baixa) |
+| alteração | voltam a conta, o valor e o tipo antigos |
+| exclusão | a exclusão é desfeita |
+| restauração | volta a ficar excluída |
 
 ### Transações agendadas
 Cada transação agendada vira uma tarefa em memória (`ThreadPoolTaskScheduler`, 10 threads) para a data escolhida.
 Quando a data chega, a transação vira `PAID` e o aviso sai pelo Outbox. Como a tarefa fica só em memória, ao iniciar
 o serviço (`RecoverScheduledTransactions`) as pendentes futuras são agendadas de novo, e as que já passaram da data
-são executadas na hora.
+são executadas na hora. A tarefa só é marcada depois do commit. Uma varredura a cada minuto executa as vencidas que
+falharam, e a linha é travada no banco durante a execução, para a mesma transação não ser paga duas vezes.
 
 ### Cache (Redis)
 Todos os caches são do Spring (`@Cacheable`), gravados na primeira consulta, com validade de 10 horas (`RedisConfig`, no
@@ -214,13 +273,12 @@ idempotência (2 minutos) é outra coisa: é uma chave do Redis com prazo curto,
   serviços de origem só devolvem o dado ao dono. Eles dependem do token do usuário, então só funcionam em chamadas HTTP.
 - **Respostas montadas:** a resposta de uma transação traz o resumo da conta, do cartão e da categoria. O cartão e a
   categoria, quando mudam, apagam `transaction_view` e `transaction_list` (cada projector deles faz isso).
-- **Limitação conhecida:** se a **conta** for renomeada, o `transaction` não é avisado (o `account` só publica
-  criação, exclusão e restauração, e apagar a cada mudança de saldo esvaziaria o cache o tempo todo), e a resposta
-  antiga pode aparecer por até 10 horas.
+- **Conta:** o `AccountProjector` apaga essas respostas montadas quando a conta muda.
+- A transferência segue o mesmo padrão (`transfer_view` e `transfer_list`, apagados pelo `TransferProjector`).
 
 ### Outros
 - **Exclusão lógica** com `@SQLDelete`, e listagem separada das excluídas.
-- **Migrations** versionadas com Flyway (`V1` a `V7`) e `ddl-auto: validate`.
+- **Migrations** versionadas com Flyway (`V1` a `V10`) e `ddl-auto: validate`.
 - **DTOs** imutáveis (`record`), Bean Validation na borda e MapStruct nos mapeamentos.
 - **Segurança:** OAuth2 Resource Server (JWT), com tudo bloqueado por padrão. A configuração é a `JwtSecurityConfig` do
   módulo `shared` (sem CSRF, sem sessão): o token precisa ter assinatura e validade corretas e ter sido emitido pelo

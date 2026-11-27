@@ -1,7 +1,7 @@
 package com.emmanuelfinance.transaction.transaction.dtos;
 
 import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

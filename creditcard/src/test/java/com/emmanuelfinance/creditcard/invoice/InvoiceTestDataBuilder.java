@@ -8,10 +8,10 @@ import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.category.dtos.CategorySummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.enums.InvoiceStatusEnum;
-import com.emmanuelfinance.shared.modules.transaction.dtos.TransactionSummaryDTO;
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.dtos.TransactionSummaryDTO;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionCreatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -98,7 +98,7 @@ public class InvoiceTestDataBuilder {
                 installmentsCount,
                 TypeTransactionEnum.EXPENSE,
                 StatusTransactionEnum.PENDING,
-                date
+                date, UUID.randomUUID()
         );
     }
 
@@ -112,7 +112,7 @@ public class InvoiceTestDataBuilder {
                 1,
                 TypeTransactionEnum.EXPENSE,
                 StatusTransactionEnum.PENDING,
-                LocalDateTime.now()
+                LocalDateTime.now(), UUID.randomUUID()
         );
     }
 

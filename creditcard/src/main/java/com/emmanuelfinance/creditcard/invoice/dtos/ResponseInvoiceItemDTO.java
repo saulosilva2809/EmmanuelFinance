@@ -1,6 +1,6 @@
 package com.emmanuelfinance.creditcard.invoice.dtos;
 
-import com.emmanuelfinance.shared.modules.transaction.dtos.TransactionSummaryDTO;
+import com.emmanuelfinance.shared.modules.transaction.transaction.dtos.TransactionSummaryDTO;
 
 import java.math.BigDecimal;
 

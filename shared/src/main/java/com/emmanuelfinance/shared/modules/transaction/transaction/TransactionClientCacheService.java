@@ -1,0 +1,25 @@
+package com.emmanuelfinance.shared.modules.transaction.transaction;
+
+import com.emmanuelfinance.shared.modules.transaction.transaction.dtos.TransactionSummaryDTO;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.stereotype.Service;
+
+import java.util.UUID;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@ConditionalOnProperty(name = "application.config.transaction-service-url")
+public class TransactionClientCacheService {
+
+    private final TransactionClient transactionClient;
+
+    @Cacheable(value = "transaction_summary", key = "@securityUtils.currentUserId + ':' + #id")
+    public TransactionSummaryDTO getTransactionSummaryDTO(UUID id) {
+        log.info("Buscando transaction via transaction server (cache miss)", id);
+        return transactionClient.getTransactionSummary(id);
+    }
+}

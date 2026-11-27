@@ -1,45 +1,28 @@
 package com.emmanuelfinance.transaction.transaction.kafka;
 
 import com.emmanuelfinance.shared.modules.payment.InvoicePaymentDTO;
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
-import com.emmanuelfinance.transaction.transaction.Transaction;
-import com.emmanuelfinance.transaction.transaction.TransactionRepository;
-import com.emmanuelfinance.transaction.transaction.TransactionSelector;
-import com.emmanuelfinance.transaction.transaction.outbox.OutboxService;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionFailedEvent;
+import com.emmanuelfinance.transaction.transaction.services.TransactionFailureService;
 import com.emmanuelfinance.transaction.transaction.services.TransactionServiceInternal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class TransactionListener {
 
-    private final TransactionSelector transactionSelector;
-    private final TransactionRepository transactionRepository;
+    private final TransactionFailureService transactionFailureService;
     private final TransactionServiceInternal transactionServiceInternal;
-    private final OutboxService outboxService;
 
-    @KafkaListener(
-            topics = "transaction-failed-topic",
-            groupId = "transaction-service-group",
-            properties = {
-                    "spring.json.value.default.type=java.util.UUID"
-            }
-    )
-    @Transactional
-    public void handleTransactionFailed(UUID transactionId) {
-        log.info("Atualizando status da transação {} para FAILED", transactionId);
+    // a conta ou o cartão avisa por aqui o que não conseguiu aplicar
+    @KafkaListener(topics = "transaction-failed-topic", groupId = "transaction-service-group")
+    public void handleTransactionFailed(TransactionFailedEvent event) {
+        log.info("Falha na operação {} da transação {}", event.operation(), event.transactionId());
 
-        Transaction transaction = transactionSelector.getTransactionByIdInternal(transactionId);
-        transaction.setStatus(StatusTransactionEnum.FAILED);
-        transactionRepository.saveAndFlush(transaction);
-        outboxService.transactionChanged(transaction);
+        transactionFailureService.compensate(event);
     }
 
     @KafkaListener(

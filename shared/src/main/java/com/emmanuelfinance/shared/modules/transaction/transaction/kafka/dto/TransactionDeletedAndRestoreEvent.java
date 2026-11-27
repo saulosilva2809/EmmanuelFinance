@@ -1,0 +1,21 @@
+package com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto;
+
+import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+public record TransactionDeletedAndRestoreEvent (
+        UUID transactionId,
+        UUID accountId,
+        UUID creditCardId,
+        UUID userId,
+        BigDecimal amount,
+        Integer installmentsCount,
+        TypeTransactionEnum type,
+        StatusTransactionEnum status,
+        LocalDateTime date,
+        UUID eventId
+) implements TransactionEvent {}

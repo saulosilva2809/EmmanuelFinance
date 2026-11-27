@@ -2,13 +2,14 @@ package com.emmanuelfinance.transaction.services;
 
 import com.emmanuelfinance.config.exceptions.APIException;
 import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
-import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
+import com.emmanuelfinance.shared.modules.account.AccountClient;
 import com.emmanuelfinance.shared.modules.account.AccountOwnershipValidator;
 import com.emmanuelfinance.shared.modules.account.exceptions.AccountNotFound;
 import com.emmanuelfinance.shared.modules.category.CategoryClientCacheService;
+import com.emmanuelfinance.shared.modules.creditcard.CreditCardClient;
 import com.emmanuelfinance.shared.modules.creditcard.CreditCardClientCacheService;
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.exceptions.TransactionNotFound;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.exceptions.TransactionNotFound;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import com.emmanuelfinance.transaction.transaction.Transaction;
 import com.emmanuelfinance.transaction.transaction.TransactionMapper;
@@ -16,11 +17,12 @@ import com.emmanuelfinance.transaction.transaction.TransactionRepository;
 import com.emmanuelfinance.transaction.transaction.TransactionSelector;
 import com.emmanuelfinance.transaction.TransactionTestDataBuilder;
 import com.emmanuelfinance.transaction.transaction.dtos.CreateTransactionDTO;
+import com.emmanuelfinance.transaction.transaction.dtos.IdempotencyDataDTO;
 import com.emmanuelfinance.transaction.transaction.dtos.ResponseTransactionDTO;
 import com.emmanuelfinance.transaction.transaction.dtos.UpdateTransactionDTO;
 import com.emmanuelfinance.transaction.transaction.exceptions.TransactionDomainException;
 import com.emmanuelfinance.transaction.transaction.exceptions.TransactionErrorCode;
-import com.emmanuelfinance.transaction.transaction.outbox.OutboxService;
+import com.emmanuelfinance.transaction.transaction.outbox.TransactionOutbox;
 import com.emmanuelfinance.transaction.transaction.services.IdempotencyService;
 import com.emmanuelfinance.transaction.transaction.services.TransactionOutboxEventsService;
 import com.emmanuelfinance.transaction.transaction.services.TransactionService;
@@ -83,10 +85,13 @@ public class TransactionServiceTest {
     private CreditCardClientCacheService creditCardClientCacheService;
 
     @Mock
-    private OutboxService outboxService;
+    private TransactionOutbox transactionOutbox;
 
     @Mock
-    private AccountClientCacheService accountClientCacheService;
+    private AccountClient accountClient;
+
+    @Mock
+    private CreditCardClient creditCardClient;
 
     private TransactionService transactionService;
 
@@ -95,7 +100,7 @@ public class TransactionServiceTest {
     @BeforeEach
     void setUp() {
         TransactionValidatorService validator = new TransactionValidatorService(
-                accountOwnershipValidator, categoryClientCacheService, creditCardClientCacheService, accountClientCacheService
+                accountOwnershipValidator, categoryClientCacheService, creditCardClientCacheService, accountClient, creditCardClient
         );
 
         transactionService = new TransactionService(
@@ -107,7 +112,7 @@ public class TransactionServiceTest {
                 validator,
                 transactionOutboxEventsService,
                 transactionSchedulerService,
-                outboxService
+                transactionOutbox
         );
     }
 
@@ -119,7 +124,7 @@ public class TransactionServiceTest {
 
     /** Conta com saldo suficiente para os cenários que não testam saldo. */
     private void stubAccountBalance(UUID accountId) {
-        when(accountClientCacheService.getInternalAccountById(accountId)).thenReturn(
+        when(accountClient.getAccountSummaryInternal(accountId)).thenReturn(
                 TransactionTestDataBuilder.accountSummaryInternalDTO(accountId, new BigDecimal("1000.00"))
         );
     }
@@ -140,6 +145,19 @@ public class TransactionServiceTest {
         });
     }
 
+    // os dados que entram na chave da criação: quem, em qual conta, quanto, quando e a descrição
+    private IdempotencyDataDTO keyDataOf(UUID userId, CreateTransactionDTO dto) {
+        return IdempotencyDataDTO.builder()
+                .userId(userId)
+                .accountId(dto.accountId())
+                .categoryId(dto.categoryId())
+                .creditCardId(dto.creditCardId())
+                .amount(dto.amount())
+                .date(dto.date())
+                .description(dto.description())
+                .build();
+    }
+
     @Nested
     @DisplayName("Cenários do create")
     class CreateTests {
@@ -151,7 +169,7 @@ public class TransactionServiceTest {
             when(securityUtils.getCurrentUserId()).thenReturn(userId);
             stubCategory(categoryId, dto.type());
             stubAccountBalance(accountId);
-            when(idempotencyService.generateIdempotencyKey(userId, dto)).thenReturn("chave-123");
+            when(idempotencyService.generateKey(keyDataOf(userId, dto))).thenReturn("chave-123");
             when(transactionMapper.toEntity(dto)).thenReturn(TransactionTestDataBuilder.entityFromDTO(dto));
             stubSaveReturningArgument();
             when(transactionMapper.toResponseDTO(any(Transaction.class)))
@@ -176,7 +194,7 @@ public class TransactionServiceTest {
             assertEquals(saved.getId(), response.id());
 
             verify(idempotencyService, times(1)).validateAndLock("chave-123");
-            verify(outboxService, times(1)).transactionChanged(saved);
+            verify(transactionOutbox, times(1)).transactionChanged(saved);
             verify(transactionOutboxEventsService, times(1)).publishTransactionCreatedEventIfPaid(saved);
             verifyNoInteractions(transactionSchedulerService);
         }
@@ -196,7 +214,7 @@ public class TransactionServiceTest {
 
             assertEquals(StatusTransactionEnum.PENDING, saved.getStatus());
             verify(transactionSchedulerService, times(1)).schedule(saved.getId(), date);
-            verify(outboxService, times(1)).transactionChanged(saved);
+            verify(transactionOutbox, times(1)).transactionChanged(saved);
             verify(transactionOutboxEventsService, times(1)).publishTransactionCreatedEventIfPaid(saved);
         }
 
@@ -219,7 +237,7 @@ public class TransactionServiceTest {
             when(securityUtils.getCurrentUserId()).thenReturn(userId);
             stubCategory(categoryId, TypeTransactionEnum.EXPENSE);
             stubAccountBalance(accountId);
-            when(idempotencyService.generateIdempotencyKey(userId, dto)).thenReturn("chave-123");
+            when(idempotencyService.generateKey(keyDataOf(userId, dto))).thenReturn("chave-123");
             doThrow(new TransactionDomainException(TransactionErrorCode.TRANSACTION_ALREADY_EXISTS))
                     .when(idempotencyService).validateAndLock("chave-123");
 
@@ -336,7 +354,7 @@ public class TransactionServiceTest {
             assertDomainError(TransactionErrorCode.CANNOT_SCHEDULE_UNSCHEDULED_TRANSACTION,
                     () -> transactionService.update(transaction.getId(), dto));
 
-            verifyNoInteractions(transactionMapper, transactionRepository, transactionOutboxEventsService, outboxService);
+            verifyNoInteractions(transactionMapper, transactionRepository, transactionOutboxEventsService, transactionOutbox);
         }
     }
 
@@ -353,8 +371,22 @@ public class TransactionServiceTest {
             transactionService.delete(transaction.getId());
 
             verify(transactionRepository, times(1)).delete(transaction);
-            verify(outboxService, times(1)).transactionDeleted(transaction);
+            verify(transactionOutbox, times(1)).transactionDeleted(transaction);
             verify(transactionOutboxEventsService, times(1)).publishTransactionDeletedEventIfPaid(transaction);
+        }
+
+        @Test
+        @DisplayName("Não deve excluir uma compra de fatura já paga")
+        void shouldNotDeleteAPaidCardPurchase() {
+            Transaction transaction = TransactionTestDataBuilder.cardTransactionEntity(
+                    userId, UUID.randomUUID(), UUID.randomUUID());
+            when(transactionSelector.getTransactionById(transaction.getId())).thenReturn(transaction);
+            when(creditCardClient.isPurchaseAlreadyPaid(transaction.getId())).thenReturn(true);
+
+            assertDomainError(TransactionErrorCode.CARD_PURCHASE_ALREADY_PAID,
+                    () -> transactionService.delete(transaction.getId()));
+
+            verifyNoInteractions(transactionRepository, transactionOutboxEventsService, transactionOutbox);
         }
 
         @Test
@@ -365,7 +397,7 @@ public class TransactionServiceTest {
 
             assertThrows(TransactionNotFound.class, () -> transactionService.delete(id));
 
-            verifyNoInteractions(transactionRepository, transactionOutboxEventsService, outboxService);
+            verifyNoInteractions(transactionRepository, transactionOutboxEventsService, transactionOutbox);
         }
     }
 
@@ -379,11 +411,13 @@ public class TransactionServiceTest {
             Transaction transaction = TransactionTestDataBuilder.transactionEntity(userId, true);
             when(transactionSelector.getTransactionByIdIncluingDeleted(transaction.getId())).thenReturn(transaction);
 
+            stubAccountBalance(transaction.getAccountId());
+
             transactionService.restore(transaction.getId());
 
             assertFalse(transaction.isDeleted());
             verify(transactionRepository, times(1)).saveAndFlush(transaction);
-            verify(outboxService, times(1)).transactionChanged(transaction);
+            verify(transactionOutbox, times(1)).transactionChanged(transaction);
             verify(transactionOutboxEventsService, times(1)).publishTransactionRestoreEventIfPaid(transaction);
         }
 
@@ -396,7 +430,7 @@ public class TransactionServiceTest {
             assertDomainError(TransactionErrorCode.RESTORE_TRANSACTION_NOT_DELETED,
                     () -> transactionService.restore(transaction.getId()));
 
-            verifyNoInteractions(transactionRepository, transactionOutboxEventsService, outboxService);
+            verifyNoInteractions(transactionRepository, transactionOutboxEventsService, transactionOutbox);
         }
 
         @Test
@@ -407,7 +441,7 @@ public class TransactionServiceTest {
             Transaction transaction = TransactionTestDataBuilder.cardTransactionEntity(userId, accountId, cardId);
             transaction.setDeleted(true);
             when(transactionSelector.getTransactionByIdIncluingDeleted(transaction.getId())).thenReturn(transaction);
-            when(creditCardClientCacheService.getCreditCardInternalSummaryDTO(cardId)).thenReturn(
+            when(creditCardClient.getCreditCardInternalSummary(cardId)).thenReturn(
                     TransactionTestDataBuilder.creditCardInternalSummaryDTO(cardId, accountId, new BigDecimal("10.00"))
             );
 
@@ -415,7 +449,7 @@ public class TransactionServiceTest {
                     () -> transactionService.restore(transaction.getId()));
 
             assertTrue(transaction.isDeleted());
-            verifyNoInteractions(transactionRepository, transactionOutboxEventsService, outboxService);
+            verifyNoInteractions(transactionRepository, transactionOutboxEventsService, transactionOutbox);
         }
     }
 }

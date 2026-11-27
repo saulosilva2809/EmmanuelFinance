@@ -8,5 +8,6 @@ public enum TransactionEventOutboxEventType implements OutboxEventType {
     INVOICE_PAYMENT_CREATED,
     TRANSACTION_UPDATED,
     TRANSACTION_DELETED,
-    TRANSACTION_RESTORED
+    TRANSACTION_RESTORED,
+    INVOICE_PAYMENT_FAILED
 }

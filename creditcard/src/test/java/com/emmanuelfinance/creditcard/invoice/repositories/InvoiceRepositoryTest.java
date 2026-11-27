@@ -1,5 +1,6 @@
 package com.emmanuelfinance.creditcard.invoice.repositories;
 
+import com.emmanuelfinance.shared.entity.BaseEntity;
 import com.emmanuelfinance.creditcard.invoice.Invoice;
 import com.emmanuelfinance.creditcard.invoice.InvoiceTestDataBuilder;
 import com.emmanuelfinance.shared.modules.creditcard.enums.InvoiceStatusEnum;
@@ -24,13 +25,13 @@ public class InvoiceRepositoryTest {
     private InvoiceRepository invoiceRepository;
 
     private Invoice save(UUID creditCardId, int month, int year, boolean deleted) {
-        return invoiceRepository.saveAndFlush(InvoiceTestDataBuilder.invoiceEntity(
+        return invoiceRepository.saveAndFlush(unsaved(InvoiceTestDataBuilder.invoiceEntity(
                 UUID.randomUUID(), creditCardId, month, year, new BigDecimal("100.00"), InvoiceStatusEnum.OPEN, deleted
-        ));
+        )));
     }
 
     @Nested
-    @DisplayName("Cenários do findByCreditCardIdAndMonthAndYearAndDeletedFalse")
+    @DisplayName("Cenários do findByCreditCardIdAndMonthAndYear")
     class FindByCardMonthYearTests {
 
         @Test
@@ -40,20 +41,20 @@ public class InvoiceRepositoryTest {
             Invoice saved = save(creditCardId, 10, 2026, false);
 
             Optional<Invoice> result = invoiceRepository
-                    .findByCreditCardIdAndMonthAndYearAndDeletedFalse(creditCardId, 10, 2026);
+                    .findByCreditCardIdAndMonthAndYear(creditCardId, 10, 2026);
 
             assertTrue(result.isPresent());
             assertEquals(saved.getId(), result.get().getId());
         }
 
         @Test
-        @DisplayName("Deve ignorar a fatura excluída")
-        void shouldIgnoreDeletedInvoice() {
+        @DisplayName("Deve encontrar também a fatura excluída, para ela ser reaproveitada")
+        void shouldFindDeletedInvoice() {
             UUID creditCardId = UUID.randomUUID();
-            save(creditCardId, 10, 2026, true);
+            Invoice deleted = save(creditCardId, 10, 2026, true);
 
-            assertTrue(invoiceRepository
-                    .findByCreditCardIdAndMonthAndYearAndDeletedFalse(creditCardId, 10, 2026).isEmpty());
+            assertEquals(deleted.getId(), invoiceRepository
+                    .findByCreditCardIdAndMonthAndYear(creditCardId, 10, 2026).orElseThrow().getId());
         }
 
         @Test
@@ -64,7 +65,7 @@ public class InvoiceRepositoryTest {
             Invoice active = save(creditCardId, 10, 2026, false);
 
             Optional<Invoice> result = invoiceRepository
-                    .findByCreditCardIdAndMonthAndYearAndDeletedFalse(creditCardId, 10, 2026);
+                    .findByCreditCardIdAndMonthAndYear(creditCardId, 10, 2026);
 
             assertEquals(active.getId(), result.orElseThrow().getId());
         }
@@ -99,5 +100,10 @@ public class InvoiceRepositoryTest {
                     invoiceRepository.findById(saved.getId()).orElseThrow().getAmountPaid()
             ));
         }
+    }
+
+    private static <T extends BaseEntity> T unsaved(T entity) {
+        entity.setId(null);
+        return entity;
     }
 }

@@ -1,7 +1,7 @@
 package com.emmanuelfinance.transaction.query;
 
 import com.emmanuelfinance.shared.dto.PageResponseDTO;
-import com.emmanuelfinance.shared.modules.transaction.exceptions.TransactionNotFound;
+import com.emmanuelfinance.shared.modules.transaction.transaction.exceptions.TransactionNotFound;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import com.emmanuelfinance.transaction.transaction.TransactionMapper;
 import com.emmanuelfinance.transaction.transaction.dtos.ResponseTransactionDTO;

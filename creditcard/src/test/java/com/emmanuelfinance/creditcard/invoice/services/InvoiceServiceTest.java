@@ -3,18 +3,14 @@ package com.emmanuelfinance.creditcard.invoice.services;
 import com.emmanuelfinance.creditcard.invoice.Invoice;
 import com.emmanuelfinance.creditcard.invoice.InvoiceItem;
 import com.emmanuelfinance.creditcard.invoice.InvoiceTestDataBuilder;
-import com.emmanuelfinance.creditcard.invoice.dtos.InvoiceFiltersDTO;
-import com.emmanuelfinance.creditcard.invoice.dtos.ResponseInvoiceDTO;
 import com.emmanuelfinance.creditcard.invoice.repositories.InvoiceRepository;
 import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceItemSelector;
 import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceSelector;
 import com.emmanuelfinance.creditcard.outbox.OutboxService;
-import com.emmanuelfinance.shared.dto.PageResponseDTO;
 import com.emmanuelfinance.creditcard.creditcard.CreditCardSelector;
-import com.emmanuelfinance.shared.modules.creditcard.dto.CreditCardSummaryDTO;
 import com.emmanuelfinance.shared.modules.creditcard.enums.InvoiceStatusEnum;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionCreatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -23,14 +19,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -124,6 +116,46 @@ public class InvoiceServiceTest {
         }
 
         @Test
+        @DisplayName("Compra depois do fechamento entra na fatura do mês seguinte")
+        void shouldUseTheNextMonthForAPurchaseAfterTheClosingDay() {
+            LocalDateTime afterClosing = LocalDateTime.of(2026, 10, InvoiceTestDataBuilder.CLOSING_DATE + 1, 10, 0);
+            TransactionCreatedEvent event = InvoiceTestDataBuilder.transactionCreatedEvent(
+                    userId, creditCardId, new BigDecimal("80.00"), 1, afterClosing
+            );
+            when(invoiceSelector.getByCreditCardAndMonthAndYear(creditCardId, 11, 2026))
+                    .thenReturn(Optional.empty());
+            stubCreditCard();
+            stubSaveGeneratingId();
+
+            invoiceService.findOrCreate(event);
+
+            ArgumentCaptor<Invoice> captor = ArgumentCaptor.forClass(Invoice.class);
+            verify(invoiceRepository).save(captor.capture());
+            assertEquals(11, captor.getValue().getMonth());
+        }
+
+        @Test
+        @DisplayName("Deve reaproveitar a fatura excluída do mês em vez de criar outra")
+        void shouldReuseTheDeletedInvoiceOfTheMonth() {
+            TransactionCreatedEvent event = InvoiceTestDataBuilder.transactionCreatedEvent(
+                    userId, creditCardId, new BigDecimal("80.00"), 1, LocalDateTime.of(2026, 10, 5, 10, 0)
+            );
+            Invoice deleted = InvoiceTestDataBuilder.invoiceEntity(
+                    userId, creditCardId, 10, 2026, BigDecimal.ZERO, InvoiceStatusEnum.PAID, true
+            );
+            when(invoiceSelector.getByCreditCardAndMonthAndYear(creditCardId, 10, 2026))
+                    .thenReturn(Optional.of(deleted));
+            stubCreditCard();
+
+            invoiceService.findOrCreate(event);
+
+            assertFalse(deleted.isDeleted());
+            assertEquals(InvoiceStatusEnum.OPEN, deleted.getStatus());
+            assertEquals(new BigDecimal("80.00"), deleted.getTotalAmount());
+            verify(invoiceRepository, never()).save(any(Invoice.class));
+        }
+
+        @Test
         @DisplayName("Deve tratar installmentsCount nulo como 1 parcela")
         void shouldTreatNullInstallmentsCountAsOne() {
             TransactionCreatedEvent event = InvoiceTestDataBuilder.transactionCreatedEvent(
@@ -146,7 +178,7 @@ public class InvoiceServiceTest {
         @DisplayName("Deve criar uma fatura e um item por parcela, com meses consecutivos e virada de ano")
         void shouldCreateOneInvoiceAndItemPerInstallmentAcrossYearBoundary() {
             TransactionCreatedEvent event = InvoiceTestDataBuilder.transactionCreatedEvent(
-                    userId, creditCardId, new BigDecimal("100.00"), 3, LocalDateTime.of(2026, 11, 20, 10, 0)
+                    userId, creditCardId, new BigDecimal("100.00"), 3, LocalDateTime.of(2026, 11, 5, 10, 0)
             );
             when(invoiceSelector.getByCreditCardAndMonthAndYear(eq(creditCardId), anyInt(), anyInt()))
                     .thenReturn(Optional.empty());
@@ -165,11 +197,14 @@ public class InvoiceServiceTest {
             assertEquals(2026, saved.get(1).getYear());
             assertEquals(1, saved.get(2).getMonth());
             assertEquals(2027, saved.get(2).getYear());
-            saved.forEach(invoice -> assertEquals(new BigDecimal("33.33"), invoice.getTotalAmount()));
+            // o centavo que sobra da divisão fica na primeira parcela
+            assertEquals(new BigDecimal("33.34"), saved.get(0).getTotalAmount());
+            assertEquals(new BigDecimal("33.33"), saved.get(1).getTotalAmount());
+            assertEquals(new BigDecimal("33.33"), saved.get(2).getTotalAmount());
 
             for (int i = 0; i < 3; i++) {
                 verify(invoiceItemService, times(1)).createInvoiceItem(
-                        event, saved.get(i).getId(), i + 1, new BigDecimal("33.33")
+                        event, saved.get(i).getId(), i + 1, new BigDecimal(i == 0 ? "33.34" : "33.33")
                 );
             }
         }
@@ -177,6 +212,7 @@ public class InvoiceServiceTest {
         @Test
         @DisplayName("Deve somar o valor da parcela na fatura existente sem criar uma nova")
         void shouldAddInstallmentAmountToExistingInvoice() {
+            stubCreditCard();
             TransactionCreatedEvent event = InvoiceTestDataBuilder.transactionCreatedEvent(
                     userId, creditCardId, new BigDecimal("100.00"), 2, LocalDateTime.of(2026, 10, 5, 10, 0)
             );
@@ -194,7 +230,6 @@ public class InvoiceServiceTest {
             assertEquals(new BigDecimal("250.00"), existing.getTotalAmount());
             verify(invoiceRepository, times(2)).saveAndFlush(any(Invoice.class));
             verify(outboxService, times(2)).invoiceChanged(any(Invoice.class));
-            verify(creditCardSelector, never()).getCreditCardByIdInternal(any());
             verify(invoiceItemService, times(1)).createInvoiceItem(
                     event, existing.getId(), 1, new BigDecimal("50.00")
             );
@@ -203,6 +238,7 @@ public class InvoiceServiceTest {
         @Test
         @DisplayName("Deve tratar totalAmount nulo da fatura existente como zero")
         void shouldTreatNullTotalAmountAsZeroOnExistingInvoice() {
+            stubCreditCard();
             TransactionCreatedEvent event = InvoiceTestDataBuilder.transactionCreatedEvent(
                     userId, creditCardId, new BigDecimal("100.00"), 1, LocalDateTime.of(2026, 10, 5, 10, 0)
             );
@@ -246,7 +282,9 @@ public class InvoiceServiceTest {
 
             verify(invoiceItemService, times(1)).delete(transactionId);
             verify(invoiceAmountService, times(1))
-                    .removeBalanceAfterDeletion(List.of(invoice1, invoice2), items.get(0).getAmount());
+                    .removeBalanceAfterDeletion(List.of(invoice1, invoice2), Map.of(
+                            invoiceA, items.get(0).getAmount().add(items.get(1).getAmount()),
+                            invoiceB, items.get(2).getAmount()));
             verify(invoiceRepository, never()).deleteAllById(anyList());
         }
 
@@ -284,7 +322,8 @@ public class InvoiceServiceTest {
             invoiceService.restore(InvoiceTestDataBuilder.transactionDeletedAndRestoreEvent(transactionId));
 
             verify(invoiceItemService, times(1)).restore(transactionId);
-            verify(invoiceAmountService, times(1)).addBalanceAfterRestore(List.of(invoice), item.getAmount());
+            verify(invoiceAmountService, times(1)).addBalanceAfterRestore(
+                    List.of(invoice), Map.of(invoice.getId(), item.getAmount().add(item.getAmount())));
         }
 
         @Test

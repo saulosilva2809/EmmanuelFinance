@@ -1,13 +1,14 @@
 package com.emmanuelfinance.transaction.transaction.outbox;
 
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionUpdatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionCreatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionUpdatedEvent;
 import com.emmanuelfinance.shared.outbox.BaseOutboxEvent;
 import com.emmanuelfinance.shared.outbox.OutboxDispatcher;
 import com.emmanuelfinance.shared.outbox.enums.OutboxEventType;
 import com.emmanuelfinance.transaction.transaction.kafka.TransactionProducer;
 import com.emmanuelfinance.transaction.transaction.outbox.enums.TransactionEventOutboxEventType;
+import com.emmanuelfinance.shared.modules.payment.InvoicePaymentFailedEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,6 +47,8 @@ public class TransactionEventOutboxDispatcher implements OutboxDispatcher {
             transactionProducer.publishTransactionDeleted(objectMapper.treeToValue(payload, TransactionDeletedAndRestoreEvent.class));
         } else if (TransactionEventOutboxEventType.TRANSACTION_RESTORED.is(type)) {
             transactionProducer.publishTransactionRestore(objectMapper.treeToValue(payload, TransactionDeletedAndRestoreEvent.class));
+        } else if (TransactionEventOutboxEventType.INVOICE_PAYMENT_FAILED.is(type)) {
+            transactionProducer.publishInvoicePaymentFailed(objectMapper.treeToValue(payload, InvoicePaymentFailedEvent.class));
         } else {
             throw new IllegalArgumentException("Tipo de evento não suportado por este dispatcher: " + type);
         }

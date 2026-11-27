@@ -46,6 +46,10 @@ public class CreditCardSelector {
         return creditCard;
     }
 
+    public List<CreditCard> findDeactivatedByAccountId(UUID accountId) {
+        return creditCardRepository.findByAccountIdAndDeactivatedByAccountTrue(accountId);
+    }
+
     public List<CreditCard> findByAccountId(UUID accountId) {
         List<CreditCard> cards = creditCardRepository.findByAccountId(
                 accountId

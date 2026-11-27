@@ -22,4 +22,7 @@ public interface CreditCardClient {
 
     @GetMapping("internal/credit-card/internal-summary/{id}")
     CreditCardInternalSummaryDTO getCreditCardInternalSummary(@PathVariable UUID id);
+
+    @GetMapping("internal/credit-card/transactions/{transactionId}/paid")
+    boolean isPurchaseAlreadyPaid(@PathVariable UUID transactionId);
 }

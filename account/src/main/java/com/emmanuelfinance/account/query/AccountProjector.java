@@ -21,7 +21,13 @@ public class AccountProjector implements BaseProjector<AccountDocument> {
             @CacheEvict(value = "accounts-internal", key = "#snapshot.userId + ':' + #snapshot.id"),
             @CacheEvict(value = "account_owner", key = "#snapshot.id + ':' + #snapshot.userId"),
             @CacheEvict(value = "account_view", key = "#snapshot.userId + ':' + #snapshot.id"),
-            @CacheEvict(value = "account_list", allEntries = true)
+            @CacheEvict(value = "account_list", allEntries = true),
+            @CacheEvict(value = "transaction_view", allEntries = true),
+            @CacheEvict(value = "transaction_list", allEntries = true),
+            @CacheEvict(value = "transfer_view", allEntries = true),
+            @CacheEvict(value = "transfer_list", allEntries = true),
+            @CacheEvict(value = "credit_card_view", allEntries = true),
+            @CacheEvict(value = "credit_card_list", allEntries = true)
     })
     public void project(AccountDocument snapshot) {
         accountDocumentRepository.save(snapshot);

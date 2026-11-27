@@ -1,5 +1,6 @@
 package com.emmanuelfinance.creditcard.creditcard.services;
 
+import com.emmanuelfinance.creditcard.creditcard.dto.UpdateCreditCardDTO;
 import com.emmanuelfinance.creditcard.creditcard.CreditCard;
 import com.emmanuelfinance.creditcard.CreditCardTestDataBuilder;
 import com.emmanuelfinance.creditcard.creditcard.dto.CreateCreditCardDTO;
@@ -269,5 +270,29 @@ public class CreditCardValidatorServiceTest {
 
             verify(accountClientCacheService, times(1)).getInternalAccountById(creditCard.getAccountId());
         }
+    }
+
+    @Test
+    @DisplayName("Na alteração sem conta nem banco, não deve consultar a conta")
+    void shouldSkipTheUpdateValidationWhenAccountAndBankDoNotChange() {
+        CreditCard card = CreditCardTestDataBuilder.createEntity(CreditCardTestDataBuilder.createCardDTO(), userId, false);
+
+        creditCardValidatorService.validateUpdate(
+                card, new UpdateCreditCardDTO(null, "Novo nome", null, null, null, null));
+
+        verifyNoInteractions(accountOwnershipValidator, accountClientCacheService);
+    }
+
+    @Test
+    @DisplayName("Na alteração do banco, ele precisa bater com o da conta do cartão")
+    void shouldRejectANewBankDifferentFromTheAccountBank() {
+        CreditCard card = CreditCardTestDataBuilder.createEntity(CreditCardTestDataBuilder.createCardDTO(), userId, false);
+        when(accountClientCacheService.getInternalAccountById(card.getAccountId()))
+                .thenReturn(CreditCardTestDataBuilder.accountSummaryInternalDTO(card.getAccountId()));
+
+        assertThrows(CreditCardDomainException.class, () -> creditCardValidatorService.validateUpdate(
+                card, new UpdateCreditCardDTO(null, null, BanksEnum.NUBANK, null, null, null)));
+
+        verify(accountOwnershipValidator).validate(card.getAccountId());
     }
 }

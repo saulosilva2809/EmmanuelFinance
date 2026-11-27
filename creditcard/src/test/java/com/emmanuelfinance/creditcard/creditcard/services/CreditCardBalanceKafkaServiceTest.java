@@ -1,5 +1,7 @@
 package com.emmanuelfinance.creditcard.creditcard.services;
 
+import org.junit.jupiter.api.BeforeEach;
+import com.emmanuelfinance.shared.kafka.ProcessedEventService;
 import com.emmanuelfinance.creditcard.creditcard.CreditCard;
 import com.emmanuelfinance.creditcard.creditcard.CreditCardRepository;
 import com.emmanuelfinance.creditcard.creditcard.CreditCardSelector;
@@ -8,8 +10,8 @@ import com.emmanuelfinance.creditcard.invoice.InvoiceTestDataBuilder;
 import com.emmanuelfinance.creditcard.invoice.services.InvoiceService;
 import com.emmanuelfinance.creditcard.outbox.OutboxService;
 import com.emmanuelfinance.shared.modules.creditcard.exceptions.CreditCardNotFound;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionCreatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -24,6 +26,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,6 +40,14 @@ public class CreditCardBalanceKafkaServiceTest {
 
     @Mock
     private CreditCardRepository creditCardRepository;
+
+    @Mock
+    private ProcessedEventService processedEventService;
+
+    @BeforeEach
+    void treatEveryEventAsNew() {
+        lenient().when(processedEventService.register(any())).thenReturn(true);
+    }
 
     @Mock
     private OutboxService outboxService;
@@ -56,7 +67,7 @@ public class CreditCardBalanceKafkaServiceTest {
         TransactionDeletedAndRestoreEvent base = InvoiceTestDataBuilder.transactionDeletedAndRestoreEvent(UUID.randomUUID());
         return new TransactionDeletedAndRestoreEvent(
                 base.transactionId(), base.accountId(), cardId, userId, new BigDecimal(amount),
-                base.installmentsCount(), base.type(), base.status(), base.date()
+                base.installmentsCount(), base.type(), base.status(), base.date(), UUID.randomUUID()
         );
     }
 
@@ -149,5 +160,17 @@ public class CreditCardBalanceKafkaServiceTest {
 
             verifyNoInteractions(creditCardRepository, invoiceService);
         }
+    }
+
+    @Test
+    @DisplayName("Não deve mexer no limite nem na fatura quando o aviso já foi processado")
+    void shouldIgnoreARepeatedEvent() {
+        TransactionCreatedEvent event = InvoiceTestDataBuilder.transactionCreatedEvent(
+                userId, UUID.randomUUID(), BigDecimal.TEN, 1, LocalDateTime.now());
+        when(processedEventService.register(event.eventId())).thenReturn(false);
+
+        creditCardBalanceKafkaService.processTransactionCreate(event);
+
+        verifyNoInteractions(creditCardSelector, creditCardRepository, outboxService, invoiceService);
     }
 }

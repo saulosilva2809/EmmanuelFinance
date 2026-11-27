@@ -5,16 +5,22 @@ import com.emmanuelfinance.account.AccountRepository;
 import com.emmanuelfinance.account.AccountSelector;
 import com.emmanuelfinance.account.outbox.OutboxService;
 import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionCreatedEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
-import com.emmanuelfinance.shared.modules.transaction.kafka.dto.TransactionUpdatedEvent;
+import com.emmanuelfinance.shared.kafka.ProcessedEventService;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionCreatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionDeletedAndRestoreEvent;
+import com.emmanuelfinance.shared.modules.transaction.transaction.kafka.dto.TransactionUpdatedEvent;
+import com.emmanuelfinance.shared.modules.transaction.transfer.kafka.dto.TransferCreatedEventDTO;
+import com.emmanuelfinance.shared.modules.transaction.transfer.kafka.dto.TransferDeletedAndRestoreEventDTO;
+import com.emmanuelfinance.shared.modules.transaction.transfer.kafka.dto.TransferUpdatedEventDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.UUID;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -24,10 +30,15 @@ public class AccountBalanceService {
     private final AccountRepository accountRepository;
     private final AccountSelector accountSelector;
     private final OutboxService outboxService;
+    private final ProcessedEventService processedEventService;
 
     // atualiza saldo na criação de uma transação
     @Transactional
     public void updateBalanceFromTransaction(TransactionCreatedEvent event) {
+        if (alreadyProcessed(event.eventId())) {
+            return;
+        }
+
         Account account = accountSelector.getAccountByIdInternal(event.accountId());
 
         // aplica o valor (conta, valor, tipo, se é uma reversão)
@@ -41,6 +52,10 @@ public class AccountBalanceService {
     // atualiza o saldo na atualização de uma transação já existente
     @Transactional
     public void updateBalanceFromUpdatedTransaction(TransactionUpdatedEvent event) {
+        if (alreadyProcessed(event.eventId())) {
+            return;
+        }
+
 
         // pega a conta antiga da transação (caso tenha mudado)
         Account oldAccount = accountSelector.getAccountByIdInternal(event.oldAccountId());
@@ -77,6 +92,10 @@ public class AccountBalanceService {
     // atualiza o saldo da conta após deletar uma transação
     @Transactional
     public void updateBalanceFromDeletedTransaction(TransactionDeletedAndRestoreEvent event) {
+        if (alreadyProcessed(event.eventId())) {
+            return;
+        }
+
         // pega a conta com o id informado
         Account account = accountSelector.getAccountByIdInternal(event.accountId());
 
@@ -88,12 +107,94 @@ public class AccountBalanceService {
     // atualiza o saldo da conta após restaurar uma transação
     @Transactional
     public void updateBalanceFromRestoreTransaction(TransactionDeletedAndRestoreEvent event) {
+        if (alreadyProcessed(event.eventId())) {
+            return;
+        }
+
         // pega a conta com o id informado
         Account account = accountSelector.getAccountByIdInternal(event.accountId());
 
         // aplica o valor da transação
         applyBalance(account, event.amount(), event.type(), false);
         saveAndRecordChange(account);
+    }
+
+    @Transactional
+    public void updateBalanceFromTransfer(TransferCreatedEventDTO event) {
+        if (alreadyProcessed(event.eventId())) {
+            return;
+        }
+
+        Account sourceAccount = accountSelector.getAccountByIdInternal(event.sourceAccountId());
+        Account destinationAccount = accountSelector.getAccountByIdInternal(event.destinationAccountId());
+
+        // sai da conta de origem e entra na conta de destino
+        moveBetween(sourceAccount, destinationAccount, event.amount());
+        saveAll(sourceAccount, destinationAccount);
+    }
+
+    // desfaz a transferência antiga e aplica a nova, que pode ter outras contas e outro valor
+    @Transactional
+    public void updateBalanceFromUpdatedTransfer(TransferUpdatedEventDTO event) {
+        if (alreadyProcessed(event.eventId())) {
+            return;
+        }
+
+        Account oldSource = accountSelector.getAccountByIdInternal(event.oldSourceAccountId());
+        Account oldDestination = accountSelector.getAccountByIdInternal(event.oldDestinationAccountId());
+        Account newSource = accountSelector.getAccountByIdInternal(event.newSourceAccountId());
+        Account newDestination = accountSelector.getAccountByIdInternal(event.newDestinationAccountId());
+
+        moveBetween(oldDestination, oldSource, event.oldAmount());
+        moveBetween(newSource, newDestination, event.newAmount());
+        saveAll(oldSource, oldDestination, newSource, newDestination);
+    }
+
+    // excluir a transferência devolve o dinheiro para a conta de origem
+    @Transactional
+    public void updateBalanceFromDeletedTransfer(TransferDeletedAndRestoreEventDTO event) {
+        if (alreadyProcessed(event.eventId())) {
+            return;
+        }
+
+        Account sourceAccount = accountSelector.getAccountByIdInternal(event.sourceAccountId());
+        Account destinationAccount = accountSelector.getAccountByIdInternal(event.destinationAccountId());
+
+        moveBetween(destinationAccount, sourceAccount, event.amount());
+        saveAll(sourceAccount, destinationAccount);
+    }
+
+    @Transactional
+    public void updateBalanceFromRestoreTransfer(TransferDeletedAndRestoreEventDTO event) {
+        if (alreadyProcessed(event.eventId())) {
+            return;
+        }
+
+        Account sourceAccount = accountSelector.getAccountByIdInternal(event.sourceAccountId());
+        Account destinationAccount = accountSelector.getAccountByIdInternal(event.destinationAccountId());
+
+        moveBetween(sourceAccount, destinationAccount, event.amount());
+        saveAll(sourceAccount, destinationAccount);
+    }
+
+    // o kafka pode entregar o mesmo aviso mais de uma vez, e o saldo só pode mudar na primeira
+    private boolean alreadyProcessed(UUID eventId) {
+        if (processedEventService.register(eventId)) {
+            return false;
+        }
+
+        log.warn("Aviso {} já processado, ignorado.", eventId);
+        return true;
+    }
+
+    private void moveBetween(Account from, Account to, BigDecimal amount) {
+        applyBalance(from, amount, TypeTransactionEnum.EXPENSE, false);
+        applyBalance(to, amount, TypeTransactionEnum.INCOME, false);
+    }
+
+    // a mesma conta pode aparecer duas vezes numa alteração, e deve ser salva uma vez só
+    private void saveAll(Account... accounts) {
+        Stream.of(accounts).distinct().forEach(this::saveAndRecordChange);
     }
 
     // salva no Postgres e registra no Outbox, para o Mongo refletir o novo saldo

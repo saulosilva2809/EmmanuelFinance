@@ -1,7 +1,7 @@
 package com.emmanuelfinance.transaction.transaction.query;
 
 import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.shared.mongo.BaseDocument;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Getter;

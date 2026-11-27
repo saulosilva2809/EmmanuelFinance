@@ -1,5 +1,13 @@
 package com.emmanuelfinance.creditcard.creditcard.services;
 
+import com.emmanuelfinance.shared.security.SecurityUtils;
+import com.emmanuelfinance.creditcard.invoice.selectors.InvoiceItemSelector;
+import com.emmanuelfinance.creditcard.invoice.repositories.InvoiceRepository;
+import com.emmanuelfinance.creditcard.invoice.InvoiceTestDataBuilder;
+import com.emmanuelfinance.creditcard.invoice.InvoiceItem;
+import com.emmanuelfinance.creditcard.invoice.Invoice;
+import java.util.Set;
+import java.math.BigDecimal;
 import com.emmanuelfinance.creditcard.creditcard.CreditCard;
 import com.emmanuelfinance.creditcard.creditcard.CreditCardRepository;
 import com.emmanuelfinance.creditcard.creditcard.CreditCardSelector;
@@ -51,6 +59,15 @@ public class CreditCardInternalServiceTest {
         assertFalse(dependsOnReadModel);
     }
 
+    @Mock
+    private InvoiceItemSelector invoiceItemSelector;
+
+    @Mock
+    private InvoiceRepository invoiceRepository;
+
+    @Mock
+    private SecurityUtils securityUtils;
+
     @Nested
     @DisplayName("Cenários do getCreditCardSummary")
     class GetCreditCardSummaryTests {
@@ -62,7 +79,7 @@ public class CreditCardInternalServiceTest {
             CreateCreditCardDTO createDTO = CreditCardTestDataBuilder.createCardDTO();
             CreditCard creditCard = CreditCardTestDataBuilder.createEntity(createDTO, userId, false);
 
-            when(cardSelector.getCreditCardById(creditCard.getId())).thenReturn(creditCard);
+            when(cardSelector.getCreditCardByIdIncludingDeleted(creditCard.getId())).thenReturn(creditCard);
 
             CreditCardSummaryDTO result = creditCardInternalService.getCreditCardSummary(creditCard.getId());
 
@@ -71,7 +88,7 @@ public class CreditCardInternalServiceTest {
             assertEquals(creditCard.getName(), result.name());
             assertEquals(creditCard.isDeleted(), result.deleted());
 
-            verify(cardSelector, times(1)).getCreditCardById(creditCard.getId());
+            verify(cardSelector, times(1)).getCreditCardByIdIncludingDeleted(creditCard.getId());
         }
 
         @Test
@@ -79,14 +96,14 @@ public class CreditCardInternalServiceTest {
         void shouldThrowExceptionWhenCreditCardNotFoundForSummary() {
             UUID notFoundId = UUID.randomUUID();
 
-            when(cardSelector.getCreditCardById(notFoundId))
+            when(cardSelector.getCreditCardByIdIncludingDeleted(notFoundId))
                     .thenThrow(new CreditCardNotFound());
 
             assertThrows(CreditCardNotFound.class, () ->
                     creditCardInternalService.getCreditCardSummary(notFoundId)
             );
 
-            verify(cardSelector, times(1)).getCreditCardById(notFoundId);
+            verify(cardSelector, times(1)).getCreditCardByIdIncludingDeleted(notFoundId);
         }
     }
 
@@ -145,13 +162,14 @@ public class CreditCardInternalServiceTest {
             CreditCard card2 = CreditCardTestDataBuilder.createEntity(createDTO, userId, false);
 
             when(cardSelector.findByAccountId(accountId)).thenReturn(List.of(card1, card2));
-            doNothing().when(creditCardRepository).delete(any(CreditCard.class));
 
             assertDoesNotThrow(() -> creditCardInternalService.deactivateCardsByAccountId(accountId));
 
             verify(cardSelector, times(1)).findByAccountId(accountId);
-            verify(creditCardRepository, times(1)).delete(card1);
-            verify(creditCardRepository, times(1)).delete(card2);
+            verify(creditCardRepository, times(1)).saveAndFlush(card1);
+            verify(creditCardRepository, times(1)).saveAndFlush(card2);
+            assertTrue(card1.isDeleted() && card1.isDeactivatedByAccount());
+            assertTrue(card2.isDeleted() && card2.isDeactivatedByAccount());
             verify(outboxService, times(1)).creditCardDeleted(card1);
             verify(outboxService, times(1)).creditCardDeleted(card2);
         }
@@ -166,8 +184,45 @@ public class CreditCardInternalServiceTest {
             assertDoesNotThrow(() -> creditCardInternalService.deactivateCardsByAccountId(accountId));
 
             verify(cardSelector, times(1)).findByAccountId(accountId);
-            verify(creditCardRepository, never()).delete(any(CreditCard.class));
+            verify(creditCardRepository, never()).saveAndFlush(any(CreditCard.class));
             verifyNoInteractions(outboxService);
         }
+    }
+
+    @Test
+    @DisplayName("Deve reativar só os cartões desativados junto com a conta")
+    void shouldRestoreTheCardsDeactivatedByTheAccount() {
+        UUID accountId = UUID.randomUUID();
+        CreditCard card = CreditCardTestDataBuilder.createEntity(
+                CreditCardTestDataBuilder.createCardDTO(), UUID.randomUUID(), true);
+        card.setDeactivatedByAccount(true);
+        when(cardSelector.findDeactivatedByAccountId(accountId)).thenReturn(List.of(card));
+
+        creditCardInternalService.restoreCardsByAccountId(accountId);
+
+        assertFalse(card.isDeleted());
+        assertFalse(card.isDeactivatedByAccount());
+        verify(creditCardRepository).saveAndFlush(card);
+        verify(outboxService).creditCardChanged(card);
+    }
+
+    @Test
+    @DisplayName("A compra está paga quando, sem ela, a fatura ficaria menor que o valor pago")
+    void shouldTellWhetherThePurchaseIsAlreadyPaid() {
+        UUID userId = UUID.randomUUID();
+        UUID transactionId = UUID.randomUUID();
+        Invoice invoice = InvoiceTestDataBuilder.invoiceEntity(userId, UUID.randomUUID());
+        invoice.setTotalAmount(new BigDecimal("300.00"));
+        invoice.setAmountPaid(new BigDecimal("200.00"));
+        InvoiceItem item = InvoiceTestDataBuilder.invoiceItemEntity(userId, invoice.getId(), transactionId);
+        when(securityUtils.getCurrentUserId()).thenReturn(userId);
+        when(invoiceItemSelector.findByTransactionId(transactionId)).thenReturn(List.of(item));
+        when(invoiceRepository.findAllById(Set.of(invoice.getId()))).thenReturn(List.of(invoice));
+
+        item.setAmount(new BigDecimal("100.00"));
+        assertFalse(creditCardInternalService.isPurchaseAlreadyPaid(transactionId));
+
+        item.setAmount(new BigDecimal("100.01"));
+        assertTrue(creditCardInternalService.isPurchaseAlreadyPaid(transactionId));
     }
 }

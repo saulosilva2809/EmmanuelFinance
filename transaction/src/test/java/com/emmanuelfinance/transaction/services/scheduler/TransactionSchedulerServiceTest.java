@@ -1,5 +1,8 @@
 package com.emmanuelfinance.transaction.services.scheduler;
 
+import static org.mockito.Mockito.verifyNoInteractions;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionSynchronization;
 import com.emmanuelfinance.transaction.transaction.services.scheduler.TransactionExecutionService;
 import com.emmanuelfinance.transaction.transaction.services.scheduler.TransactionSchedulerService;
 import org.junit.jupiter.api.DisplayName;
@@ -96,5 +99,21 @@ public class TransactionSchedulerServiceTest {
         assertDoesNotThrow(() -> transactionSchedulerService.cancel(UUID.randomUUID()));
 
         verifyNoInteractions(future);
+    }
+
+    @Test
+    @DisplayName("Dentro de uma transação do banco, só deve agendar depois do commit")
+    void shouldScheduleOnlyAfterTheCommit() {
+        doReturn(future).when(taskScheduler).schedule(any(Runnable.class), any(Instant.class));
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            transactionSchedulerService.schedule(UUID.randomUUID(), LocalDateTime.now().plusHours(1));
+            verifyNoInteractions(taskScheduler);
+
+            TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+            verify(taskScheduler).schedule(any(Runnable.class), any(Instant.class));
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 }

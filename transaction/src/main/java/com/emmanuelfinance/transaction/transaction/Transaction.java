@@ -2,7 +2,7 @@ package com.emmanuelfinance.transaction.transaction;
 
 import com.emmanuelfinance.shared.entity.BaseEntity;
 import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -41,6 +41,9 @@ public class Transaction extends BaseEntity {
 
     @Column(name = "recurring_id")
     private UUID recurringId;
+
+    @Column(name = "invoice_id")
+    private UUID invoiceId;
 
     @Column(name = "description")
     private String description;

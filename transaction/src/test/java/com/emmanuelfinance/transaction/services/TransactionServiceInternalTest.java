@@ -4,16 +4,17 @@ import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
 import com.emmanuelfinance.shared.modules.category.CategoryClientCacheService;
 import com.emmanuelfinance.shared.modules.category.dtos.CategorySummaryDTO;
 import com.emmanuelfinance.shared.modules.payment.InvoicePaymentDTO;
-import com.emmanuelfinance.shared.modules.transaction.dtos.TransactionSummaryDTO;
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.exceptions.TransactionNotFound;
+import com.emmanuelfinance.shared.modules.transaction.transaction.dtos.TransactionSummaryDTO;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.exceptions.TransactionNotFound;
 import com.emmanuelfinance.transaction.transaction.Transaction;
 import com.emmanuelfinance.transaction.transaction.TransactionMapper;
 import com.emmanuelfinance.transaction.transaction.TransactionRepository;
 import com.emmanuelfinance.transaction.transaction.TransactionSelector;
 import com.emmanuelfinance.transaction.TransactionTestDataBuilder;
 import com.emmanuelfinance.transaction.transaction.dtos.CreateTransactionDTO;
-import com.emmanuelfinance.transaction.transaction.outbox.OutboxService;
+import com.emmanuelfinance.transaction.transaction.dtos.IdempotencyDataDTO;
+import com.emmanuelfinance.transaction.transaction.outbox.TransactionOutbox;
 import com.emmanuelfinance.transaction.transaction.services.IdempotencyService;
 import com.emmanuelfinance.transaction.transaction.services.TransactionOutboxEventsService;
 import com.emmanuelfinance.transaction.transaction.services.TransactionServiceInternal;
@@ -57,7 +58,7 @@ public class TransactionServiceInternalTest {
     private IdempotencyService idempotencyService;
 
     @Mock
-    private OutboxService outboxService;
+    private TransactionOutbox transactionOutbox;
 
     @InjectMocks
     private TransactionServiceInternal transactionServiceInternal;
@@ -83,7 +84,7 @@ public class TransactionServiceInternalTest {
             Transaction transaction = TransactionTestDataBuilder.transactionEntity(UUID.randomUUID());
             CategorySummaryDTO category = TransactionTestDataBuilder.categorySummaryDTO(transaction.getCategoryId());
 
-            when(transactionSelector.getTransactionByIdInternal(transaction.getId())).thenReturn(transaction);
+            when(transactionSelector.getTransactionById(transaction.getId())).thenReturn(transaction);
             when(categoryClientCacheService.getCategorySummaryDTO(transaction.getCategoryId())).thenReturn(category);
 
             TransactionSummaryDTO result = transactionServiceInternal.getSummaryDTO(transaction.getId());
@@ -99,7 +100,7 @@ public class TransactionServiceInternalTest {
         void shouldBuildSummaryWithoutCategory() {
             Transaction transaction = TransactionTestDataBuilder.transactionEntity(UUID.randomUUID());
             transaction.setCategoryId(null);
-            when(transactionSelector.getTransactionByIdInternal(transaction.getId())).thenReturn(transaction);
+            when(transactionSelector.getTransactionById(transaction.getId())).thenReturn(transaction);
 
             TransactionSummaryDTO result = transactionServiceInternal.getSummaryDTO(transaction.getId());
 
@@ -112,7 +113,7 @@ public class TransactionServiceInternalTest {
         @DisplayName("Deve propagar TransactionNotFound quando a transação não existir")
         void shouldPropagateTransactionNotFound() {
             UUID id = UUID.randomUUID();
-            when(transactionSelector.getTransactionByIdInternal(id)).thenThrow(new TransactionNotFound());
+            when(transactionSelector.getTransactionById(id)).thenThrow(new TransactionNotFound());
 
             assertThrows(TransactionNotFound.class, () -> transactionServiceInternal.getSummaryDTO(id));
 
@@ -139,7 +140,7 @@ public class TransactionServiceInternalTest {
         @DisplayName("Deve criar a despesa paga com os dados do pagamento e registrar a foto e o aviso no Outbox")
         void shouldCreatePaidExpenseAndPublishEvent() {
             InvoicePaymentDTO payment = payment();
-            when(idempotencyService.generateInvoicePaymentKey(userId, paymentId)).thenReturn("chave-fatura");
+            when(idempotencyService.generateKey(IdempotencyDataDTO.builder().userId(userId).referenceId(paymentId).build())).thenReturn("chave-fatura");
             when(transactionRepository.existsByIdempotencyKey("chave-fatura")).thenReturn(false);
             when(transactionMapper.toEntity(any(CreateTransactionDTO.class))).thenAnswer(invocation ->
                     TransactionTestDataBuilder.entityFromDTO(invocation.getArgument(0))
@@ -148,9 +149,9 @@ public class TransactionServiceInternalTest {
             transactionServiceInternal.createTransactionRelatedToInvoicePayment(payment);
 
             ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
-            InOrder inOrder = inOrder(transactionRepository, outboxService, transactionOutboxEventsService);
+            InOrder inOrder = inOrder(transactionRepository, transactionOutbox, transactionOutboxEventsService);
             inOrder.verify(transactionRepository).save(captor.capture());
-            inOrder.verify(outboxService).transactionChanged(captor.getValue());
+            inOrder.verify(transactionOutbox).transactionChanged(captor.getValue());
             inOrder.verify(transactionOutboxEventsService).publishInvoicePaymentCreatedEventIfPaid(captor.getValue());
 
             Transaction saved = captor.getValue();
@@ -168,7 +169,7 @@ public class TransactionServiceInternalTest {
         @Test
         @DisplayName("Deve descrever a transação com o mês, o ano e o nome do cartão")
         void shouldBuildTheDescriptionWithMonthYearAndCardName() {
-            when(idempotencyService.generateInvoicePaymentKey(userId, paymentId)).thenReturn("chave-fatura");
+            when(idempotencyService.generateKey(IdempotencyDataDTO.builder().userId(userId).referenceId(paymentId).build())).thenReturn("chave-fatura");
             when(transactionMapper.toEntity(any(CreateTransactionDTO.class))).thenAnswer(invocation ->
                     TransactionTestDataBuilder.entityFromDTO(invocation.getArgument(0))
             );
@@ -186,13 +187,27 @@ public class TransactionServiceInternalTest {
         @Test
         @DisplayName("Não deve criar outra transação quando o pagamento da fatura já foi processado")
         void shouldIgnoreAlreadyProcessedPayment() {
-            when(idempotencyService.generateInvoicePaymentKey(userId, paymentId)).thenReturn("chave-fatura");
+            when(idempotencyService.generateKey(IdempotencyDataDTO.builder().userId(userId).referenceId(paymentId).build())).thenReturn("chave-fatura");
             when(transactionRepository.existsByIdempotencyKey("chave-fatura")).thenReturn(true);
 
             transactionServiceInternal.createTransactionRelatedToInvoicePayment(payment());
 
             verify(transactionRepository, never()).save(any(Transaction.class));
-            verifyNoInteractions(outboxService, transactionOutboxEventsService, transactionMapper);
+            verifyNoInteractions(transactionOutbox, transactionOutboxEventsService, transactionMapper);
         }
+    }
+
+    @Test
+    @DisplayName("Deve guardar a fatura na transação do pagamento, para poder desfazê-lo")
+    void shouldKeepTheInvoiceOfThePayment() {
+        InvoicePaymentDTO payment = new InvoicePaymentDTO(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                "Cartão", UUID.randomUUID(), 10, 2026, java.math.BigDecimal.TEN, UUID.randomUUID());
+        org.mockito.Mockito.when(transactionMapper.toEntity(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new Transaction());
+
+        transactionServiceInternal.createTransactionRelatedToInvoicePayment(payment);
+
+        org.mockito.Mockito.verify(transactionRepository).save(org.mockito.ArgumentMatchers.argThat(
+                transaction -> payment.invoiceId().equals(transaction.getInvoiceId())));
     }
 }

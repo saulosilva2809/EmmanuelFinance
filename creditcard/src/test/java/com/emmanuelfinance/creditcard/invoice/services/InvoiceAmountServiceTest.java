@@ -14,6 +14,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -41,6 +44,25 @@ public class InvoiceAmountServiceTest {
         );
     }
 
+    private Map<UUID, BigDecimal> amountFor(String amount, Invoice... invoices) {
+        return Arrays.stream(invoices)
+                .collect(Collectors.toMap(Invoice::getId, invoice -> new BigDecimal(amount)));
+    }
+
+    @Test
+    @DisplayName("Deve tirar de cada fatura o valor da parcela dela")
+    void shouldSubtractTheAmountOfEachInvoice() {
+        Invoice first = invoice("100.00", false);
+        Invoice second = invoice("100.00", false);
+
+        invoiceAmountService.removeBalanceAfterDeletion(
+                List.of(first, second),
+                Map.of(first.getId(), new BigDecimal("33.34"), second.getId(), new BigDecimal("33.33")));
+
+        assertEquals(new BigDecimal("66.66"), first.getTotalAmount());
+        assertEquals(new BigDecimal("66.67"), second.getTotalAmount());
+    }
+
     @Nested
     @DisplayName("Cenários do removeBalanceAfterDeletion")
     class RemoveBalanceTests {
@@ -52,7 +74,7 @@ public class InvoiceAmountServiceTest {
             Invoice invoice2 = invoice("80.00", false);
             List<Invoice> invoices = List.of(invoice1, invoice2);
 
-            invoiceAmountService.removeBalanceAfterDeletion(invoices, new BigDecimal("30.00"));
+            invoiceAmountService.removeBalanceAfterDeletion(invoices, amountFor("30.00", invoice1, invoice2));
 
             assertEquals(new BigDecimal("70.00"), invoice1.getTotalAmount());
             assertEquals(new BigDecimal("50.00"), invoice2.getTotalAmount());
@@ -69,7 +91,7 @@ public class InvoiceAmountServiceTest {
             Invoice zeroed = invoice("50.00", false);
             Invoice remaining = invoice("120.00", false);
 
-            invoiceAmountService.removeBalanceAfterDeletion(List.of(zeroed, remaining), new BigDecimal("50.00"));
+            invoiceAmountService.removeBalanceAfterDeletion(List.of(zeroed, remaining), amountFor("50.00", zeroed, remaining));
 
             assertEquals(0, zeroed.getTotalAmount().compareTo(BigDecimal.ZERO));
             assertTrue(zeroed.isDeleted());
@@ -84,7 +106,7 @@ public class InvoiceAmountServiceTest {
         void shouldSoftDeleteZeroedInvoiceRegardlessOfScale() {
             Invoice zeroed = invoice("50", false);
 
-            invoiceAmountService.removeBalanceAfterDeletion(List.of(zeroed), new BigDecimal("50.00"));
+            invoiceAmountService.removeBalanceAfterDeletion(List.of(zeroed), amountFor("50.00", zeroed));
 
             assertTrue(zeroed.isDeleted());
         }
@@ -93,7 +115,7 @@ public class InvoiceAmountServiceTest {
         @DisplayName("Deve salvar lista vazia sem erro")
         void shouldHandleEmptyList() {
             assertDoesNotThrow(() ->
-                    invoiceAmountService.removeBalanceAfterDeletion(Collections.emptyList(), BigDecimal.TEN)
+                    invoiceAmountService.removeBalanceAfterDeletion(Collections.emptyList(), Map.of())
             );
 
             verify(invoiceRepository, times(1)).saveAllAndFlush(Collections.emptyList());
@@ -112,7 +134,7 @@ public class InvoiceAmountServiceTest {
             Invoice active = invoice("40.00", false);
             List<Invoice> invoices = List.of(deleted, active);
 
-            invoiceAmountService.addBalanceAfterRestore(invoices, new BigDecimal("30.00"));
+            invoiceAmountService.addBalanceAfterRestore(invoices, amountFor("30.00", deleted, active));
 
             assertEquals(new BigDecimal("30.00"), deleted.getTotalAmount());
             assertFalse(deleted.isDeleted());

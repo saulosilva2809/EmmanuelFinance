@@ -169,8 +169,18 @@ Todos os caches são do Spring (`@Cacheable`), gravados na primeira consulta e a
 - **Publica** `account-events` (`CREATED`, `DELETED` e `RESTORE`).
 - **Consome** `transaction-created-topic`, `invoice-payment-created-topic`, `transaction-updated-topic`,
   `transaction-deleted-topic` e `transaction-restore-topic` para recalcular o saldo.
-- Quando o consumo falha, a mensagem é tentada mais 3 vezes, com 2 segundos entre elas, e depois vai para a DLQ
-  (`<tópico>.DLT`).
+- **Consome** também `transfer-created-topic`, `transfer-updated-topic`, `transfer-deleted-topic` e
+  `transfer-restore-topic`, para mover o valor entre as duas contas.
+- Exclusão e restauração de **compra no cartão** são ignoradas: ela nunca mexeu no saldo.
+- Cada aviso leva um `eventId`, gravado na tabela `processed_event` junto com a mudança de saldo. A mesma mensagem
+  entregue duas vezes só vale na primeira.
+- Quando o consumo falha, a mensagem é tentada mais 3 vezes, com 2 segundos entre elas, e depois vai para a DLQ do
+  serviço (`<tópico>.account.DLT`), com um erro no log (o reprocessamento é manual). Erro de regra (conta inexistente,
+  por exemplo) não é repetido. Em seguida o `AccountProducer` avisa a falha (`transaction-failed-topic` ou
+  `transfer-failed-topic`), dizendo qual operação falhou, para o `transaction` desfazê-la.
+- O `AccountProjector` também apaga as respostas montadas que mostram a conta (`transaction_view`,
+  `transaction_list`, `transfer_view`, `transfer_list`, `credit_card_view` e `credit_card_list`), então renomear a
+  conta já aparece nelas.
 
 ### Outros
 - **Exclusão lógica** com `@SQLDelete`, e listagem separada das contas excluídas.

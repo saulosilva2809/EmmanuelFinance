@@ -30,4 +30,9 @@ public class CreditCardInternalController {
         CreditCardInternalSummaryDTO response = creditCardInternalService.getCreditCardInternalSummary(id);
         return ResponseEntity.ok().body(response);
     }
+
+    @GetMapping("transactions/{transactionId}/paid")
+    public ResponseEntity<Boolean> isPurchaseAlreadyPaid(@PathVariable UUID transactionId) {
+        return ResponseEntity.ok().body(creditCardInternalService.isPurchaseAlreadyPaid(transactionId));
+    }
 }

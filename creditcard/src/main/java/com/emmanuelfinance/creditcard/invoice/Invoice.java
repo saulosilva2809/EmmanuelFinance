@@ -22,7 +22,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
-@SQLDelete(sql = "UPDATE invoice SET deleted = true WHERE id = ?")
+@SQLDelete(sql = "UPDATE invoice SET deleted = true, version = version + 1 WHERE id = ? AND version = ?")
 @Filter(name = "deletedFilter")
 public class Invoice extends BaseEntity {
 
@@ -50,4 +50,8 @@ public class Invoice extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private InvoiceStatusEnum status;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 }

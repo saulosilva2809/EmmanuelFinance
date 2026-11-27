@@ -21,7 +21,7 @@ import com.emmanuelfinance.creditcard.invoice.query.invoiceitem.InvoiceItemProje
 import com.emmanuelfinance.creditcard.invoice.query.invoiceitem.InvoiceItemQueryService;
 import com.emmanuelfinance.shared.modules.account.AccountClientCacheService;
 import com.emmanuelfinance.shared.modules.creditcard.CreditCardClientCacheService;
-import com.emmanuelfinance.shared.modules.transaction.TransactionClientCacheService;
+import com.emmanuelfinance.shared.modules.transaction.transaction.TransactionClientCacheService;
 import com.emmanuelfinance.shared.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

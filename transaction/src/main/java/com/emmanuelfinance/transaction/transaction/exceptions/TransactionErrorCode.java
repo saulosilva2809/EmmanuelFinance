@@ -22,6 +22,10 @@ public enum TransactionErrorCode {
             HttpStatus.CONFLICT,
             "This transaction has already been made."
     ),
+    VALUE_LESS_THAN_ZERO(
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            "The transaction amount can't be less than 0."
+    ),
 
     // schedule
     CANNOT_SCHEDULE_UNSCHEDULED_TRANSACTION(
@@ -42,6 +46,14 @@ public enum TransactionErrorCode {
     ),
 
     // card
+    CARD_PURCHASE_ALREADY_PAID(
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            "This purchase is part of an invoice that has already been paid."
+    ),
+    INVOICE_PAYMENT_CANNOT_BE_CHANGED(
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            "Invoice payments can't be changed or deleted."
+    ),
     CARD_TRANSACTION_TYPE(
             HttpStatus.UNPROCESSABLE_ENTITY,
             "Credit card purchases should be the Expense type."

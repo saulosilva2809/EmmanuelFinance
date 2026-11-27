@@ -1,5 +1,6 @@
 package com.emmanuelfinance.creditcard.invoice.selectors;
 
+import com.emmanuelfinance.shared.entity.BaseEntity;
 import com.emmanuelfinance.creditcard.invoice.Invoice;
 import com.emmanuelfinance.creditcard.invoice.InvoiceTestDataBuilder;
 import com.emmanuelfinance.creditcard.invoice.exceptions.InvoiceDomainException;
@@ -42,9 +43,9 @@ public class InvoiceSelectorTest {
         @DisplayName("Deve encontrar a fatura do cartão no mês e ano")
         void shouldFindInvoiceByCardMonthAndYear() {
             UUID creditCardId = UUID.randomUUID();
-            Invoice saved = invoiceRepository.saveAndFlush(
+            Invoice saved = invoiceRepository.saveAndFlush(unsaved(
                     InvoiceTestDataBuilder.invoiceEntity(UUID.randomUUID(), creditCardId, 10, 2026)
-            );
+            ));
 
             Optional<Invoice> result = invoiceSelector.getByCreditCardAndMonthAndYear(creditCardId, 10, 2026);
 
@@ -58,9 +59,9 @@ public class InvoiceSelectorTest {
         @DisplayName("Deve retornar vazio quando mês, ano ou cartão forem diferentes")
         void shouldReturnEmptyWhenNoMatch() {
             UUID creditCardId = UUID.randomUUID();
-            invoiceRepository.saveAndFlush(
+            invoiceRepository.saveAndFlush(unsaved(
                     InvoiceTestDataBuilder.invoiceEntity(UUID.randomUUID(), creditCardId, 10, 2026)
-            );
+            ));
 
             assertTrue(invoiceSelector.getByCreditCardAndMonthAndYear(creditCardId, 11, 2026).isEmpty());
             assertTrue(invoiceSelector.getByCreditCardAndMonthAndYear(creditCardId, 10, 2027).isEmpty());
@@ -68,14 +69,14 @@ public class InvoiceSelectorTest {
         }
 
         @Test
-        @DisplayName("Deve retornar vazio quando a fatura estiver excluída")
-        void shouldReturnEmptyWhenInvoiceIsDeleted() {
+        @DisplayName("Deve devolver a fatura excluída, para ela ser reaproveitada")
+        void shouldReturnDeletedInvoice() {
             UUID creditCardId = UUID.randomUUID();
-            invoiceRepository.saveAndFlush(InvoiceTestDataBuilder.invoiceEntity(
-                    UUID.randomUUID(), creditCardId, 10, 2026, new BigDecimal("100.00"), InvoiceStatusEnum.OPEN, true
-            ));
+            Invoice deleted = InvoiceTestDataBuilder.invoiceEntity(UUID.randomUUID(), creditCardId, 10, 2026);
+            deleted.setDeleted(true);
+            invoiceRepository.saveAndFlush(unsaved(deleted));
 
-            assertTrue(invoiceSelector.getByCreditCardAndMonthAndYear(creditCardId, 10, 2026).isEmpty());
+            assertTrue(invoiceSelector.getByCreditCardAndMonthAndYear(creditCardId, 10, 2026).isPresent());
         }
 
     }
@@ -87,9 +88,9 @@ public class InvoiceSelectorTest {
         @Test
         @DisplayName("Deve retornar a fatura não excluída")
         void shouldReturnActiveInvoice() {
-            Invoice saved = invoiceRepository.saveAndFlush(
+            Invoice saved = invoiceRepository.saveAndFlush(unsaved(
                     InvoiceTestDataBuilder.invoiceEntity(UUID.randomUUID(), UUID.randomUUID())
-            );
+            ));
 
             assertEquals(saved.getId(), invoiceSelector.getByIdExcludingDeleted(saved.getId()).getId());
         }
@@ -97,9 +98,9 @@ public class InvoiceSelectorTest {
         @Test
         @DisplayName("Deve lançar INVOICE_NOT_FOUND quando a fatura estiver excluída")
         void shouldThrowWhenInvoiceIsDeleted() {
-            Invoice saved = invoiceRepository.saveAndFlush(InvoiceTestDataBuilder.invoiceEntity(
+            Invoice saved = invoiceRepository.saveAndFlush(unsaved(InvoiceTestDataBuilder.invoiceEntity(
                     UUID.randomUUID(), UUID.randomUUID(), 10, 2026, new BigDecimal("100.00"), InvoiceStatusEnum.OPEN, true
-            ));
+            )));
 
             InvoiceDomainException exception = assertThrows(InvoiceDomainException.class,
                     () -> invoiceSelector.getByIdExcludingDeleted(saved.getId()));
@@ -113,5 +114,10 @@ public class InvoiceSelectorTest {
             assertThrows(InvoiceDomainException.class,
                     () -> invoiceSelector.getByIdExcludingDeleted(UUID.randomUUID()));
         }
+    }
+
+    private static <T extends BaseEntity> T unsaved(T entity) {
+        entity.setId(null);
+        return entity;
     }
 }

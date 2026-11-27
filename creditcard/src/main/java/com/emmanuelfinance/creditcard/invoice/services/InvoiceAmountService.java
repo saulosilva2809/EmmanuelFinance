@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -24,12 +26,11 @@ public class InvoiceAmountService {
                 .forEach(invoice -> invoice.setDeleted(true));
     }
 
-    // remove valor (valor total / parcelas) após deletar uma transação
-    public void removeBalanceAfterDeletion(List<Invoice> invoiceList, BigDecimal amount) {
-        invoiceList.stream()
-                .forEach(invoice -> invoice.setTotalAmount(
-                            invoice.getTotalAmount().subtract(amount)
-                ));
+    // tira de cada fatura o valor das parcelas da transação excluída
+    public void removeBalanceAfterDeletion(List<Invoice> invoiceList, Map<UUID, BigDecimal> amountByInvoice) {
+        invoiceList.forEach(invoice -> invoice.setTotalAmount(
+                invoice.getTotalAmount().subtract(amountByInvoice.get(invoice.getId()))
+        ));
 
         // se alguma invoice ficar com o valor 0 marca como deletada
         markZeroAmountInvoicesAsDeleted(invoiceList);
@@ -48,11 +49,11 @@ public class InvoiceAmountService {
         });
     }
 
-    // adiciona o valor (valor total / parcelas) após retaurar uma transação
-    public void addBalanceAfterRestore(List<Invoice> invoiceList, BigDecimal amount) {
+    // devolve a cada fatura o valor das parcelas da transação restaurada
+    public void addBalanceAfterRestore(List<Invoice> invoiceList, Map<UUID, BigDecimal> amountByInvoice) {
         // percore uma lista com todas as invoices, adicione o valor e desmaca deletada
         invoiceList.forEach(invoice -> {
-                invoice.setTotalAmount(invoice.getTotalAmount().add(amount));
+                invoice.setTotalAmount(invoice.getTotalAmount().add(amountByInvoice.get(invoice.getId())));
                 invoice.setDeleted(false);
         });
 

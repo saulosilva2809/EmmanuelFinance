@@ -1,7 +1,7 @@
 package com.emmanuelfinance.transaction.query;
 
 import com.emmanuelfinance.shared.enums.TypeTransactionEnum;
-import com.emmanuelfinance.shared.modules.transaction.enums.StatusTransactionEnum;
+import com.emmanuelfinance.shared.modules.transaction.transaction.enums.StatusTransactionEnum;
 import com.emmanuelfinance.transaction.transaction.dtos.TransactionFiltersDTO;
 import com.emmanuelfinance.transaction.transaction.query.TransactionSpecification;
 import org.bson.Document;
