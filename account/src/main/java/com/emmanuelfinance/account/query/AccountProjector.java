@@ -31,6 +31,6 @@ public class AccountProjector implements BaseProjector<AccountDocument> {
     })
     public void project(AccountDocument snapshot) {
         accountDocumentRepository.save(snapshot);
-        log.info("Conta {} sincronizada no Mongo", snapshot.getId());
+        log.debug("Conta {} sincronizada no Mongo", snapshot.getId());
     }
 }

@@ -24,6 +24,8 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
       KC_HOSTNAME: http://localhost:8001
+      # só avisos e erros, mais as linhas de quando o keycloak sobe
+      KC_LOG_LEVEL: "WARN,io.quarkus:INFO"
     command: start-dev --db=dev-file
     ports:
       - "8001:8080"

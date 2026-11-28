@@ -21,20 +21,20 @@ public class AccountClientCacheService {
 
     @Cacheable(value = "accounts", key = "@securityUtils.currentUserId + ':' + #id")
     public AccountSummaryDTO getAccountSummaryById(UUID id) {
-        log.info("Buscando conta {} via account-server (cache miss)", id);
+        log.debug("Buscando conta {} via account-server (cache miss)", id);
         return accountClient.getAccountSummary(id);
     }
 
     @Cacheable(value = "accounts-internal", key = "@securityUtils.currentUserId + ':' + #id")
     public AccountSummaryInternalDTO getInternalAccountById(UUID id) {
-        log.info("Buscando conta {} via account-server (cache miss)", id);
+        log.debug("Buscando conta {} via account-server (cache miss)", id);
         return accountClient.getAccountSummaryInternal(id);
     }
 
     // só o "sim" fica em cache: quem não é dono pergunta de novo, e a conta excluída sai do cache no projector do account
     @Cacheable(value = "account_owner", key = "#accountId + ':' + #userId", unless = "!#result")
     public boolean isAccountOwnedByUser(UUID accountId, UUID userId) {
-        log.info("Conferindo o dono da conta {} via account-server (cache miss)", accountId);
+        log.debug("Conferindo o dono da conta {} via account-server (cache miss)", accountId);
         Jwt jwt = Jwt.withTokenValue("mock-token")
                 .header("alg", "HS256")
                 .claim("sub", userId)

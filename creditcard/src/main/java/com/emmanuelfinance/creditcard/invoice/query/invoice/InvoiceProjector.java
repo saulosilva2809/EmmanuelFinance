@@ -21,6 +21,6 @@ public class InvoiceProjector implements BaseProjector<InvoiceDocument> {
     })
     public void project(InvoiceDocument snapshot) {
         invoiceDocumentRepository.save(snapshot);
-        log.info("Fatura {} sincronizado no Mongo", snapshot.getId());
+        log.debug("Fatura {} sincronizada no Mongo", snapshot.getId());
     }
 }

@@ -33,7 +33,7 @@ public class OutboxService {
         outboxEventRepository.saveAll(List.of(outboxEvents));
 
         for (OutboxEvent outboxEvent : outboxEvents) {
-            log.info("Outbox: {} registrado para o id {} (aguardando o commit)",
+            log.debug("Outbox: {} registrado para o id {} (aguardando o commit)",
                     outboxEvent.getType(), outboxEvent.getAggregateId());
         }
 

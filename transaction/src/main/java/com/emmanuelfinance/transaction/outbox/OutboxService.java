@@ -20,7 +20,7 @@ public class OutboxService {
     // grava a linha na transação de quem chamou e acorda o relay, que só entrega depois do commit
     public void register(OutboxEvent outboxEvent) {
         outboxEventRepository.save(outboxEvent);
-        log.info("Outbox: {} registrado para o id {} (aguardando o commit)",
+        log.debug("Outbox: {} registrado para o id {} (aguardando o commit)",
                 outboxEvent.getType(), outboxEvent.getAggregateId());
 
         applicationEventPublisher.publishEvent(new OutboxEventSavedDTO());

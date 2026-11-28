@@ -59,7 +59,7 @@ public class CreditCardBalanceKafkaService {
         // restaura o limite
         creditCard.setAvailableLimit(creditCard.getAvailableLimit().add(event.amount()));
 
-        log.info("NOVO LIMITE DISPONÍVEL: {}", creditCard.getAvailableLimit());
+        log.debug("Novo limite disponível do cartão {}: {}", creditCard.getId(), creditCard.getAvailableLimit());
 
         creditCardRepository.saveAndFlush(creditCard);
         outboxService.creditCardChanged(creditCard);

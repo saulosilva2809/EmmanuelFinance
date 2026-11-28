@@ -1,3 +1,9 @@
+# o dashboard não usa o módulo config, então repete aqui os mesmos níveis de log dos outros serviços
+logging:
+  level:
+    root: warn
+    com.emmanuelfinance: info
+
 spring:
   application:
     name: dashboard

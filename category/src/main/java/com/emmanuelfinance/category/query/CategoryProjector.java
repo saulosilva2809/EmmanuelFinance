@@ -27,6 +27,6 @@ public class CategoryProjector implements BaseProjector<CategoryDocument> {
     })
     public void project(CategoryDocument snapshot) {
         categoryDocumentRepository.save(snapshot);
-        log.info("Categoria {} sincronizada no Mongo", snapshot.getId());
+        log.debug("Categoria {} sincronizada no Mongo", snapshot.getId());
     }
 }

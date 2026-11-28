@@ -20,13 +20,13 @@ public class CreditCardClientCacheService {
 
     @Cacheable(value = "credit_card_summary", key = "@securityUtils.currentUserId + ':' + #id")
     public CreditCardSummaryDTO getCreditCardSummaryDTO(UUID id) {
-        log.info("Buscando credit-card via credit-card server (cache miss)", id);
+        log.debug("Buscando cartão {} via creditcard-server (cache miss)", id);
         return creditCardClient.getCreditCardSummary(id);
     }
 
     @Cacheable(value = "credit_card_internal_summary", key = "@securityUtils.currentUserId + ':' + #id")
     public CreditCardInternalSummaryDTO getCreditCardInternalSummaryDTO(UUID id) {
-        log.info("Buscando credit-card via credit-card server (cache miss)", id);
+        log.debug("Buscando cartão {} via creditcard-server (cache miss)", id);
         return creditCardClient.getCreditCardInternalSummary(id);
     }
 }

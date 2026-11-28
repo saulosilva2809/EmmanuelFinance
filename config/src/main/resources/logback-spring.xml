@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- vale para todo serviço que usa o módulo config. das bibliotecas só aparecem avisos e erros,
+     senão os dados que importam somem no meio das configurações do kafka, do mongo e do spring -->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <root level="WARN">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+    <!-- o que o nosso código registra, incluindo a linha "Started ..." de cada serviço -->
+    <logger name="com.emmanuelfinance" level="INFO"/>
+    <!-- as migrations aplicadas no banco precisam ficar visíveis -->
+    <logger name="org.flywaydb.core.internal.command" level="INFO"/>
+</configuration>

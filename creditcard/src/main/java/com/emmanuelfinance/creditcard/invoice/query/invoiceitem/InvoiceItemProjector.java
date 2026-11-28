@@ -17,6 +17,6 @@ public class InvoiceItemProjector implements BaseProjector<InvoiceItemDocument> 
     @CacheEvict(value = "invoice_item_list", allEntries = true)
     public void project(InvoiceItemDocument snapshot) {
         invoiceItemDocumentRepository.save(snapshot);
-        log.info("Item de fatura {} sincronizado no Mongo", snapshot.getId());
+        log.debug("Item de fatura {} sincronizado no Mongo", snapshot.getId());
     }
 }
