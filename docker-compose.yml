@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
 
   ### REDIS CACHE ###
@@ -93,6 +91,8 @@ services:
     build:
       context: .
       dockerfile: ./auth/Dockerfile
+    # reconstrói a cada subida, senão o compose reaproveita a imagem com o código antigo
+    pull_policy: build
     container_name: auth-server
     environment:
       DB_AUTH_URL: jdbc:postgresql://db-auth:5432/${DB_AUTH_NAME}
@@ -117,18 +117,22 @@ services:
     build:
       context: .
       dockerfile: ./account/Dockerfile
+    # reconstrói a cada subida, senão o compose reaproveita a imagem com o código antigo
+    pull_policy: build
     container_name: account-server
     environment:
+      SERVER_PORT: 8080
       DB_ACCOUNT_URL: ${DB_ACCOUNT_URL}
-      DB_USERNAME: ${DB_ACCOUNT_USERNAME}
-      DB_PASSWORD: ${DB_ACCOUNT_PASSWORD}
+      DB_ACCOUNT_USERNAME: ${DB_ACCOUNT_USERNAME}
+      DB_ACCOUNT_PASSWORD: ${DB_ACCOUNT_PASSWORD}
       KC_AUTH_SERVER_URL: ${KC_AUTH_SERVER_URL}
       KC_EXTERNAL_AUTH_SERVER_URL: ${KC_EXTERNAL_AUTH_SERVER_URL}
       KC_REALM: ${KC_REALM}
       USER_SERVICE_URL: ${USER_SERVICE_URL}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
-      KAFKA_BOOTSTRAP_SERVER: ${KAFKA_BOOTSTRAP_SERVER}
+      # dentro da rede do docker o kafka atende em kafka:29092 (localhost:9092 é só para fora dele)
+      KAFKA_BOOTSTRAP_SERVER: kafka:29092
       MONGODB_URI: ${MONGODB_URI}
       MONGODB_DATABASE: ${MONGODB_DATABASE}
     ports:
@@ -148,6 +152,8 @@ services:
     build:
       context: .
       dockerfile: ./dashboard/Dockerfile
+    # reconstrói a cada subida, senão o compose reaproveita a imagem com o código antigo
+    pull_policy: build
     container_name: dashboard-server
     environment:
       KC_AUTH_SERVER_URL: ${KC_AUTH_SERVER_URL}
@@ -156,7 +162,8 @@ services:
       USER_SERVICE_URL: ${USER_SERVICE_URL}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # dentro da rede do docker o kafka atende em kafka:29092 (localhost:9092 é só para fora dele)
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     ports:
       - "8003:8080"
     depends_on:
@@ -174,19 +181,21 @@ services:
     build:
       context: .
       dockerfile: ./category/Dockerfile
+    # reconstrói a cada subida, senão o compose reaproveita a imagem com o código antigo
+    pull_policy: build
     container_name: category-server
     environment:
+      SERVER_PORT: 8080
       DB_CATEGORY_URL: ${DB_CATEGORY_URL}
       DB_USERNAME: ${DB_CATEGORY_USERNAME}
       DB_PASSWORD: ${DB_CATEGORY_PASSWORD}
       KC_AUTH_SERVER_URL: ${KC_AUTH_SERVER_URL}
       KC_EXTERNAL_AUTH_SERVER_URL: ${KC_EXTERNAL_AUTH_SERVER_URL}
       KC_REALM: ${KC_REALM}
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
-      ACCOUNT_SERVICE_URL: ${ACCOUNT_SERVICE_URL}
-      KAFKA_BOOTSTRAP_SERVER: ${KAFKA_BOOTSTRAP_SERVER}
+      # dentro da rede do docker o kafka atende em kafka:29092 (localhost:9092 é só para fora dele)
+      KAFKA_BOOTSTRAP_SERVER: kafka:29092
       MONGODB_URI: ${MONGODB_URI}
       MONGODB_DATABASE: ${MONGODB_DATABASE}
     ports:

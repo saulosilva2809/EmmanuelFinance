@@ -1,0 +1,16 @@
+# nada disto entra na imagem
+.git
+.github
+.idea
+.vscode
+.claude
+docs
+**/*.md
+
+# segredos ficam só na máquina
+**/.env
+**/.env.*
+
+# o build do docker gera os próprios arquivos
+**/target
+**/src/test

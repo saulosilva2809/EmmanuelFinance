@@ -58,8 +58,8 @@ com JWT), OpenFeign, MapStruct, Lombok, JUnit e Docker Compose.
 
 ### Pré-requisitos
 
-- Java 21
 - Docker com Docker Compose
+- Java 21 (só para rodar um serviço fora do Docker ou rodar os testes)
 - Bancos PostgreSQL e MongoDB para os serviços que não têm banco no Compose
 
 ### Configuração
@@ -75,6 +75,12 @@ No Keycloak, crie o realm e o client usados nas variáveis `KC_REALM`, `KC_CLIEN
 ```bash
 docker compose up -d redis keycloak kafka db-auth auth-server account-server category-server
 ```
+
+O código é compilado dentro do Docker e as imagens são reconstruídas a cada subida, então não é preciso gerar os
+pacotes antes. A primeira vez demora alguns minutos, enquanto as dependências são baixadas. Ao iniciar, cada serviço
+aplica as suas migrations no banco configurado.
+
+Dentro do Compose os serviços usam o Kafka em `kafka:29092`; quem roda fora dele usa `localhost:9092`.
 
 ### Rodar um serviço fora do Compose
 
