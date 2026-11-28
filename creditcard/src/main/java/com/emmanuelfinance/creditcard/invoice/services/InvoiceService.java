@@ -59,7 +59,7 @@ public class InvoiceService {
 
         invoiceRepository.save(invoice);
         outboxService.invoiceChanged(invoice);
-        log.info("Criada nova INVOICE para {}", target);
+        log.debug("Criada nova INVOICE para {}", target);
 
         return invoice;
     }
@@ -90,7 +90,7 @@ public class InvoiceService {
 
         invoiceRepository.saveAndFlush(invoice);
         outboxService.invoiceChanged(invoice);
-        log.info("INVOICE já existe para {}. Valor atualizado.", target);
+        log.debug("INVOICE já existe para {}. Valor atualizado.", target);
 
         return invoice;
     }
@@ -128,7 +128,7 @@ public class InvoiceService {
 
     @Transactional
     public void delete(TransactionDeletedAndRestoreEvent event) {
-        log.info("Deletando invoices da transação: {}", event.transactionId());
+        log.debug("Deletando invoices da transação: {}", event.transactionId());
 
         List<InvoiceItem> invoiceItems = invoiceItemSelector.findByTransactionId(event.transactionId());
 
@@ -148,7 +148,7 @@ public class InvoiceService {
 
     @Transactional
     public void restore(TransactionDeletedAndRestoreEvent event) {
-        log.info("Restaurando invoices da transação: {}", event.transactionId());
+        log.debug("Restaurando invoices da transação: {}", event.transactionId());
 
         List<InvoiceItem> invoiceItems = invoiceItemSelector.findByTransactionId(event.transactionId());
 

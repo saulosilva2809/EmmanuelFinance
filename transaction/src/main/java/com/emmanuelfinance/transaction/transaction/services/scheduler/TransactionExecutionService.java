@@ -27,7 +27,7 @@ public class TransactionExecutionService {
     // executa uma transação agendada
     @Transactional
     public void executeScheduledTransaction(UUID transactionId) {
-        log.info("Iniciando execução da transação agendadada: {}", transactionId);
+        log.info("Iniciando execução da transação agendada: {}", transactionId);
 
         // pega a transação
         Transaction transaction = transactionSelector.getTransactionByIdForUpdate(transactionId);

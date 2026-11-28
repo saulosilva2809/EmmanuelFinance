@@ -65,7 +65,7 @@ public class OutboxRelay {
             }
 
             while (!pending.isEmpty()) {
-                log.info("Outbox: {} pendência(s) para processar", pending.size());
+                log.debug("Outbox: {} pendência(s) para processar", pending.size());
 
                 for (BaseOutboxEvent outboxEvent : pending) {
                     OutboxDispatcher dispatcher = dispatcherOf(outboxEvent);
@@ -88,7 +88,7 @@ public class OutboxRelay {
                     }
 
                     deleteEvent(outboxEvent);
-                    log.info("Outbox: evento {} (ID: {}) entregue e removido do Outbox",
+                    log.debug("Outbox: evento {} (ID: {}) entregue e removido do Outbox",
                             outboxEvent.getType(), outboxEvent.getAggregateId());
                 }
                 pending = nextPending(skipped);

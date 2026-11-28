@@ -27,6 +27,6 @@ public class CreditCardProjector implements BaseProjector<CreditCardDocument> {
     })
     public void project(CreditCardDocument snapshot) {
         creditCardDocumentRepository.save(snapshot);
-        log.info("Cartão {} sincronizado no Mongo", snapshot.getId());
+        log.debug("Cartão {} sincronizado no Mongo", snapshot.getId());
     }
 }

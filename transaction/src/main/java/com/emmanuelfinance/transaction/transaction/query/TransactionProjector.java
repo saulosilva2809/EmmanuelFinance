@@ -22,6 +22,6 @@ public class TransactionProjector implements BaseProjector<TransactionDocument> 
     })
     public void project(TransactionDocument snapshot) {
         transactionDocumentRepository.save(snapshot);
-        log.info("Transação {} sincronizada no Mongo", snapshot.getId());
+        log.debug("Transação {} sincronizada no Mongo", snapshot.getId());
     }
 }

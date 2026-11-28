@@ -9,7 +9,6 @@ spring:
     database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
       ddl-auto: validate
-    show-sql: true
 
   flyway:
     enabled: true

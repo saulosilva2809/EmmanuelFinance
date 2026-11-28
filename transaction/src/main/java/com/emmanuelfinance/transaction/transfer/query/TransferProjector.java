@@ -21,6 +21,6 @@ public class TransferProjector implements BaseProjector<TransferDocument> {
     })
     public void project(TransferDocument snapshot) {
         transferDocumentRepository.save(snapshot);
-        log.info("Transferência {} sincronizada no Mongo", snapshot.getId());
+        log.debug("Transferência {} sincronizada no Mongo", snapshot.getId());
     }
 }

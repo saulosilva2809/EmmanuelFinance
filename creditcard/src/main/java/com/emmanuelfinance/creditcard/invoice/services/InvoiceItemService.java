@@ -42,7 +42,7 @@ public class InvoiceItemService {
 
     @Transactional
     public void delete(UUID transactionId) {
-        log.info("Deletando InvoicesItems da transação: {}", transactionId);
+        log.debug("Deletando InvoicesItems da transação: {}", transactionId);
         List<InvoiceItem> invoiceItemList = invoiceItemRepository.findByTransactionId(transactionId);
 
         invoiceItemRepository.deleteAll(invoiceItemList);
@@ -51,7 +51,7 @@ public class InvoiceItemService {
 
     @Transactional
     public void restore(UUID transactionId) {
-        log.info("Restaurando InvoicesItems da transação: {}", transactionId);
+        log.debug("Restaurando InvoicesItems da transação: {}", transactionId);
         List<InvoiceItem> invoiceItemList = invoiceItemRepository.findByTransactionId(transactionId);
 
         invoiceItemList.forEach(invoiceItem -> invoiceItem.setDeleted(false));
